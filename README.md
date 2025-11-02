@@ -1,4 +1,4 @@
-# name of non-profit
+# Kids First Initiative
 
 {One sentence description of the project}
 
