@@ -4,7 +4,6 @@ export default function Navbar() {
       <nav className="navList">
         <link href="/home">Home</link>
         <link href="/blog">Dashboard</link>
-        <link href="/portfolio">Profile</link>
       </nav>
     </header>
   );
