@@ -35,6 +35,6 @@ yarn-error.log*
 next-env.d.ts
 
 
-#package stuff
+#package manager files
 package.json
 package-lock.json
