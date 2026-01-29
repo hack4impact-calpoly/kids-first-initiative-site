@@ -1,27 +1,28 @@
-import { Link } from "@chakra-ui/react";
+import { Button, Link, Text } from "@chakra-ui/react";
+import { textStyles } from "@/styles/textStyles";
 
 export default function Navbar() {
   return (
     <header className="navbar">
       <nav className="navList">
         <Link href="/home">
-          <button className="home">
-            <text>Home</text>
-          </button>
+          <Button className="home">
+            <Text>Home</Text>
+          </Button>
         </Link>
         <Link href="/dashboard">
-          <button className="dashboard">
-            <text>Dashboard</text>
-          </button>
+          <Button className="dashboard">
+            <Text>Dashboard</Text>
+          </Button>
         </Link>
         <Link href="/profile">
-          <button className="profile">
-            <text>Profile</text>
-          </button>
+          <Button className="profile">
+            <Text>Profile</Text>
+          </Button>
         </Link>
-        <button className="signOut" onClick={undefined}>
-          <text>Sign-out</text>
-        </button>
+        <Button className="signOut" onClick={undefined}>
+          <Text>Sign-out</Text>
+        </Button>
       </nav>
     </header>
   );
