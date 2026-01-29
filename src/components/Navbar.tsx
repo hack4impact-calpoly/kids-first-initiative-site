@@ -1,5 +1,4 @@
 import { Button, Link, Text } from "@chakra-ui/react";
-import { textStyles } from "@/styles/textStyles";
 
 export default function Navbar() {
   return (
