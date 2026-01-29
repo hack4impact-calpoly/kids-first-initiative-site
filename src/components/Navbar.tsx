@@ -1,22 +1,24 @@
+import { Link } from "@chakra-ui/react";
+
 export default function Navbar() {
   return (
     <header className="navbar">
       <nav className="navList">
-        <a href="/home">
+        <Link href="/home">
           <button className="home">
             <text>Home</text>
           </button>
-        </a>
-        <a href="/dashboard">
+        </Link>
+        <Link href="/dashboard">
           <button className="dashboard">
             <text>Dashboard</text>
           </button>
-        </a>
-        <a href="/profile">
+        </Link>
+        <Link href="/profile">
           <button className="profile">
             <text>Profile</text>
           </button>
-        </a>
+        </Link>
         <button className="signOut" onClick={undefined}>
           <text>Sign-out</text>
         </button>
