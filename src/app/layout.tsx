@@ -14,8 +14,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html suppressHydrationWarning lang="en">
         <body>
-        <Provider>{children}</Provider>
-      </body>
+          <Provider>{children}</Provider>
+        </body>
       </html>
     </ClerkProvider>
   );
