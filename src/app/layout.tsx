@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
-import { Provider } from "@/components/ui/provider";
+import Providers from "./providers";
 
 //! Update metadata to match your project
 export const metadata: Metadata = {
@@ -11,12 +10,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html suppressHydrationWarning lang="en">
-        <body>
-          <Provider>{children}</Provider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
   );
 }

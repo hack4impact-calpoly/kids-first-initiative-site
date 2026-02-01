@@ -11,8 +11,8 @@ let connection: typeof mongoose;
 const connectDB = async () => {
   if (!connection) {
     // uncomment this line once you have the MONGO_URI set up
-    // connection = await mongoose.connect(url);
-    connection = "remove me" as any; // remove me
+    connection = await mongoose.connect(url);
+    console.log("DATABASE CONNECTED");
     return connection;
   }
 };
