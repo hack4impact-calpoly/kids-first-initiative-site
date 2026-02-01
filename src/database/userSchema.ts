@@ -1,9 +1,12 @@
 import mongoose, { Schema } from "mongoose";
 
-//! Example user schema. Not guaranteed to work
+// Updated UserSchema to match specifications
 const UserSchema = new Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  name: { type: String, required: true, trim: true },
+  username: { type: String, required: true, trim: true },
+  role: { type: String, required: true, trim: true },
+  email: { type: String, required: true, trim: true },
 });
 
-export default mongoose.models.User || mongoose.model("User", UserSchema);
+// Added "users" at the end to ensure that it maps to the users schema that is in the Atlas Validator
+export default mongoose.models.User || mongoose.model("User", UserSchema, "users");
