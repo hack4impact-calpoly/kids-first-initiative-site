@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-const gameDataSchema = new mongoose.Schema({
+const gameDataSchema = new Schema({
   saveId: { type: String, required: true, unique: true },
   saveVersion: { type: Number, required: true },
   lastUpdated: { type: Date, default: Date.now },
