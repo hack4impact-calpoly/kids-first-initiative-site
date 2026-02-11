@@ -18,6 +18,8 @@ export default function AdminLoginPage() {
         <Box transform="scale(1.2)">
           <SignIn
             path="/login/admin"
+            // THIS LINE SENDS THEM TO THE ADMIN DASHBOARD
+            forceRedirectUrl="/adminDashboard"
             appearance={{
               elements: {
                 footerAction: { display: "none" }, // Hides "Sign up" link at bottom
