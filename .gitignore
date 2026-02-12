@@ -33,10 +33,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-
-# package manager files
-package.json
-package-lock.json
-# clerk configuration (can include secrets)
-/.clerk/
