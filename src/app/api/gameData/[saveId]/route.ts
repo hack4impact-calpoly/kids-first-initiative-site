@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { saveId: st
     if (!updated) {
       return NextResponse.json({ error: "Save not found" }, { status: 404 });
     }
+    return NextResponse.json(updated, { status: 200 });
   } catch (err: any) {
     console.error("Server error", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
