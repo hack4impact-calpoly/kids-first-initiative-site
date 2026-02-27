@@ -2,16 +2,10 @@ import { Box, Button, Circle, HStack, LinkBox, LinkOverlay, Progress, Text, VSta
 import Link from "next/link";
 import Image from "next/Image";
 
-/* NOTE
-  The "CONTINUE MISSION" button is redircting directly to the game page url with Link.
-  Passing saveId upon navigation game/[saveId] would make sense. 
-  Currently the users completedLevels and total is hardcoded.
-*/
-
 type GameCardProps = {
   game: "statesOfMatterGame" | "penguinRunGame"; // name of game folder (used for link)
   completedLevels: number;
-  //saveId: string;
+  saveId?: string;
 };
 
 // can be placed in a gameConfig.ts file for future customization
@@ -32,9 +26,44 @@ export const GAME_CONFIG = {
   },
 };
 
-export function GameCard({ game, completedLevels }: GameCardProps) {
+export function GameCard({ game, completedLevels, saveId }: GameCardProps) {
   const config = GAME_CONFIG[game];
   const levelProgress = Math.round((completedLevels / config.totalLevels) * 100);
+
+  function GameButton() {
+    const href = saveId ? `/${game}?saveId=${saveId}` : `/${game}`;
+    const label = saveId ? "CONTINUE MISSION" : "START MISSION";
+
+    return (
+      <LinkBox>
+        <Button
+          w="full"
+          size="lg"
+          py={8}
+          mt={4}
+          position="relative"
+          overflow="hidden" // keeps the blue bottom highlight within the button
+          borderRadius="18px"
+          bg="blue.500"
+          color="white"
+          _hover={{ bg: "blue.600" }}
+          boxShadow="0 14px 28px rgba(15, 23, 42, 0.16)"
+          _after={{
+            content: '""',
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "8px",
+            bg: "rgba(0,0,0,0.12)",
+            pointerEvents: "none",
+          }}
+        >
+          <LinkOverlay href={href}>{label}</LinkOverlay>
+        </Button>
+      </LinkBox>
+    );
+  }
 
   return (
     // OUTER WRAPPER: This is so outer icons can extend outside the box
@@ -112,33 +141,8 @@ export function GameCard({ game, completedLevels }: GameCardProps) {
               </Progress.Track>
             </Progress.Root>
           </Box>
-          <LinkBox>
-            <Button
-              w="full"
-              size="lg"
-              py={8}
-              mt={4}
-              position="relative"
-              overflow="hidden" // keeps the blue bottom highlight within the button
-              borderRadius="18px"
-              bg="blue.500"
-              color="white"
-              _hover={{ bg: "blue.600" }}
-              boxShadow="0 14px 28px rgba(15, 23, 42, 0.16)"
-              _after={{
-                content: '""',
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: "8px",
-                bg: "rgba(0,0,0,0.12)",
-                pointerEvents: "none",
-              }}
-            >
-              <LinkOverlay href={`/${game}`}>CONTINUE MISSION</LinkOverlay>
-            </Button>
-          </LinkBox>
+          {/* Button */}
+          <GameButton />
         </VStack>
       </Box>
     </Box>
