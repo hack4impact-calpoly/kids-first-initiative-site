@@ -1,6 +1,6 @@
-import { Box, Button, Circle, HStack, LinkBox, LinkOverlay, Progress, Text, VStack } from "@chakra-ui/react";
-import Link from "next/link";
-import Image from "next/Image";
+import { Box, Circle, HStack, Progress, Text, VStack } from "@chakra-ui/react";
+import Image from "next/image";
+import ChakraButton from "./ChakraButton";
 
 type GameCardProps = {
   game: "statesOfMatterGame" | "penguinRunGame"; // name of game folder (used for link)
@@ -13,14 +13,14 @@ export const GAME_CONFIG = {
   statesOfMatterGame: {
     title: "Matter Lab",
     subtitle: "Explore solids, liquids, and gases!",
-    iconSrc: "/game/StatesOfMatter/Icon.png",
+    iconSrc: "/Icons/FaSeedling.png",
     defaultColor: "green",
     totalLevels: 5,
   },
   penguinRunGame: {
     title: "Penguin Run",
     subtitle: "Race across the icy glaciers!",
-    iconSrc: "/game/PenguinRun/Icon.png",
+    iconSrc: "/Icons/FaPenguin.png",
     defaultColor: "orange",
     totalLevels: 20,
   },
@@ -30,40 +30,9 @@ export function GameCard({ game, completedLevels, saveId }: GameCardProps) {
   const config = GAME_CONFIG[game];
   const levelProgress = Math.round((completedLevels / config.totalLevels) * 100);
 
-  function GameButton() {
-    const href = saveId ? `/${game}?saveId=${saveId}` : `/${game}`;
-    const label = saveId ? "CONTINUE MISSION" : "START MISSION";
-
-    return (
-      <LinkBox>
-        <Button
-          w="full"
-          size="lg"
-          py={8}
-          mt={4}
-          position="relative"
-          overflow="hidden" // keeps the blue bottom highlight within the button
-          borderRadius="18px"
-          bg="blue.500"
-          color="white"
-          _hover={{ bg: "blue.600" }}
-          boxShadow="0 14px 28px rgba(15, 23, 42, 0.16)"
-          _after={{
-            content: '""',
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: "8px",
-            bg: "rgba(0,0,0,0.12)",
-            pointerEvents: "none",
-          }}
-        >
-          <LinkOverlay href={href}>{label}</LinkOverlay>
-        </Button>
-      </LinkBox>
-    );
-  }
+  //Here is where the saveId is being passed
+  const href = saveId ? `/${game}?saveId=${saveId}` : `/${game}`;
+  const label = saveId ? "CONTINUE MISSION" : "START MISSION";
 
   return (
     // OUTER WRAPPER: This is so outer icons can extend outside the box
@@ -71,7 +40,7 @@ export function GameCard({ game, completedLevels, saveId }: GameCardProps) {
       {/* Floating icon (NOT clipped) */}
       <Circle
         position="absolute"
-        top="-76px"
+        top="-76px" // adjust this to move icon up/down
         left="50%"
         transform="translateX(-50%)"
         size="120px"
@@ -123,7 +92,7 @@ export function GameCard({ game, completedLevels, saveId }: GameCardProps) {
             </Text>
           </VStack>
           {/* Progress bar */}
-          <Box pt={2} p={4} bg="gray.100" borderRadius="28px">
+          <Box pt={2} mb={4} p={4} bg="gray.100" borderRadius="28px">
             <HStack justify="space-between" mb={2}>
               <Text fontSize="xs" fontWeight="800" letterSpacing="0.06em" color={`${config.defaultColor}.400`}>
                 LEVEL {completedLevels}/{config.totalLevels}
@@ -142,7 +111,7 @@ export function GameCard({ game, completedLevels, saveId }: GameCardProps) {
             </Progress.Root>
           </Box>
           {/* Button */}
-          <GameButton />
+          <ChakraButton href={href} color="blue" label={label} />
         </VStack>
       </Box>
     </Box>
