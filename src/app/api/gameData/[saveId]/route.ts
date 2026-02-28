@@ -1,11 +1,13 @@
 import connectDB from "@/database/db";
+import { auth } from "@clerk/nextjs/server";
 import GameData from "@/database/gameDataSchema";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function GET(_req: Request, { params }: { params: { saveId: string } }) {
+  const { userId } = await auth.protect();
   await connectDB();
 
-  const data = await GameData.findOne({ saveId: params.saveId }).lean();
+  const data = await GameData.findOne({ saveId: params.saveId, userId }).lean();
   if (!data) {
     return NextResponse.json({ error: "Game data not found" }, { status: 404 });
   }
