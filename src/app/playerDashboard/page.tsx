@@ -11,8 +11,6 @@ import GameData from "@/database/gameDataSchema";
 //TEST IT OUT!
 //hi u can return <h1>{userId}</h1>; below, then paste ur userId into mongo and yay u can see progress
 
-type GameId = "statesOfMatterGame" | "penguinRunGame";
-
 export default async function PlayerDashboard() {
   // VERY helpful info if your confused on auth https://clerk.com/docs/reference/nextjs/app-router/auth
   const { userId } = await auth.protect(); //redirects if signed out
