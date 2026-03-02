@@ -2,6 +2,7 @@ import connectDB from "@/database/db";
 import Event from "@/database/eventSchema";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import Session from "@/database/sessionSchema";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,6 +22,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Invalid sessionId" }, { status: 400 });
       }
       filter.sessionId = new mongoose.Types.ObjectId(sessionId);
+    }
+
+    const sessionExists = await Session.exists({ _id: sessionId });
+    if (!sessionExists) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
     const events = await Event.find(filter).sort({ ts: -1 });
