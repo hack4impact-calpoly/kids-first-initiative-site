@@ -1,4 +1,5 @@
 import { Button, Link, Text } from "@chakra-ui/react";
+import { SignOutButton } from "@clerk/nextjs";
 
 export default function Navbar() {
   return (
@@ -19,9 +20,12 @@ export default function Navbar() {
             <Text>Profile</Text>
           </Button>
         </Link>
-        <Button className="signOut" onClick={undefined}>
-          <Text>Sign-out</Text>
-        </Button>
+        {/* added signout button for testing purposes - Nathaniel */}
+        <SignOutButton>
+          <Button className="signOut" onClick={undefined}>
+            <Text>Sign-out</Text>
+          </Button>
+        </SignOutButton>
       </nav>
     </header>
   );
