@@ -20,6 +20,7 @@ export default function PlayerLoginPage() {
         <Box transform="scale(1.2)">
           <SignIn
             path="/login/player"
+            forceRedirectUrl="/playerDashboard"
             appearance={{
               elements: {
                 footerAction: { display: "none" }, // Hides the default broken "Sign up" link
