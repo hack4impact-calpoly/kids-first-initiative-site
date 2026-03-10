@@ -1,28 +1,52 @@
 import Navbar from "@/components/Navbar";
-import Link from "next/link";
+import StatesOfMatterGameCard from "@/components/StatesOfMatterGameCard";
+import { Box, Flex, Heading, Text, SimpleGrid } from "@chakra-ui/react";
 
 export default function StatesOfMatterPage() {
+  const games = [
+    {
+      title: "Wire Spark",
+      description: "Master the circuits and light up the city!",
+      href: "/wireGame",
+      bgGradient: "linear(to-br, blue.400, blue.600)",
+      iconSrc: "/icons/wire-icon.svg",
+    },
+    {
+      title: "Heating Station",
+      description: "Cook up some science in the heat lab!",
+      href: "/cookingGame",
+      bgGradient: "linear(to-br, orange.400, red.500)",
+      iconSrc: "/icons/heat-icon.svg",
+    },
+    {
+      title: "Pipe Flow",
+      description: "Connect the flow and fix the leaks!",
+      href: "/pipesGame",
+      bgGradient: "linear(to-br, teal.400, teal.500)",
+      iconSrc: "/icons/pipe-icon.svg",
+    },
+  ];
+
   return (
-    <main>
+    <Box minH="100vh" bg="#F4F8FB">
       <Navbar />
 
-      {/* TODO: Implement the Figma Design here */}
-      <div className="flex flex-col items-center justify-center p-24">
-        <h1 className="text-4xl font-bold mb-8">Choose a Game</h1>
+      <Flex direction="column" align="center" pt={16} px={4}>
+        {/* Main Title: Bumped to 5xl for maximum impact */}
+        <Heading as="h1" size={{ base: "3xl", md: "5xl" }} color="gray.900" mb={4} fontWeight="900" textAlign="center">
+          Choose Your Experiment
+        </Heading>
 
-        {/* Placeholder links to verify your routing works */}
-        <div className="flex gap-4">
-          <Link href="/wireGame" className="px-4 py-2 bg-blue-500 text-white rounded">
-            Wire Game
-          </Link>
-          <Link href="/cookingGame" className="px-4 py-2 bg-blue-500 text-white rounded">
-            Cooking Game
-          </Link>
-          <Link href="/pipesGame" className="px-4 py-2 bg-blue-500 text-white rounded">
-            Pipes Game
-          </Link>
-        </div>
-      </div>
-    </main>
+        <Text color="gray.500" fontSize="xl" fontWeight="medium" mb={16} textAlign="center">
+          Ready to become a scientist today?
+        </Text>
+
+        <SimpleGrid columns={{ base: 1, md: 3 }} gap={10} maxW="6xl" w="full" px={4}>
+          {games.map((game, index) => (
+            <StatesOfMatterGameCard key={index} {...game} />
+          ))}
+        </SimpleGrid>
+      </Flex>
+    </Box>
   );
 }
