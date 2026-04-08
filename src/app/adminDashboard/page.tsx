@@ -1,56 +1,369 @@
 "use client";
 
-import { useUser, SignOutButton } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import { Flex, Heading, Text, VStack, Box, Button, Spinner } from "@chakra-ui/react";
-import { useEffect } from "react";
+import {
+  Avatar,
+  Box,
+  Button,
+  Container,
+  Flex,
+  Grid,
+  Heading,
+  HStack,
+  Icon,
+  Spinner,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import { FaFlask } from "react-icons/fa";
+import { FiCalendar, FiDownload } from "react-icons/fi";
+import { AdminMetricsCard } from "@/components/AdminMetricsCard";
+import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
 
-export default function AdminDashboardPage() {
-  const { user, isLoaded } = useUser();
-  const router = useRouter();
+type SessionRecord = {
+  _id: string;
+  anonUserId: string;
+  gameId?: "penguinRunGame" | "statesOfMatterGame" | null;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number;
+};
 
-  // 1. SECURITY CHECK (Client Side)
-  useEffect(() => {
-    if (isLoaded) {
-      if (!user) {
-        // Not logged in? Go to login
-        router.push("/login/admin");
-      } else if (user.publicMetadata?.role !== "admin") {
-        // Logged in but not Admin? Kick them out
-        router.push("/");
-      }
-    }
-  }, [isLoaded, user, router]);
+type SupportedGameId = "penguinRunGame" | "statesOfMatterGame";
 
-  // 2. Loading State (Prevents "Flash" of content)
-  if (!isLoaded) {
-    return (
-      <Flex height="100vh" alignItems="center" justifyContent="center">
-        <Spinner size="xl" color="blue.500" />
-      </Flex>
-    );
+type SummaryMetrics = {
+  uniquePlayers: number;
+  totalPlayTimeMs: number;
+};
+
+type TrendMetric = {
+  label: string;
+  direction: "up" | "down" | "flat" | "na";
+};
+
+const GAME_CARDS = [
+  {
+    gameId: "penguinRunGame" as SupportedGameId,
+    title: "Penguin Run",
+    accentColor: "blue.500",
+  },
+  {
+    gameId: "statesOfMatterGame" as SupportedGameId,
+    title: "Matter Lab",
+    accentColor: "purple.500",
+  },
+];
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function getSessionDurationMs(session: SessionRecord): number {
+  if (typeof session.durationMs === "number" && session.durationMs > 0) {
+    return session.durationMs;
   }
 
-  // 3. Final Gate: If checks fail, don't show anything (wait for redirect)
-  if (!user || user.publicMetadata?.role !== "admin") return null;
+  if (!session.startedAt || !session.endedAt) return 0;
 
-  // 4. Render Dashboard
+  const startedAt = new Date(session.startedAt).getTime();
+  const endedAt = new Date(session.endedAt).getTime();
+  const diff = endedAt - startedAt;
+
+  if (!Number.isFinite(diff) || diff <= 0) return 0;
+  return diff;
+}
+
+function getSummaryMetrics(sessions: SessionRecord[], gameId: SupportedGameId): SummaryMetrics {
+  const filteredSessions = sessions.filter((session) => session.gameId === gameId);
+  const uniquePlayers = new Set(
+    filteredSessions.map((session) => session.anonUserId).filter((anonUserId) => Boolean(anonUserId)),
+  ).size;
+  const totalPlayTimeMs = filteredSessions.reduce((sum, session) => sum + getSessionDurationMs(session), 0);
+
+  return { uniquePlayers, totalPlayTimeMs };
+}
+
+function formatDuration(ms: number): string {
+  if (ms <= 0) return "0m";
+
+  const totalMinutes = Math.round(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
+function formatTrend(currentValue: number, previousValue: number, period: AdminPeriod): TrendMetric {
+  if (period === "all") {
+    return { label: "N/A", direction: "na" as const };
+  }
+
+  const comparisonLabel = period === "7d" ? "vs LW" : "vs prior 30d";
+  if (previousValue <= 0) {
+    return { label: `N/A ${comparisonLabel}`, direction: "na" as const };
+  }
+
+  const changePercent = ((currentValue - previousValue) / previousValue) * 100;
+  const direction: TrendMetric["direction"] = changePercent > 0 ? "up" : changePercent < 0 ? "down" : "flat";
+  const prefix = changePercent > 0 ? "+" : "";
+
+  return {
+    label: `${prefix}${changePercent.toFixed(1)}% ${comparisonLabel}`,
+    direction,
+  };
+}
+
+function formatDateForRange(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export default function AdminDashboardPage() {
+  const [period, setPeriod] = useState<AdminPeriod>("7d");
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionsError, setSessionsError] = useState("");
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadSessions() {
+      try {
+        setLoadingSessions(true);
+        setSessionsError("");
+
+        const currentPeriodRequest = fetch(`/api/sessions?period=${period}`, {
+          cache: "no-store",
+        });
+        const allSessionsRequest = period === "all" ? null : fetch("/api/sessions?period=all", { cache: "no-store" });
+
+        const currentPeriodResponse = await currentPeriodRequest;
+        if (!currentPeriodResponse.ok) {
+          throw new Error(`Failed to fetch sessions (${currentPeriodResponse.status})`);
+        }
+
+        const currentPeriodSessions: SessionRecord[] = await currentPeriodResponse.json();
+        let comparisonSessions = currentPeriodSessions;
+
+        if (allSessionsRequest) {
+          try {
+            const allSessionsResponse = await allSessionsRequest;
+            if (!allSessionsResponse.ok) {
+              throw new Error(`Failed to fetch all sessions (${allSessionsResponse.status})`);
+            }
+            comparisonSessions = await allSessionsResponse.json();
+          } catch (comparisonError) {
+            console.error("Failed to load comparison sessions:", comparisonError);
+            comparisonSessions = [];
+          }
+        }
+
+        if (isActive) {
+          setSessions(currentPeriodSessions);
+          setAllSessions(comparisonSessions);
+        }
+      } catch (error) {
+        console.error("Failed to load sessions for admin dashboard:", error);
+        if (isActive) setSessionsError("Could not load session data.");
+      } finally {
+        if (isActive) setLoadingSessions(false);
+      }
+    }
+
+    loadSessions();
+    return () => {
+      isActive = false;
+    };
+  }, [period]);
+
+  const previousWindowSessions = useMemo(() => {
+    if (period === "all") return [] as SessionRecord[];
+
+    const windowDurationMs = period === "7d" ? 7 * DAY_IN_MS : 30 * DAY_IN_MS;
+    const currentWindowStart = Date.now() - windowDurationMs;
+    const previousWindowStart = currentWindowStart - windowDurationMs;
+
+    return allSessions.filter((session) => {
+      const sessionStart = new Date(session.startedAt).getTime();
+      if (!Number.isFinite(sessionStart)) return false;
+      return sessionStart >= previousWindowStart && sessionStart < currentWindowStart;
+    });
+  }, [allSessions, period]);
+
+  const gameMetrics = useMemo(() => {
+    return GAME_CARDS.map((game) => {
+      const currentSummary = getSummaryMetrics(sessions, game.gameId);
+      const previousSummary = getSummaryMetrics(previousWindowSessions, game.gameId);
+      const averageTimeMs =
+        currentSummary.uniquePlayers === 0 ? 0 : currentSummary.totalPlayTimeMs / currentSummary.uniquePlayers;
+
+      return {
+        ...game,
+        playersValue: currentSummary.uniquePlayers.toString(),
+        totalPlayTimeValue: formatDuration(currentSummary.totalPlayTimeMs),
+        averageTimeValue: formatDuration(averageTimeMs),
+        playersTrend: formatTrend(currentSummary.uniquePlayers, previousSummary.uniquePlayers, period),
+        totalPlayTimeTrend: formatTrend(currentSummary.totalPlayTimeMs, previousSummary.totalPlayTimeMs, period),
+      };
+    });
+  }, [period, previousWindowSessions, sessions]);
+
+  const periodSummary = useMemo(() => {
+    const end = new Date();
+
+    if (period === "7d") {
+      const start = new Date(end.getTime() - 7 * DAY_IN_MS);
+      return `${formatDateForRange(start)} - ${formatDateForRange(end)}`;
+    }
+
+    if (period === "30d") {
+      const start = new Date(end.getTime() - 30 * DAY_IN_MS);
+      return `${formatDateForRange(start)} - ${formatDateForRange(end)}`;
+    }
+
+    return "All time";
+  }, [period]);
+
   return (
-    <Flex height="100vh" alignItems="center" justifyContent="center">
-      <VStack gap={4}>
-        <Heading color="blue.600">Admin Dashboard</Heading>
-        <Text>Welcome, {user.firstName}! You have full access.</Text>
-        <Text fontSize="sm" color="gray.500">
-          Security Status: Verified Admin
-        </Text>
+    <Box
+      minH="100vh"
+      bg="linear-gradient(180deg, rgba(245,248,255,1) 0%, rgba(249,250,251,1) 240px, rgba(249,250,251,1) 100%)"
+      py={{ base: 5, md: 8 }}
+    >
+      <Container maxW="6xl">
+        <VStack align="stretch" gap={6}>
+          <Flex
+            bg="white"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="16px"
+            px={{ base: 4, md: 5 }}
+            py={3}
+            justify="space-between"
+            align="center"
+            direction={{ base: "column", md: "row" }}
+            gap={4}
+          >
+            <HStack gap={3}>
+              <Flex
+                h="40px"
+                w="40px"
+                borderRadius="12px"
+                bg="blue.600"
+                color="white"
+                align="center"
+                justify="center"
+                fontWeight="800"
+                fontSize="sm"
+              >
+                KFI
+              </Flex>
+              <Box>
+                <Text fontWeight="800" color="gray.900" lineHeight="1.2">
+                  Kids First Initiative Admin
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  Analytics Console
+                </Text>
+              </Box>
+            </HStack>
 
-        {/* THIS BUTTON KILLS THE SESSION INSTANTLY */}
-        <Box>
-          <SignOutButton redirectUrl="/login/admin">
-            <Button colorScheme="red">Sign Out (Reset Test)</Button>
-          </SignOutButton>
-        </Box>
-      </VStack>
-    </Flex>
+            <HStack gap={3}>
+              <Box textAlign="right">
+                <Text fontWeight="700" color="gray.800" lineHeight="1.2">
+                  Alex Admin
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  System Administrator
+                </Text>
+              </Box>
+              <Avatar.Root size="sm">
+                <Avatar.Fallback name="Alex Admin" />
+              </Avatar.Root>
+            </HStack>
+          </Flex>
+
+          <Box>
+            <Heading color="gray.900" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.1">
+              Performance Overview
+            </Heading>
+            <Text color="blue.600" fontWeight="600" textDecorationLine="underline" textUnderlineOffset="5px" mt={2}>
+              Real-time data for your educational gaming suite.
+            </Text>
+          </Box>
+
+          <Flex
+            justify="space-between"
+            align={{ base: "stretch", md: "center" }}
+            direction={{ base: "column", md: "row" }}
+            gap={3}
+          >
+            <Button
+              variant="outline"
+              borderColor="gray.300"
+              color="gray.700"
+              bg="white"
+              disabled
+              w={{ base: "full", md: "auto" }}
+            >
+              <HStack gap={2}>
+                <Icon as={FiDownload} />
+                <Text>Export Data</Text>
+              </HStack>
+            </Button>
+            <AdminPeriodSelector value={period} onChange={setPeriod} />
+          </Flex>
+
+          <HStack gap={2} color="gray.600">
+            <Icon as={FiCalendar} boxSize={4} />
+            <Text fontSize="sm" fontWeight="500">
+              Showing data for:{" "}
+              <Text as="span" fontWeight="700" color="gray.800">
+                {periodSummary}
+              </Text>
+            </Text>
+          </HStack>
+
+          {loadingSessions ? (
+            <Flex py={14} justify="center">
+              <Spinner size="lg" color="blue.500" />
+            </Flex>
+          ) : sessionsError ? (
+            <Box bg="red.50" border="1px solid" borderColor="red.200" borderRadius="16px" p={4}>
+              <Text color="red.600" fontWeight="600">
+                {sessionsError}
+              </Text>
+            </Box>
+          ) : (
+            <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
+              {gameMetrics.map((game) => (
+                <AdminMetricsCard
+                  key={game.gameId}
+                  title={game.title}
+                  icon={
+                    game.gameId === "penguinRunGame" ? (
+                      <Image src="/Icons/FaPenguin.png" alt="Penguin Run icon" width={28} height={28} />
+                    ) : (
+                      <Icon as={FaFlask} boxSize={5} color="purple.500" />
+                    )
+                  }
+                  accentColor={game.accentColor}
+                  playersValue={game.playersValue}
+                  playersTrend={game.playersTrend}
+                  totalPlayTimeValue={game.totalPlayTimeValue}
+                  totalPlayTimeTrend={game.totalPlayTimeTrend}
+                  averageTimeValue={game.averageTimeValue}
+                />
+              ))}
+            </Grid>
+          )}
+        </VStack>
+      </Container>
+    </Box>
   );
 }
