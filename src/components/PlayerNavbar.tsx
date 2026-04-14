@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { Box, HStack, Text, Avatar, Spacer } from "@chakra-ui/react";
 import ChakraButton from "./ChakraButton";
+import Profile from "@/components/ProfilePopup";
 
 type NavbarProps = {
   role?: string;
@@ -9,11 +13,15 @@ type NavbarProps = {
 };
 
 export function PlayerNavbar({ role, name, coins = "0", avatarSrc }: NavbarProps) {
+  const [open, setOpen] = useState(false);
+
   return (
     <Box as="header" w="full" bg="gray.50" px={{ base: 4, md: 8 }} py={2}>
       <HStack mx="auto" w="full" align="center">
         {/* Left profile pill */}
         <HStack
+          onClick={() => setOpen(true)}
+          cursor="pointer"
           bg="white"
           borderRadius="50px"
           px={3}
