@@ -63,7 +63,7 @@ export default function SignUpRedirectPage() {
 
   return (
     <Flex minH="100vh" align="center" justify="center">
-      <Spinner size="xl" color="green.500" thickness="4px" />
+      <Spinner size="xl" color="green.500" />
     </Flex>
   );
 }
