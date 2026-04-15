@@ -42,7 +42,6 @@ export default function Profile({
         onClick={(e) => e.stopPropagation()}
       >
         <VStack gap={4}>
-          {/* Same circle vibe */}
           <Avatar.Root size="2xl">
             <Avatar.Fallback name={name} />
             <Avatar.Image src={avatarSrc} />
