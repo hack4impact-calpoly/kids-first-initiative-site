@@ -132,31 +132,54 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let isActive = true;
 
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function fetchSessionsByPeriod(periodValue: AdminPeriod): Promise<SessionRecord[]> {
+      const endpoints = [`/api/sessions?period=${periodValue}`, `/api/sessions/?period=${periodValue}`];
+      const maxAttempts = 3;
+
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, { cache: "no-store" });
+            if (response.status === 404) {
+              lastError = new Error(`Not found: ${endpoint}`);
+              continue;
+            }
+            if (!response.ok) {
+              throw new Error(`Failed to fetch sessions (${response.status})`);
+            }
+            const data: SessionRecord[] = await response.json();
+            return data;
+          } catch (error) {
+            lastError = error instanceof Error ? error : new Error("Unknown session fetch error");
+          }
+        }
+
+        if (attempt < maxAttempts) {
+          await sleep(300);
+        }
+      }
+
+      throw lastError ?? new Error("Failed to fetch sessions");
+    }
+
     async function loadSessions() {
       try {
         setLoadingSessions(true);
         setSessionsError("");
 
-        const currentPeriodRequest = fetch(`/api/sessions?period=${period}`, {
-          cache: "no-store",
-        });
-        const allSessionsRequest = period === "all" ? null : fetch("/api/sessions?period=all", { cache: "no-store" });
-
-        const currentPeriodResponse = await currentPeriodRequest;
-        if (!currentPeriodResponse.ok) {
-          throw new Error(`Failed to fetch sessions (${currentPeriodResponse.status})`);
-        }
-
-        const currentPeriodSessions: SessionRecord[] = await currentPeriodResponse.json();
+        const currentPeriodRequest = fetchSessionsByPeriod(period);
+        const allSessionsRequest = period === "all" ? null : fetchSessionsByPeriod("all");
+        const currentPeriodSessions = await currentPeriodRequest;
         let comparisonSessions = currentPeriodSessions;
 
         if (allSessionsRequest) {
           try {
-            const allSessionsResponse = await allSessionsRequest;
-            if (!allSessionsResponse.ok) {
-              throw new Error(`Failed to fetch all sessions (${allSessionsResponse.status})`);
-            }
-            comparisonSessions = await allSessionsResponse.json();
+            comparisonSessions = await allSessionsRequest;
           } catch (comparisonError) {
             console.error("Failed to load comparison sessions:", comparisonError);
             comparisonSessions = [];
