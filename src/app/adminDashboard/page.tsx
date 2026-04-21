@@ -18,8 +18,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { FaFlask } from "react-icons/fa";
 import { FiCalendar, FiDownload } from "react-icons/fi";
-import { AdminMetricsCard } from "@/components/AdminMetricsCard";
-import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
+import { AdminMetricsCard } from "@/app/components/AdminMetricsCard";
+import { AdminPeriod, AdminPeriodSelector } from "@/app/components/AdminPeriodSelector";
 
 type SessionRecord = {
   _id: string;
