@@ -3,7 +3,7 @@
 import { SignIn } from "@clerk/nextjs";
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import styles from "../../../../styles/playerLogin.module.css";
+import styles from "./playerLogin.module.css";
 
 export default function PlayerLoginPage() {
   const params = useParams();
