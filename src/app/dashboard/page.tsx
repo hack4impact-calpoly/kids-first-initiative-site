@@ -1,1 +1,1 @@
-export default function Dashboard() {}
+export { default } from "@/app/adminDashboard/page";
