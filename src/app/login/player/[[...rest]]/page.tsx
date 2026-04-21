@@ -3,6 +3,7 @@
 import { SignIn } from "@clerk/nextjs";
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import styles from "../../../../styles/playerLogin.module.css";
 
 export default function PlayerLoginPage() {
   const params = useParams();
@@ -32,69 +33,37 @@ export default function PlayerLoginPage() {
 
   // otherwise show the access code page
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        backgroundColor: "white",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <div
-        style={{
-          height: "60px",
-          borderBottom: "1px solid #e5e7eb",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 1.5rem",
-        }}
-      >
-        <div style={{ width: "80px", height: "30px", backgroundColor: "#e5e7eb", borderRadius: "4px" }} />
+    <div className={styles.page}>
+      <div className={styles.navbar}>
+        <div className={styles.navbarLogo} />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "3rem" }}>
-        <h1 style={{ fontSize: "2rem", fontWeight: 700, marginBottom: "2rem" }}>Hello!</h1>
-        <div style={{ border: "1px solid #d1d5db", borderRadius: "0.75rem", padding: "2rem", width: "560px" }}>
-          <p style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: "1rem" }}>
+
+      <div className={styles.body}>
+        <h1 className={styles.title}>Hello!</h1>
+
+        <div className={styles.card}>
+          <p className={styles.cardLabel}>
             Enter your access code{" "}
-            <span title="Ask your teacher for the access code" style={{ cursor: "help", color: "#6b7280" }}>
+            <span title="Ask your teacher for the access code" className={styles.infoIcon}>
+              {" "}
               ⓘ
             </span>
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+
+          <div className={styles.inputRow}>
             <input
               type="text"
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              style={{
-                flex: 1,
-                padding: "0.75rem 1rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "0.5rem",
-                fontSize: "1rem",
-                outline: "none",
-              }}
+              className={styles.input}
             />
-            <button
-              onClick={handleSubmit}
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                border: "2px solid #111",
-                backgroundColor: "white",
-                fontSize: "1.25rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <button onClick={handleSubmit} className={styles.submitButton}>
               →
             </button>
           </div>
-          {error && <p style={{ color: "red", fontSize: "0.875rem", marginTop: "0.5rem" }}>{error}</p>}
+
+          {error && <p className={styles.error}>{error}</p>}
         </div>
       </div>
     </div>
