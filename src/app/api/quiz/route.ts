@@ -11,6 +11,7 @@ export async function GET() {
     const quizzes = await Quiz.find({}).sort({ createdAt: -1 }).lean();
     return NextResponse.json(quizzes, { status: 200 });
   } catch (err: any) {
+    // Any DB/query failure is returned as a 500 so callers can treat this as a server-side error.
     console.error("GET /api/quiz error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
