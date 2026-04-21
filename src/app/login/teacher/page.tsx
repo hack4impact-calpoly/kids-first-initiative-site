@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react"; // imports useState so we can track the access code and copy status
-import styles from "../../../styles/teacherLogin.module.css";
+import styles from "./teacherLogin.module.css";
 
 export default function TeacherLoginPage() {
   const [accessCode, setAccessCode] = useState("ABC-123-XYZ"); // holds the current access code being displayed

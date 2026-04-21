@@ -2,7 +2,7 @@
 
 import { Box, Button, VStack, Heading, Flex } from "@chakra-ui/react";
 import Link from "next/link";
-import styles from "../../../styles/loginSelection.module.css";
+import styles from "./login.module.css";
 
 export default function LoginSelectionPage() {
   return (

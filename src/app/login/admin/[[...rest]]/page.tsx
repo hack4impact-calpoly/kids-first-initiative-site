@@ -2,7 +2,7 @@
 
 import { SignIn } from "@clerk/nextjs";
 import { Flex, Box, Heading, VStack, Text } from "@chakra-ui/react";
-import styles from "../../../../styles/adminLogin.module.css";
+import styles from "./adminLogin.module.css";
 
 export default function AdminLoginPage() {
   return (
