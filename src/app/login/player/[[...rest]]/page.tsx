@@ -13,7 +13,7 @@ export default function PlayerLoginPage() {
           <Heading as="h1" size="xl" color="green.500">
             Welcome, Player!
           </Heading>
-          <Text color="gray.500">Enter your username to start playing.</Text>
+          <Text color="gray.500">Enter your email to start playing.</Text>
         </VStack>
 
         {/* Login Box */}
@@ -22,8 +22,6 @@ export default function PlayerLoginPage() {
             path="/login/player"
             appearance={{
               elements: {
-                socialButtonsBlockButton: { display: "none" }, // Hides Google
-                dividerRow: { display: "none" }, // Hides "or" line
                 footerAction: { display: "none" }, // Hides the default broken "Sign up" link
               },
               layout: {

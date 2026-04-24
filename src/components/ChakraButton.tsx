@@ -22,7 +22,7 @@ export default function ChakraButton({ href, color, label, width, minW, iconSrc 
           minW={minW}
           py={8}
           position="relative"
-          overflow="hidden" // keeps the blue bottom highlight within the button
+          overflow="hidden" // keeps the bottom highlight stroke within the button
           borderRadius="18px"
           bg={`${color}.500`}
           color="white"

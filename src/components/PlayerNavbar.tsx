@@ -52,7 +52,7 @@ export function PlayerNavbar({ role, name, coins = "0", avatarSrc }: NavbarProps
 
         {/* Right side actions */}
         <HStack>
-          <ChakraButton href="/" color="red" label="SHOP" width="140px" iconSrc="/Icons/FaShoppingBag.png" />
+          <ChakraButton href="/shop" color="red" label="SHOP" width="140px" iconSrc="/Icons/FaShoppingBag.png" />
           <ChakraButton href="/" color="yellow" label={coins} width="140px" iconSrc="/Icons/FaStar.png" />
         </HStack>
       </HStack>

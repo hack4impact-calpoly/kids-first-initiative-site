@@ -10,10 +10,7 @@ export default function PlayerSignUpPage() {
       {/* GLOBAL CSS OVERRIDE */}
       <style jsx global>{`
         .cl-socialButtonsBlockButton,
-        .cl-dividerRow,
-        .cl-formFieldRow__emailAddress {
-          display: none !important;
-        }
+        .cl-dividerRow
       `}</style>
 
       <VStack gap={6}>
@@ -25,7 +22,7 @@ export default function PlayerSignUpPage() {
         </VStack>
 
         <Box transform="scale(1.2)">
-          <SignUp path="/sign-up/player" signInUrl="/login/player" forceRedirectUrl="/login/player" />
+          <SignUp path="/sign-up/player" signInUrl="/login/player" />
         </Box>
       </VStack>
     </Flex>
