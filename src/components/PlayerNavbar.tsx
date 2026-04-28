@@ -15,7 +15,7 @@ type NavbarProps = {
 
 export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState(isValidAvatarPhoto(photo) ? photo : DEFAULT_AVATAR_PHOTO);
+  const [selectedPhoto, setSelectedPhoto] = useState<string>(isValidAvatarPhoto(photo) ? photo : DEFAULT_AVATAR_PHOTO);
 
   useEffect(() => {
     if (!photo) return;
@@ -23,6 +23,8 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
   }, [photo]);
 
   const handleSaveAvatar = async (nextPhoto: string) => {
+    if (!isValidAvatarPhoto(nextPhoto)) return false;
+
     const previousPhoto = selectedPhoto;
     setSelectedPhoto(nextPhoto);
 
@@ -44,6 +46,7 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
       return false;
     }
   };
+
   const activeAvatarSrc = avatarPhotoSrc(selectedPhoto);
 
   return (
@@ -76,7 +79,7 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
                 borderRadius="full"
                 bgImage={`url(${activeAvatarSrc})`}
                 bgRepeat="no-repeat"
-                bgPosition="center"
+                backgroundPosition="center"
                 bgSize="cover"
                 border="2px solid"
                 borderColor="white"

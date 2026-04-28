@@ -117,7 +117,7 @@ export function ProfileCardPopup({
                   borderRadius="full"
                   bgImage={`url(${previewAvatarSrc})`}
                   bgRepeat="no-repeat"
-                  bgPosition="center"
+                  backgroundPosition="center"
                   bgSize="cover"
                   border="5px solid"
                   borderColor="white"
@@ -177,7 +177,7 @@ export function ProfileCardPopup({
                         borderRadius="full"
                         bgImage={`url(${option.src})`}
                         bgRepeat="no-repeat"
-                        bgPosition="center"
+                        backgroundPosition="center"
                         bgSize="cover"
                         boxShadow="0 6px 14px rgba(15, 23, 42, 0.08)"
                       />
