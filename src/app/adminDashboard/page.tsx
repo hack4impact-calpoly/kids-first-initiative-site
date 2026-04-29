@@ -1,9 +1,25 @@
 "use client";
 
-import { Box, Button, Container, Flex, Grid, Heading, Spinner, Text, VStack } from "@chakra-ui/react";
+import {
+  Avatar,
+  Box,
+  Button,
+  Container,
+  Flex,
+  Grid,
+  Heading,
+  HStack,
+  Icon,
+  Spinner,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { AdminMetricsCard } from "@/components/AdminMetricsCard";
-import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
+import { FaFlask } from "react-icons/fa";
+import { FiCalendar, FiDownload } from "react-icons/fi";
+import { AdminMetricsCard } from "@/app/components/AdminMetricsCard";
+import { AdminPeriod, AdminPeriodSelector } from "@/app/components/AdminPeriodSelector";
 
 type SessionRecord = {
   _id: string;
@@ -14,22 +30,32 @@ type SessionRecord = {
   durationMs: number;
 };
 
+type SupportedGameId = "penguinRunGame" | "statesOfMatterGame";
+
+type SummaryMetrics = {
+  uniquePlayers: number;
+  totalPlayTimeMs: number;
+};
+
+type TrendMetric = {
+  label: string;
+  direction: "up" | "down" | "flat" | "na";
+};
+
 const GAME_CARDS = [
   {
-    gameId: "penguinRunGame" as const,
+    gameId: "penguinRunGame" as SupportedGameId,
     title: "Penguin Run",
-    subtitle: "Track player engagement and activity trends.",
-    iconSrc: "/Icons/FaPenguin.png",
-    accentColor: "orange",
+    accentColor: "blue.500",
   },
   {
-    gameId: "statesOfMatterGame" as const,
+    gameId: "statesOfMatterGame" as SupportedGameId,
     title: "Matter Lab",
-    subtitle: "Track player engagement and activity trends.",
-    iconSrc: "/Icons/FaSeedling.png",
-    accentColor: "green",
+    accentColor: "purple.500",
   },
 ];
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 function getSessionDurationMs(session: SessionRecord): number {
   if (typeof session.durationMs === "number" && session.durationMs > 0) {
@@ -46,6 +72,16 @@ function getSessionDurationMs(session: SessionRecord): number {
   return diff;
 }
 
+function getSummaryMetrics(sessions: SessionRecord[], gameId: SupportedGameId): SummaryMetrics {
+  const filteredSessions = sessions.filter((session) => session.gameId === gameId);
+  const uniquePlayers = new Set(
+    filteredSessions.map((session) => session.anonUserId).filter((anonUserId) => Boolean(anonUserId)),
+  ).size;
+  const totalPlayTimeMs = filteredSessions.reduce((sum, session) => sum + getSessionDurationMs(session), 0);
+
+  return { uniquePlayers, totalPlayTimeMs };
+}
+
 function formatDuration(ms: number): string {
   if (ms <= 0) return "0m";
 
@@ -56,6 +92,26 @@ function formatDuration(ms: number): string {
   if (hours === 0) return `${minutes}m`;
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
+}
+
+function formatTrend(currentValue: number, previousValue: number, period: AdminPeriod): TrendMetric {
+  if (period === "all") {
+    return { label: "N/A", direction: "na" as const };
+  }
+
+  const comparisonLabel = period === "7d" ? "vs LW" : "vs prior 30d";
+  if (previousValue <= 0) {
+    return { label: `N/A ${comparisonLabel}`, direction: "na" as const };
+  }
+
+  const changePercent = ((currentValue - previousValue) / previousValue) * 100;
+  const direction: TrendMetric["direction"] = changePercent > 0 ? "up" : changePercent < 0 ? "down" : "flat";
+  const prefix = changePercent > 0 ? "+" : "";
+
+  return {
+    label: `${prefix}${changePercent.toFixed(1)}% ${comparisonLabel}`,
+    direction,
+  };
 }
 
 function formatDateForRange(date: Date): string {
@@ -69,27 +125,71 @@ function formatDateForRange(date: Date): string {
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState<AdminPeriod>("7d");
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState("");
 
   useEffect(() => {
     let isActive = true;
 
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function fetchSessionsByPeriod(periodValue: AdminPeriod): Promise<SessionRecord[]> {
+      const endpoints = [`/api/sessions?period=${periodValue}`, `/api/sessions/?period=${periodValue}`];
+      const maxAttempts = 3;
+
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, { cache: "no-store" });
+            if (response.status === 404) {
+              lastError = new Error(`Not found: ${endpoint}`);
+              continue;
+            }
+            if (!response.ok) {
+              throw new Error(`Failed to fetch sessions (${response.status})`);
+            }
+            const data: SessionRecord[] = await response.json();
+            return data;
+          } catch (error) {
+            lastError = error instanceof Error ? error : new Error("Unknown session fetch error");
+          }
+        }
+
+        if (attempt < maxAttempts) {
+          await sleep(300);
+        }
+      }
+
+      throw lastError ?? new Error("Failed to fetch sessions");
+    }
+
     async function loadSessions() {
       try {
         setLoadingSessions(true);
         setSessionsError("");
 
-        const response = await fetch(`/api/sessions?period=${period}`, {
-          cache: "no-store",
-        });
+        const currentPeriodRequest = fetchSessionsByPeriod(period);
+        const allSessionsRequest = period === "all" ? null : fetchSessionsByPeriod("all");
+        const currentPeriodSessions = await currentPeriodRequest;
+        let comparisonSessions = currentPeriodSessions;
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch sessions (${response.status})`);
+        if (allSessionsRequest) {
+          try {
+            comparisonSessions = await allSessionsRequest;
+          } catch (comparisonError) {
+            console.error("Failed to load comparison sessions:", comparisonError);
+            comparisonSessions = [];
+          }
         }
 
-        const data: SessionRecord[] = await response.json();
-        if (isActive) setSessions(data);
+        if (isActive) {
+          setSessions(currentPeriodSessions);
+          setAllSessions(comparisonSessions);
+        }
       } catch (error) {
         console.error("Failed to load sessions for admin dashboard:", error);
         if (isActive) setSessionsError("Could not load session data.");
@@ -104,102 +204,156 @@ export default function AdminDashboardPage() {
     };
   }, [period]);
 
+  const previousWindowSessions = useMemo(() => {
+    if (period === "all") return [] as SessionRecord[];
+
+    const windowDurationMs = period === "7d" ? 7 * DAY_IN_MS : 30 * DAY_IN_MS;
+    const currentWindowStart = Date.now() - windowDurationMs;
+    const previousWindowStart = currentWindowStart - windowDurationMs;
+
+    return allSessions.filter((session) => {
+      const sessionStart = new Date(session.startedAt).getTime();
+      if (!Number.isFinite(sessionStart)) return false;
+      return sessionStart >= previousWindowStart && sessionStart < currentWindowStart;
+    });
+  }, [allSessions, period]);
+
   const gameMetrics = useMemo(() => {
     return GAME_CARDS.map((game) => {
-      const gameSessions = sessions.filter((session) => session.gameId === game.gameId);
-      const uniquePlayers = new Set(
-        gameSessions.map((session) => session.anonUserId).filter((anonUserId) => Boolean(anonUserId)),
-      );
-
-      const totalPlayTimeMs = gameSessions.reduce((sum, session) => sum + getSessionDurationMs(session), 0);
-      const averageTimeMs = uniquePlayers.size === 0 ? 0 : totalPlayTimeMs / uniquePlayers.size;
+      const currentSummary = getSummaryMetrics(sessions, game.gameId);
+      const previousSummary = getSummaryMetrics(previousWindowSessions, game.gameId);
+      const averageTimeMs =
+        currentSummary.uniquePlayers === 0 ? 0 : currentSummary.totalPlayTimeMs / currentSummary.uniquePlayers;
 
       return {
         ...game,
-        metrics: [
-          { label: "Players (Unique)", value: uniquePlayers.size.toString() },
-          { label: "Total Play Time", value: formatDuration(totalPlayTimeMs) },
-          { label: "Average Time / Player", value: formatDuration(averageTimeMs) },
-        ],
+        playersValue: currentSummary.uniquePlayers.toString(),
+        totalPlayTimeValue: formatDuration(currentSummary.totalPlayTimeMs),
+        averageTimeValue: formatDuration(averageTimeMs),
+        playersTrend: formatTrend(currentSummary.uniquePlayers, previousSummary.uniquePlayers, period),
+        totalPlayTimeTrend: formatTrend(currentSummary.totalPlayTimeMs, previousSummary.totalPlayTimeMs, period),
       };
     });
-  }, [sessions]);
+  }, [period, previousWindowSessions, sessions]);
 
   const periodSummary = useMemo(() => {
     const end = new Date();
 
     if (period === "7d") {
-      const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return {
-        label: "Last 7 Days",
-        range: `${formatDateForRange(start)} - ${formatDateForRange(end)}`,
-      };
+      const start = new Date(end.getTime() - 7 * DAY_IN_MS);
+      return `${formatDateForRange(start)} - ${formatDateForRange(end)}`;
     }
 
     if (period === "30d") {
-      const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
-      return {
-        label: "Monthly (Last 30 Days)",
-        range: `${formatDateForRange(start)} - ${formatDateForRange(end)}`,
-      };
+      const start = new Date(end.getTime() - 30 * DAY_IN_MS);
+      return `${formatDateForRange(start)} - ${formatDateForRange(end)}`;
     }
 
-    return {
-      label: "All Time",
-      range: "All available session data",
-    };
+    return "All time";
   }, [period]);
 
   return (
-    <Box minH="100vh" bg="gray.50" py={{ base: 8, md: 12 }}>
+    <Box
+      minH="100vh"
+      bg="linear-gradient(180deg, rgba(245,248,255,1) 0%, rgba(249,250,251,1) 240px, rgba(249,250,251,1) 100%)"
+      py={{ base: 5, md: 8 }}
+    >
       <Container maxW="6xl">
-        <VStack align="stretch" gap={7}>
+        <VStack align="stretch" gap={6}>
           <Flex
+            bg="white"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="16px"
+            px={{ base: 4, md: 5 }}
+            py={3}
             justify="space-between"
-            align={{ base: "start", md: "center" }}
+            align="center"
             direction={{ base: "column", md: "row" }}
             gap={4}
           >
-            <Box>
-              <Heading color="blue.700" fontSize={{ base: "3xl", md: "4xl" }}>
-                Admin Dashboard
-              </Heading>
-              <Text color="gray.600" fontWeight="500">
-                Welcome, Admin
-              </Text>
-            </Box>
+            <HStack gap={3}>
+              <Flex
+                h="40px"
+                w="40px"
+                borderRadius="12px"
+                bg="blue.600"
+                color="white"
+                align="center"
+                justify="center"
+                fontWeight="800"
+                fontSize="sm"
+              >
+                KFI
+              </Flex>
+              <Box>
+                <Text fontWeight="800" color="gray.900" lineHeight="1.2">
+                  Kids First Initiative Admin
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  Analytics Console
+                </Text>
+              </Box>
+            </HStack>
+
+            <HStack gap={3}>
+              <Box textAlign="right">
+                <Text fontWeight="700" color="gray.800" lineHeight="1.2">
+                  Alex Admin
+                </Text>
+                <Text fontSize="xs" color="gray.500">
+                  System Administrator
+                </Text>
+              </Box>
+              <Avatar.Root size="sm">
+                <Avatar.Fallback name="Alex Admin" />
+              </Avatar.Root>
+            </HStack>
           </Flex>
+
+          <Box>
+            <Heading color="gray.900" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.1">
+              Performance Overview
+            </Heading>
+            <Text color="blue.600" fontWeight="600" textDecorationLine="underline" textUnderlineOffset="5px" mt={2}>
+              Real-time data for your educational gaming suite.
+            </Text>
+          </Box>
 
           <Flex
             justify="space-between"
-            align={{ base: "start", md: "center" }}
+            align={{ base: "stretch", md: "center" }}
             direction={{ base: "column", md: "row" }}
             gap={3}
           >
-            <Box>
-              <Text fontSize="xs" fontWeight="700" color="gray.500" textTransform="uppercase" letterSpacing="0.06em">
-                Showing Data For
-              </Text>
-              <Text fontSize="sm" color="gray.700" fontWeight="600">
-                {periodSummary.label} - {periodSummary.range}
-              </Text>
-            </Box>
-
-            <Flex
+            <Button
+              variant="outline"
+              borderColor="gray.300"
+              color="gray.700"
+              bg="white"
+              disabled
               w={{ base: "full", md: "auto" }}
-              ml={{ md: "auto" }}
-              gap={3}
-              align={{ base: "stretch", md: "center" }}
             >
-              <Button colorScheme="blue" variant="outline" disabled>
-                Export Data
-              </Button>
-              <AdminPeriodSelector value={period} onChange={setPeriod} />
-            </Flex>
+              <HStack gap={2}>
+                <Icon as={FiDownload} />
+                <Text>Export Data</Text>
+              </HStack>
+            </Button>
+            <AdminPeriodSelector value={period} onChange={setPeriod} />
           </Flex>
 
+          <HStack gap={2} color="gray.600">
+            <Icon as={FiCalendar} boxSize={4} />
+            <Text fontSize="sm" fontWeight="500">
+              Showing data for:{" "}
+              <Text as="span" fontWeight="700" color="gray.800">
+                {periodSummary}
+              </Text>
+            </Text>
+          </HStack>
+
           {loadingSessions ? (
-            <Flex py={12} justify="center">
+            <Flex py={14} justify="center">
               <Spinner size="lg" color="blue.500" />
             </Flex>
           ) : sessionsError ? (
@@ -214,10 +368,19 @@ export default function AdminDashboardPage() {
                 <AdminMetricsCard
                   key={game.gameId}
                   title={game.title}
-                  subtitle={game.subtitle}
-                  iconSrc={game.iconSrc}
+                  icon={
+                    game.gameId === "penguinRunGame" ? (
+                      <Image src="/Icons/FaPenguin.png" alt="Penguin Run icon" width={28} height={28} />
+                    ) : (
+                      <Icon as={FaFlask} boxSize={5} color="purple.500" />
+                    )
+                  }
                   accentColor={game.accentColor}
-                  metrics={game.metrics}
+                  playersValue={game.playersValue}
+                  playersTrend={game.playersTrend}
+                  totalPlayTimeValue={game.totalPlayTimeValue}
+                  totalPlayTimeTrend={game.totalPlayTimeTrend}
+                  averageTimeValue={game.averageTimeValue}
                 />
               ))}
             </Grid>

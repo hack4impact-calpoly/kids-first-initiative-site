@@ -2,13 +2,39 @@ import connectDB from "@/database/db";
 import { NextResponse, NextRequest } from "next/server";
 import User from "@/database/userSchema";
 
+function deriveUsername(body: Record<string, unknown>) {
+  const username = typeof body.username === "string" ? body.username.trim() : "";
+  if (username) return username;
+
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  if (email) return email.split("@")[0];
+
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (name) return name.toLowerCase().replace(/\s+/g, "");
+
+  const clerkId = typeof body.clerkId === "string" ? body.clerkId.trim() : "";
+  return clerkId;
+}
+
 // CREATE a user with the parameters that are passed in, catching any server connection or bad requestst that may occur
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
     const body = await req.json();
-    const user = await User.create(body);
+    const userData = {
+      ...body,
+      username: deriveUsername(body),
+    };
+
+    if (userData.clerkId) {
+      const existingUser = await User.findOne({ clerkId: userData.clerkId }).lean();
+      if (existingUser) {
+        return NextResponse.json(existingUser, { status: 200 });
+      }
+    }
+
+    const user = await User.create(userData);
     return NextResponse.json(user, { status: 201 });
   } catch (err: any) {
     console.error("Caught an error", err);

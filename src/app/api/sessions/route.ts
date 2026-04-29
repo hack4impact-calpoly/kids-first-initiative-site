@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/sessions
  * Create a new session
- * Body: { anonUserId: string, gameId: "penguinRunGame" | "statesOfMatterGame" }
+ * Body: { anonUserId: string, gameId?: "penguinRunGame" | "statesOfMatterGame" }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -84,17 +84,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "anonUserId is required and must be a string" }, { status: 400 });
     }
 
-    if (!gameId || typeof gameId !== "string" || !VALID_GAME_IDS.has(gameId)) {
-      return NextResponse.json(
-        { error: "gameId is required and must be one of: penguinRunGame, statesOfMatterGame" },
-        { status: 400 },
-      );
+    if (gameId !== undefined && (typeof gameId !== "string" || !VALID_GAME_IDS.has(gameId))) {
+      return NextResponse.json({ error: "gameId must be one of: penguinRunGame, statesOfMatterGame" }, { status: 400 });
     }
 
     const startedAt = new Date();
     const session = await Session.create({
       anonUserId,
-      gameId,
+      gameId: gameId ?? null,
       startedAt,
       endedAt: null,
       durationMs: 0,
@@ -103,7 +100,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       _id: session._id,
       anonUserId: session.anonUserId,
-      gameId: session.gameId,
+      gameId: session.gameId ?? null,
       startedAt: session.startedAt,
       endedAt: session.endedAt,
       durationMs: session.durationMs,

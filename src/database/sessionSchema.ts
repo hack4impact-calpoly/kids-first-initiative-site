@@ -2,7 +2,11 @@ import mongoose, { Schema } from "mongoose";
 
 const SessionSchema = new Schema({
   anonUserId: { type: String, required: true },
-  gameId: { type: String, required: true, enum: ["penguinRunGame", "statesOfMatterGame"] },
+  gameId: {
+    type: String,
+    enum: ["penguinRunGame", "statesOfMatterGame"],
+    default: null,
+  },
   startedAt: { type: Date, required: true },
   endedAt: { type: Date, default: null },
   durationMs: { type: Number, required: true, default: 0 },
