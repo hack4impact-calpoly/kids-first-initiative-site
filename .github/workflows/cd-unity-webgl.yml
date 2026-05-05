@@ -1,0 +1,147 @@
+name: cd-unity-webgl
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy-webgl:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      HOSTING_REPO: ${{ vars.HOSTING_REPO }}
+      HOSTING_REPO_REF: ${{ vars.HOSTING_REPO_REF || 'CD-pipeline' }} # Change to "main" when integrating
+      UNITY_PROJECT_PATH: ${{ vars.UNITY_PROJECT_PATH || '.' }}
+      HOSTING_REPO_TOKEN: ${{ secrets.HOSTING_REPO_TOKEN }}
+      HOST_GAME_DIR: public/game
+      ARCHIVE_ROOT: public/archive/game
+
+    steps:
+      - name: Checkout Unity source repository (with LFS)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref_name }}
+          lfs: true
+          fetch-depth: 0
+
+      - name: Ensure Git LFS objects are present
+        run: |
+          git lfs install --local
+          git lfs pull
+
+      - name: Free disk space
+        run: |
+          docker system prune -af || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/share/boost || true
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
+      - name: Build WebGL with Unity
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: WebGL
+          buildsPath: build
+          
+      - name: Stage WebGL build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          UNITY_BUILD_ID="$(git rev-parse --short=12 HEAD)"
+          echo "UNITY_BUILD_ID=$UNITY_BUILD_ID" >> "$GITHUB_ENV"
+
+          NEW_BUILD_DIR="build/WebGL"
+          if [ ! -d "$NEW_BUILD_DIR" ]; then
+            NEW_BUILD_DIR="build/WebGL/WebGL"
+          fi
+
+          if [ ! -d "$NEW_BUILD_DIR" ]; then
+            echo "WebGL build output not found."
+            exit 1
+          fi
+
+          rm -rf /tmp/webgl-build
+          mkdir -p /tmp/webgl-build
+          cp -R "$NEW_BUILD_DIR"/. /tmp/webgl-build/
+
+      - name: Checkout hosting repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.HOSTING_REPO }}
+          ref: ${{ env.HOSTING_REPO_REF }}
+          token: ${{ secrets.HOSTING_REPO_TOKEN }}
+          path: hosting-repo
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Deploy build into hosting repo and archive previous build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TARGET_GAME_DIR="hosting-repo/$HOST_GAME_DIR"
+          TARGET_ARCHIVE_ROOT="hosting-repo/$ARCHIVE_ROOT"
+
+          mkdir -p "$TARGET_GAME_DIR"
+          mkdir -p "$TARGET_ARCHIVE_ROOT"
+
+          shopt -s dotglob nullglob
+          existing=("$TARGET_GAME_DIR"/*)
+
+          if [ ${#existing[@]} -gt 0 ]; then
+            OLD_BUILD_ID=""
+            if [ -f "$TARGET_GAME_DIR/_build_id.txt" ]; then
+              OLD_BUILD_ID="$(tr -d '\r\n' < "$TARGET_GAME_DIR/_build_id.txt")"
+            fi
+
+            if [ -n "$OLD_BUILD_ID" ]; then
+              ARCHIVE_TARGET="$TARGET_ARCHIVE_ROOT/$OLD_BUILD_ID"
+              if [ -d "$ARCHIVE_TARGET" ]; then
+                echo "Archive for build $OLD_BUILD_ID already exists; removing deployed copy to avoid duplicates."
+                rm -rf "$TARGET_GAME_DIR"/*
+              else
+                mv "$TARGET_GAME_DIR" "$ARCHIVE_TARGET"
+                mkdir -p "$TARGET_GAME_DIR"
+              fi
+            else
+              ARCHIVE_TARGET="$TARGET_ARCHIVE_ROOT/pre-id-$(date -u +%Y%m%d-%H%M%S)"
+              mv "$TARGET_GAME_DIR" "$ARCHIVE_TARGET"
+              mkdir -p "$TARGET_GAME_DIR"
+            fi
+          fi
+
+          cp -R /tmp/webgl-build/. "$TARGET_GAME_DIR"/
+          printf '%s\n' "$UNITY_BUILD_ID" > "$TARGET_GAME_DIR/_build_id.txt"
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > "$TARGET_GAME_DIR/_deployed_at_utc.txt"
+
+      - name: Commit and push deployment changes to hosting repository
+        shell: bash
+        working-directory: hosting-repo
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "$HOST_GAME_DIR" "$ARCHIVE_ROOT"
+
+          if git diff --cached --quiet; then
+            echo "No deployment changes to commit."
+            exit 0
+          fi
+
+          git commit -m "deploy(webgl): ${UNITY_BUILD_ID}"
+          git push origin "HEAD:${HOSTING_REPO_REF}"
