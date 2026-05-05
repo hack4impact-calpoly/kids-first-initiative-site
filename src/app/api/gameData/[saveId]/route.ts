@@ -4,7 +4,7 @@ import GameData from "@/database/gameDataSchema";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function GET(_req: Request, { params }: { params: { saveId: string } }) {
-  const { userId } = await auth.protect();
+  const { userId } = auth().protect();
   await connectDB();
 
   const data = await GameData.findOne({ saveId: params.saveId, userId }).lean();

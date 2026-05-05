@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 //NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 
 export default async function Dashboard() {
-  const { sessionClaims } = await auth();
+  const { sessionClaims } = auth();
   console.log("sessionClaims:", sessionClaims);
   console.log("role:", sessionClaims?.role);
   const role = sessionClaims?.role;
