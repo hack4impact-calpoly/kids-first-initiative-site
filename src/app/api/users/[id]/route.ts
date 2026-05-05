@@ -4,9 +4,9 @@ import User from "@/database/userSchema";
 import mongoose from "mongoose";
 
 // Get a specific user, finding the user by their userID
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
@@ -24,9 +24,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 // Update a specific user, finding the user by their userID
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const changes = await req.json();
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
