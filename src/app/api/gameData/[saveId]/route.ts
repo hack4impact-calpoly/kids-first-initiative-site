@@ -6,24 +6,26 @@ import { NextResponse, NextRequest } from "next/server";
 export async function GET(_req: Request, { params }: { params: { saveId: string } }) {
   const { userId } = auth().protect();
   await connectDB();
+  const { saveId } = await params;
 
-  const data = await GameData.findOne({ saveId: params.saveId, userId }).lean();
+  const data = await GameData.findOne({ saveId, userId }).lean();
   if (!data) {
     return NextResponse.json({ error: "Game data not found" }, { status: 404 });
   }
   return NextResponse.json(data, { status: 200 });
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { saveId: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ saveId: string }> }) {
   try {
     await connectDB();
+    const { saveId } = await params;
     const changes = await req.json();
     if (!changes || typeof changes !== "object" || Array.isArray(changes)) {
       return NextResponse.json({ error: "Invalid patch" }, { status: 400 });
     }
 
     const updated = await GameData.findOneAndUpdate(
-      { saveId: params.saveId },
+      { saveId },
       { $set: changes },
       { new: true, runValidators: true },
     ).lean();
