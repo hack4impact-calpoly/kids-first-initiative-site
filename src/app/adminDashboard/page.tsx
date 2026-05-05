@@ -20,6 +20,7 @@ import { FaFlask } from "react-icons/fa";
 import { FiCalendar, FiDownload } from "react-icons/fi";
 import { AdminMetricsCard } from "@/app/components/AdminMetricsCard";
 import { AdminPeriod, AdminPeriodSelector } from "@/app/components/AdminPeriodSelector";
+import AdminProfileCard from "@/components/AdminProfileCard";
 
 type SessionRecord = {
   _id: string;
@@ -128,6 +129,7 @@ export default function AdminDashboardPage() {
   const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState("");
+  const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -296,19 +298,28 @@ export default function AdminDashboardPage() {
               </Box>
             </HStack>
 
-            <HStack gap={3}>
-              <Box textAlign="right">
-                <Text fontWeight="700" color="gray.800" lineHeight="1.2">
-                  Alex Admin
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  System Administrator
-                </Text>
-              </Box>
-              <Avatar.Root size="sm">
-                <Avatar.Fallback name="Alex Admin" />
-              </Avatar.Root>
-            </HStack>
+            <Button
+              variant="ghost"
+              h="auto"
+              p={2}
+              borderRadius="14px"
+              onClick={() => setIsAdminProfileOpen(true)}
+              _hover={{ bg: "gray.50" }}
+            >
+              <HStack gap={3}>
+                <Box textAlign="right">
+                  <Text fontWeight="700" color="gray.800" lineHeight="1.2">
+                    Alex Admin
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    System Administrator
+                  </Text>
+                </Box>
+                <Avatar.Root size="sm">
+                  <Avatar.Fallback name="Alex Admin" />
+                </Avatar.Root>
+              </HStack>
+            </Button>
           </Flex>
 
           <Box>
@@ -387,6 +398,12 @@ export default function AdminDashboardPage() {
           )}
         </VStack>
       </Container>
+      <AdminProfileCard
+        isOpen={isAdminProfileOpen}
+        onClose={() => setIsAdminProfileOpen(false)}
+        name="Alex Admin"
+        onAccountSettingsClick={() => setIsAdminProfileOpen(false)}
+      />
     </Box>
   );
 }

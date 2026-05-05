@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { AVATAR_PHOTOS, DEFAULT_AVATAR_PHOTO } from "@/lib/avatarPhotos";
 
 // Updated UserSchema to match specifications
 const UserSchema = new Schema({
@@ -8,6 +9,7 @@ const UserSchema = new Schema({
   role: { type: String, required: true, trim: true, default: "player" },
   email: { type: String, required: true, trim: true },
   quizId: { type: Schema.Types.ObjectId, ref: "Quiz", default: null },
+  photo: { type: String, required: true, trim: true, enum: [...AVATAR_PHOTOS], default: DEFAULT_AVATAR_PHOTO },
 });
 
 // Added "users" at the end to ensure that it maps to the users schema that is in the Atlas Validator
