@@ -1,0 +1,62 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f0f4ff;
+  font-family: "Nunito", sans-serif;
+}
+
+.heading {
+  color: #1e1e2e;
+}
+
+.cardRow {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cardLink {
+  text-decoration: none;
+}
+
+.card {
+  color: white;
+  border-radius: 1.25rem;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  width: 200px;
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+.cardPlayer {
+  background-color: #4f46e5;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+}
+
+.cardTeacher {
+  background-color: #0ea5e9;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35);
+}
+
+.cardAdmin {
+  background-color: #6b7280;
+  box-shadow: 0 8px 24px rgba(107, 114, 128, 0.35);
+}
+
+.cardEmoji {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.cardLabel {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
