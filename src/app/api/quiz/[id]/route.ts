@@ -180,9 +180,9 @@ function scoreFromResults(results: { isCorrect: boolean }[]) {
 
 // GET /api/quiz/:id
 // Finds a quiz by ObjectId or quizId
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     await connectDB();
 
     const quiz = await Quiz.findOne(getQuizLookupFilter(id)).lean();
@@ -200,9 +200,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
 // PUT /api/quiz/:id
 // Updates an existing quiz by ObjectId or quizId
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const rawBody: unknown = await req.json();
     // Reject non-object payloads before any field-level parsing.
     if (!isObject(rawBody)) {
