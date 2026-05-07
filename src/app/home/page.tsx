@@ -1,15 +1,4 @@
-import {
-  Box,
-  Button,
-  Container,
-  Flex,
-  Grid,
-  Heading,
-  HStack,
-  Link as ChakraLink,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Container, Flex, Grid, Heading, HStack, Link as ChakraLink, Text, VStack } from "@chakra-ui/react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -45,9 +34,11 @@ function EntryCard({ accentBg, icon, title, description, ctaLabel, ctaHref, prim
           </Text>
         </VStack>
 
-        <Button
-          as={Link}
+        <ChakraLink
           href={ctaHref}
+          display="inline-flex"
+          alignItems="center"
+          justifyContent="center"
           h="54px"
           fontSize="xl"
           fontWeight="700"
@@ -56,12 +47,14 @@ function EntryCard({ accentBg, icon, title, description, ctaLabel, ctaHref, prim
           color={primary ? "white" : "#2b6dc9"}
           border={primary ? "none" : "2px solid"}
           borderColor={primary ? "transparent" : "#2b6dc9"}
+          textDecoration="none"
           _hover={{
             bg: primary ? "#25225f" : "blue.50",
+            textDecoration: "none",
           }}
         >
           {ctaLabel}
-        </Button>
+        </ChakraLink>
 
         {footer}
       </VStack>
