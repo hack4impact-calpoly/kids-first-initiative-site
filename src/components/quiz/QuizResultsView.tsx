@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Box, Button, Circle, HStack, SimpleGrid, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, Circle, HStack, Link as ChakraLink, SimpleGrid, Text, VStack } from "@chakra-ui/react";
 
 type QuizResultsViewProps = {
   quizTitle: string;
@@ -120,9 +120,12 @@ export default function QuizResultsView({
           >
             Review Answers
           </Button>
-          <Button
-            as={Link}
+          <ChakraLink
             href={backToGamesHref}
+            as={Link}
+            display="inline-flex"
+            alignItems="center"
+            justifyContent="center"
             bg="#25256d"
             color="white"
             borderRadius="12px"
@@ -130,10 +133,11 @@ export default function QuizResultsView({
             h="46px"
             fontWeight="700"
             fontSize={{ base: "14px", md: "16px" }}
-            _hover={{ bg: "#1f1f5f" }}
+            textDecoration="none"
+            _hover={{ bg: "#1f1f5f", textDecoration: "none" }}
           >
             Back to Games →
-          </Button>
+          </ChakraLink>
         </HStack>
       </VStack>
     </Box>
