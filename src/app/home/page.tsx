@@ -1,5 +1,4 @@
 import { Box, Container, Flex, Grid, Heading, HStack, Link as ChakraLink, Text, VStack } from "@chakra-ui/react";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 const STUDENT_ACCESS_CODE_ROUTE = "/login/player";
@@ -78,10 +77,10 @@ export default function Home() {
           </Text>
 
           <HStack gap={5} pt={1} color="gray.700" fontWeight="600" fontSize="sm">
-            <ChakraLink as={Link} href={FACILITATOR_LOGIN_ROUTE} _hover={{ color: "blue.600" }}>
+            <ChakraLink href={FACILITATOR_LOGIN_ROUTE} _hover={{ color: "blue.600" }}>
               Log In
             </ChakraLink>
-            <ChakraLink as={Link} href={AUTH_SIGNUP_ROUTE} _hover={{ color: "blue.600" }}>
+            <ChakraLink href={AUTH_SIGNUP_ROUTE} _hover={{ color: "blue.600" }}>
               Sign Up
             </ChakraLink>
           </HStack>
@@ -108,13 +107,7 @@ export default function Home() {
             footer={
               <Text fontSize="sm" color="gray.600" textAlign="center">
                 Need an account?{" "}
-                <ChakraLink
-                  as={Link}
-                  href={AUTH_SIGNUP_ROUTE}
-                  color="blue.600"
-                  fontWeight="700"
-                  textDecoration="underline"
-                >
+                <ChakraLink href={AUTH_SIGNUP_ROUTE} color="blue.600" fontWeight="700" textDecoration="underline">
                   Sign Up
                 </ChakraLink>
               </Text>
