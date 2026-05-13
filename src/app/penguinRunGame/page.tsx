@@ -1,11 +1,11 @@
 import Navbar from "@/components/Navbar";
-import UnityIFrame from "@/components/UnityIFrame";
+import GamePlayer from "@/components/GamePlayer";
 
 export default function PenguinRunPage() {
   return (
     <main>
       <Navbar />
-      <UnityIFrame game="PenguinRun" />
+      <GamePlayer game="PenguinRun" />
     </main>
   );
 }
