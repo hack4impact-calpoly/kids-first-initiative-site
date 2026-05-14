@@ -15,7 +15,7 @@ import { DEFAULT_AVATAR_PHOTO } from "@/lib/avatarPhotos";
 
 export default async function PlayerDashboard() {
   // VERY helpful info if your confused on auth https://clerk.com/docs/reference/nextjs/app-router/auth
-  const { userId } = auth().protect(); //redirects if signed out
+  const { userId } = await auth(); //redirects if signed out
   await connectDB();
   const dbUser = await User.findOne({ clerkId: userId }).lean<{ name?: string; photo?: string } | null>();
 

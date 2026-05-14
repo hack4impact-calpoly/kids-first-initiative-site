@@ -158,12 +158,13 @@ export default function AdminDashboardPage() {
         if (!response.ok) throw new Error("Failed to fetch users.");
 
         const users: AdminUser[] = await response.json();
-        const matchedUser =
-          users.find((candidate) => candidate.clerkId === user?.id) ??
-          users.find((candidate) => candidate.role === "admin") ??
-          null;
+        const matchedUser = users.find((candidate) => candidate.clerkId === user?.id) ?? null;
 
-        if (!isActive || !matchedUser?._id) return;
+        if (!isActive) return;
+        if (!matchedUser?._id) {
+          setAdminUser(null);
+          return;
+        }
 
         const userResponse = await fetch(`/api/users/${matchedUser._id}`, { cache: "no-store" });
         if (!userResponse.ok) throw new Error("Failed to fetch admin profile.");
