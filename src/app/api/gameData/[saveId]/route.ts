@@ -3,8 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import GameData from "@/database/gameDataSchema";
 import { NextResponse, NextRequest } from "next/server";
 
-export async function GET(_req: Request, { params }: { params: { saveId: string } }) {
-  const { userId } = auth().protect();
+export async function GET(_req: Request, { params }: { params: Promise<{ saveId: string }> }) {
+  const { userId } = await auth.protect();
   await connectDB();
   const { saveId } = await params;
 

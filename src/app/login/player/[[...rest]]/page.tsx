@@ -1,6 +1,8 @@
 "use client";
 
 import { SignIn } from "@clerk/nextjs";
+import { Box, Flex, Heading, Link, Text, VStack } from "@chakra-ui/react";
+import NextLink from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import styles from "./playerLogin.module.css";
