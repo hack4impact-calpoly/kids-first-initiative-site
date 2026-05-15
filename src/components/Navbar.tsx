@@ -1,4 +1,6 @@
-import { Button, Link, Text } from "@chakra-ui/react";
+"use client";
+
+import { Box, VStack, HStack, Text, Avatar, Separator, Button, Link } from "@chakra-ui/react";
 import { SignOutButton } from "@clerk/nextjs";
 
 export default function Navbar() {
