@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 const STUDENT_ACCESS_CODE_ROUTE = "/login/player";
 const FACILITATOR_LOGIN_ROUTE = "/login/admin";
-const AUTH_SIGNUP_ROUTE = "/sign-up/player";
+const AUTH_SIGNUP_ROUTE = "/sign-up/admin";
 
 type EntryCardProps = {
   accentBg: string;
