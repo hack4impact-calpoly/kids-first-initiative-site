@@ -35,7 +35,7 @@ export default async function PlayerDashboard() {
 
   return (
     <main>
-      <PlayerNavbar role="EXPLORER" name={username} coins="1240" photo={photo} />
+      <PlayerNavbar userId={userId} role="EXPLORER" name={username} coins="1240" photo={photo} />
       <Box minH="100vh" bg="blue.50" display="flex" justifyContent="space-around" alignItems="center" p={8}>
         <GameCard game="statesOfMatterGame" completedLevels={statesCompleted} saveId={states?.saveId} />
         <GameCard game="penguinRunGame" completedLevels={penguinCompleted} saveId={penguin?.saveId} />

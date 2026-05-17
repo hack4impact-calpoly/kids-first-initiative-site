@@ -56,7 +56,7 @@ export function ProfileCardPopup({
       <Box position="absolute" inset={0} bg="blackAlpha.500" backdropFilter="blur(7px)" onClick={onClose} />
 
       <Box position="relative" h="full" display="flex" alignItems="center" justifyContent="center" p={4}>
-        <Box w="full" maxW="860px" position="relative">
+        <Box w="full" maxW="740px" position="relative">
           <Button
             onClick={onClose}
             position="absolute"
@@ -83,9 +83,9 @@ export function ProfileCardPopup({
             w="full"
             bg="#f8f8f8"
             borderRadius={{ base: "24px", md: "36px" }}
-            px={{ base: 5, md: 10 }}
-            py={{ base: 7, md: 10 }}
-            gap={{ base: 5, md: 8 }}
+            px={{ base: 5, md: 8 }}
+            py={{ base: 7, md: 8 }}
+            gap={{ base: 5, md: 6 }}
             align="stretch"
             boxShadow="0 22px 48px rgba(15, 23, 42, 0.28)"
           >
@@ -98,9 +98,9 @@ export function ProfileCardPopup({
               </Text>
             </VStack>
 
-            <HStack align="stretch" gap={{ base: 4, md: 7 }} flexDirection={{ base: "column", md: "row" }} w="full">
+            <HStack align="stretch" gap={{ base: 4, md: 5 }} flexDirection={{ base: "column", md: "row" }} w="full">
               <VStack
-                flex={{ base: "1", md: "0 0 31%" }}
+                flex={{ base: "1", md: "0 0 50%" }}
                 bg="#f1f3f6"
                 borderRadius="22px"
                 border="1px solid"
@@ -114,11 +114,12 @@ export function ProfileCardPopup({
                 <Box
                   w={{ base: "132px", md: "156px" }}
                   h={{ base: "132px", md: "156px" }}
-                  borderRadius="full"
+                  borderRadius="16px"
                   bgImage={`url(${previewAvatarSrc})`}
                   bgRepeat="no-repeat"
                   backgroundPosition="center"
-                  bgSize="cover"
+                  bgSize="contain"
+                  bgColor="white"
                   border="5px solid"
                   borderColor="white"
                   boxShadow="0 10px 20px rgba(15, 23, 42, 0.18)"
@@ -149,24 +150,25 @@ export function ProfileCardPopup({
                 </SignOutButton>
               </VStack>
 
-              <VStack flex={{ base: "1", md: "0 0 69%" }} align="stretch" gap={4}>
-                <HStack gap={3} color="#334155">
-                  <Text fontSize={{ base: "xl", md: "3xl" }} fontWeight="900">
+              <VStack flex={{ base: "1", md: "0 0 50%" }} align="center" gap={3}>
+                <HStack gap={3} color="#334155" justify="center" w="full">
+                  <Text fontSize={{ base: "xl", md: "3xl" }} fontWeight="900" whiteSpace="nowrap">
                     Change Profile Picture
                   </Text>
                 </HStack>
 
-                <SimpleGrid columns={4} gap={4}>
+                <SimpleGrid columns={2} gap={2} w="fit-content" mx="auto">
                   {AVATAR_OPTIONS.map((option, index) => (
                     <Button
                       key={`${option.photo}-${index}`}
                       onClick={() => setPendingPhoto(option.photo)}
                       variant="ghost"
+                      w={{ base: "88px", md: "110px" }}
                       h="auto"
                       minW="unset"
                       p={0}
                       aspectRatio={1}
-                      borderRadius="full"
+                      borderRadius="14px"
                       border="3px solid"
                       borderColor={pendingPhoto === option.photo ? "#4ea0df" : "transparent"}
                       _hover={{ bg: "transparent" }}
@@ -174,11 +176,12 @@ export function ProfileCardPopup({
                       <Box
                         h="full"
                         w="full"
-                        borderRadius="full"
+                        borderRadius="10px"
                         bgImage={`url(${option.src})`}
                         bgRepeat="no-repeat"
                         backgroundPosition="center"
-                        bgSize="cover"
+                        bgSize="contain"
+                        bgColor="white"
                         boxShadow="0 6px 14px rgba(15, 23, 42, 0.08)"
                       />
                     </Button>

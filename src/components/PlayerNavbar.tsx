@@ -7,13 +7,14 @@ import { ProfileCardPopup } from "./ProfileCardPopup";
 import { avatarPhotoSrc, DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
 
 type NavbarProps = {
+  userId?: string;
   role?: string;
   name?: string;
   coins?: string;
   photo?: string;
 };
 
-export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
+export function PlayerNavbar({ userId, role, name, coins = "0", photo }: NavbarProps) {
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string>(isValidAvatarPhoto(photo) ? photo : DEFAULT_AVATAR_PHOTO);
 
@@ -23,19 +24,24 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
   }, [photo]);
 
   const handleSaveAvatar = async (nextPhoto: string) => {
-    if (!isValidAvatarPhoto(nextPhoto)) return false;
+    if (!isValidAvatarPhoto(nextPhoto) || !userId) {
+      console.error("Unable to save avatar: missing or invalid user/photo payload.");
+      return false;
+    }
 
     const previousPhoto = selectedPhoto;
     setSelectedPhoto(nextPhoto);
 
     try {
-      const response = await fetch("/api/users/me/photo", {
-        method: "PATCH",
+      const response = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ photo: nextPhoto }),
       });
 
       if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        console.error("Avatar update failed", response.status, errorBody);
         setSelectedPhoto(previousPhoto);
         return false;
       }
@@ -76,11 +82,12 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
               <Box
                 w="32px"
                 h="32px"
-                borderRadius="full"
+                borderRadius="8px"
                 bgImage={`url(${activeAvatarSrc})`}
                 bgRepeat="no-repeat"
                 backgroundPosition="center"
-                bgSize="cover"
+                bgSize="contain"
+                bgColor="white"
                 border="2px solid"
                 borderColor="white"
               />
