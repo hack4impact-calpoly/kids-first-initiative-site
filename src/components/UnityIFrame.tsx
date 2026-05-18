@@ -8,15 +8,15 @@ import { useEffect, useRef } from "react";
 // useRef is a box that allows you to mutate values without triggering re-renders
 // .current is the saved data inside the box
 
-// This implementation assumes all data but saveId and classroomId is provided.
+// This implementation assumes callers provide session/user context when available.
 // workflow: React waits for unity to flag ready, then react sends context
 // it also assumes none of the variables will change very often during gameplay
 
 type Props = {
   game: string;
   saveId?: string;
-  userId: string;
-  sessionId: string;
+  userId?: string;
+  sessionId?: string;
   classroomId?: string;
   onProgress?: (payload: unknown) => void;
 };
