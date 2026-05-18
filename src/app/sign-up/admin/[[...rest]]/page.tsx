@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { SignUp, useAuth, useSignUp } from "@clerk/nextjs";
-import { Box, Button, Flex, Heading, Input, Link as ChakraLink, PinInput, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, chakra, Flex, Heading, Input, Link as ChakraLink, PinInput, Stack, Text } from "@chakra-ui/react";
 
 const LOGIN_ROUTE = "/login/admin";
 const POST_SIGNUP_ROUTE = "/signupredirect";
@@ -67,8 +67,7 @@ type RoleCardProps = {
 
 function RoleCard({ selected, emoji, title, subtitle, onClick }: RoleCardProps) {
   return (
-    <Box
-      as="button"
+    <chakra.button
       type="button"
       onClick={onClick}
       flex="1"
@@ -95,7 +94,7 @@ function RoleCard({ selected, emoji, title, subtitle, onClick }: RoleCardProps) 
           {subtitle}
         </Text>
       </Stack>
-    </Box>
+    </chakra.button>
   );
 }
 
