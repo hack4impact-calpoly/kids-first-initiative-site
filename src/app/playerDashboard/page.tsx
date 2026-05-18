@@ -13,7 +13,7 @@ import GameData from "@/database/gameDataSchema";
 
 export default async function PlayerDashboard() {
   // VERY helpful info if your confused on auth https://clerk.com/docs/reference/nextjs/app-router/auth
-  const { userId } = await auth().protect(); //redirects if signed out
+  const { userId } = await (await auth()).protect(); //redirects if signed out
   await connectDB();
 
   //Ensure the saveId route is protected /api/gameData/:saveId
