@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 
-const SIGNUP_ROUTE = "/sign-up/admin";
+const SIGNUP_ROUTE = "/sign-up/facilitator";
 
 const NAVY = "#211E5D";
 const CARD_BG = "#F8F8F8";
@@ -53,7 +53,7 @@ const messageFromClerkError = (err: unknown, fallback: string) => {
   return e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message || fallback;
 };
 
-export default function AdminLoginPage() {
+export default function FacilitatorLoginPage() {
   const params = useParams();
   const rest = params?.rest as string[] | undefined;
   const isClerkRoute = rest && rest.length > 0;

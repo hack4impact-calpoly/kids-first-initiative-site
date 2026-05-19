@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { SignUp, useAuth, useSignUp } from "@clerk/nextjs";
 import { Box, Button, chakra, Flex, Heading, Input, Link as ChakraLink, PinInput, Stack, Text } from "@chakra-ui/react";
 
-const LOGIN_ROUTE = "/login/admin";
+const LOGIN_ROUTE = "/login/facilitator";
 const POST_SIGNUP_ROUTE = "/signupredirect";
 
 const NAVY = "#211E5D";
