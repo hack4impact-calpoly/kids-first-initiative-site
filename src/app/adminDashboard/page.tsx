@@ -14,12 +14,15 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { FaFlask } from "react-icons/fa";
-import { FiCalendar, FiDownload } from "react-icons/fi";
+import { FiCalendar, FiDownload, FiSettings } from "react-icons/fi";
 import { AdminMetricsCard } from "@/app/components/AdminMetricsCard";
 import { AdminPeriod, AdminPeriodSelector } from "@/app/components/AdminPeriodSelector";
+import AdminProfileCard from "@/components/AdminProfileCard";
+import AdminSettingsPopup from "@/components/AdminSettingsPopup";
 
 type SessionRecord = {
   _id: string;
@@ -40,6 +43,14 @@ type SummaryMetrics = {
 type TrendMetric = {
   label: string;
   direction: "up" | "down" | "flat" | "na";
+};
+
+type AdminUser = {
+  _id: string;
+  clerkId?: string;
+  name?: string;
+  email?: string;
+  role?: string;
 };
 
 const GAME_CARDS = [
@@ -123,11 +134,54 @@ function formatDateForRange(date: Date): string {
 }
 
 export default function AdminDashboardPage() {
+  const { user } = useUser();
   const [period, setPeriod] = useState<AdminPeriod>("7d");
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState("");
+  const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
+  const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+
+  const fallbackAdminName = user?.fullName?.trim() || user?.username || "Alex Admin";
+  const fallbackAdminEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const adminName = adminUser?.name ?? fallbackAdminName;
+  const adminEmail = adminUser?.email ?? fallbackAdminEmail;
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadAdminUser() {
+      try {
+        const response = await fetch("/api/users", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to fetch users.");
+
+        const users: AdminUser[] = await response.json();
+        const matchedUser = users.find((candidate) => candidate.clerkId === user?.id) ?? null;
+
+        if (!isActive) return;
+        if (!matchedUser?._id) {
+          setAdminUser(null);
+          return;
+        }
+
+        const userResponse = await fetch(`/api/users/${matchedUser._id}`, { cache: "no-store" });
+        if (!userResponse.ok) throw new Error("Failed to fetch admin profile.");
+
+        const resolvedUser: AdminUser = await userResponse.json();
+        if (isActive) setAdminUser(resolvedUser);
+      } catch (error) {
+        console.error("Failed to load admin user:", error);
+      }
+    }
+
+    loadAdminUser();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let isActive = true;
@@ -296,19 +350,28 @@ export default function AdminDashboardPage() {
               </Box>
             </HStack>
 
-            <HStack gap={3}>
-              <Box textAlign="right">
-                <Text fontWeight="700" color="gray.800" lineHeight="1.2">
-                  Alex Admin
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  System Administrator
-                </Text>
-              </Box>
-              <Avatar.Root size="sm">
-                <Avatar.Fallback name="Alex Admin" />
-              </Avatar.Root>
-            </HStack>
+            <Button
+              variant="ghost"
+              h="auto"
+              p={2}
+              borderRadius="14px"
+              onClick={() => setIsAdminProfileOpen(true)}
+              _hover={{ bg: "gray.50" }}
+            >
+              <HStack gap={3}>
+                <Box textAlign="right">
+                  <Text fontWeight="700" color="gray.800" lineHeight="1.2">
+                    {adminName}
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    System Administrator
+                  </Text>
+                </Box>
+                <Avatar.Root size="sm">
+                  <Avatar.Fallback name={adminName} />
+                </Avatar.Root>
+              </HStack>
+            </Button>
           </Flex>
 
           <Box>
@@ -337,6 +400,19 @@ export default function AdminDashboardPage() {
               <HStack gap={2}>
                 <Icon as={FiDownload} />
                 <Text>Export Data</Text>
+              </HStack>
+            </Button>
+            <Button
+              variant="outline"
+              borderColor="gray.300"
+              color="gray.700"
+              bg="white"
+              w={{ base: "full", md: "auto" }}
+              onClick={() => setIsAdminSettingsOpen(true)}
+            >
+              <HStack gap={2}>
+                <Icon as={FiSettings} />
+                <Text>Account Settings</Text>
               </HStack>
             </Button>
             <AdminPeriodSelector value={period} onChange={setPeriod} />
@@ -387,6 +463,30 @@ export default function AdminDashboardPage() {
           )}
         </VStack>
       </Container>
+      <AdminProfileCard
+        isOpen={isAdminProfileOpen}
+        onClose={() => setIsAdminProfileOpen(false)}
+        name={adminName}
+        onAccountSettingsClick={() => {
+          setIsAdminProfileOpen(false);
+          setIsAdminSettingsOpen(true);
+        }}
+      />
+      <AdminSettingsPopup
+        isOpen={isAdminSettingsOpen}
+        onClose={() => setIsAdminSettingsOpen(false)}
+        userId={adminUser?._id}
+        fallbackName={adminName}
+        fallbackEmail={adminEmail}
+        onProfileUpdated={(profile) => {
+          setAdminUser((currentUser) => ({
+            _id: currentUser?._id ?? "",
+            clerkId: currentUser?.clerkId,
+            role: currentUser?.role,
+            ...profile,
+          }));
+        }}
+      />
     </Box>
   );
 }

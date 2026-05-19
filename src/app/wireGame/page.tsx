@@ -1,11 +1,11 @@
 import Navbar from "@/components/Navbar";
-import UnityIFrame from "@/components/UnityIFrame";
+import GamePlayer from "@/components/GamePlayer";
 
 export default function WireGamePage() {
   return (
     <main>
       <Navbar />
-      <UnityIFrame game="StatesOfMatter" />
+      <GamePlayer game="StatesOfMatter" />
     </main>
   );
 }
