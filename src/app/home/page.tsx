@@ -2,8 +2,8 @@ import { Box, Container, Flex, Grid, Heading, HStack, Link as ChakraLink, Text, 
 import type { ReactNode } from "react";
 
 const STUDENT_ACCESS_CODE_ROUTE = "/login/player";
-const FACILITATOR_LOGIN_ROUTE = "/login/admin";
-const AUTH_SIGNUP_ROUTE = "/sign-up/player";
+const FACILITATOR_LOGIN_ROUTE = "/login/facilitator";
+const AUTH_SIGNUP_ROUTE = "/sign-up/facilitator";
 
 type EntryCardProps = {
   accentBg: string;
