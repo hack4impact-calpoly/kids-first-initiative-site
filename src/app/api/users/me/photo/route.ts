@@ -6,7 +6,7 @@ import { isValidAvatarPhoto } from "@/lib/avatarPhotos";
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId } = auth().protect();
+    const { userId } = await auth.protect();
     const body = await req.json();
     const requestedPhoto = typeof body.photo === "string" ? body.photo.trim() : "";
 

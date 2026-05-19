@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 //Redirect the user to the proper dashboard
 
 export default async function Dashboard() {
-  const { sessionClaims } = auth();
+  const { sessionClaims } = await auth();
   console.log("sessionClaims:", sessionClaims);
   console.log("role:", sessionClaims?.role);
   const role = sessionClaims?.role;
