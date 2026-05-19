@@ -9,6 +9,7 @@ const UserSchema = new Schema({
   role: { type: String, required: true, trim: true, default: "player" },
   email: { type: String, required: true, trim: true },
   photo: { type: String, required: true, trim: true, enum: [...AVATAR_PHOTOS], default: DEFAULT_AVATAR_PHOTO },
+  quizId: { type: Schema.Types.ObjectId, ref: "Quiz", default: null },
 });
 
 // Added "users" at the end to ensure that it maps to the users schema that is in the Atlas Validator

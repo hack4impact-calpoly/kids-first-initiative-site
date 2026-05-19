@@ -8,11 +8,11 @@ import mongoose from "mongoose";
  * GET /api/sessions/:sessionId
  * Fetch a session by ID
  */
-export async function GET(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   try {
     await connectDB();
 
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(sessionId)) {
       return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
@@ -27,6 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: { sessionI
     return NextResponse.json({
       _id: session._id,
       anonUserId: session.anonUserId,
+      gameId: session.gameId ?? null,
       startedAt: session.startedAt,
       endedAt: session.endedAt,
       durationMs: session.durationMs,
@@ -42,11 +43,11 @@ export async function GET(request: NextRequest, { params }: { params: { sessionI
  * Update a session (e.g., end it by setting endedAt and durationMs)
  * Body: { endedAt?: Date, durationMs?: number } or empty to auto-end
  */
-export async function PATCH(request: NextRequest, { params }: { params: { sessionId: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
   try {
     await connectDB();
 
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(sessionId)) {
       return NextResponse.json({ error: "Invalid session ID" }, { status: 400 });
@@ -81,6 +82,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { sessio
     return NextResponse.json({
       _id: updatedSession!._id,
       anonUserId: updatedSession!.anonUserId,
+      gameId: updatedSession!.gameId ?? null,
       startedAt: updatedSession!.startedAt,
       endedAt: updatedSession!.endedAt,
       durationMs: updatedSession!.durationMs,

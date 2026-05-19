@@ -1,9 +1,94 @@
-export default function UnityIFrame({ game, saveId }: { game: string; saveId?: string }) {
+"use client";
+
+import { useEffect, useRef } from "react";
+// useEffect tells react to re-run your effect based on the defined dependency:
+// [] - runs once after mount
+// [variable] - runs everytime the variable is updated
+
+// useRef is a box that allows you to mutate values without triggering re-renders
+// .current is the saved data inside the box
+
+// This implementation assumes all data but saveId and classroomId is provided.
+// workflow: React waits for unity to flag ready, then react sends context
+// it also assumes none of the variables will change very often during gameplay
+
+type Props = {
+  game: string;
+  saveId?: string;
+  userId: string;
+  sessionId: string;
+  classroomId?: string;
+  onProgress?: (payload: unknown) => void;
+};
+
+export default function UnityIFrame({ game, saveId, userId, sessionId, classroomId, onProgress }: Props) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    function sendContext() {
+      // postMessage enables communication between the parent page and its iframe
+      // https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
+
+      // React payload -> Unity
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: "site-context",
+          payload: {
+            saveId,
+            sessionId,
+            userId,
+            classroomId,
+          },
+        },
+        window.location.origin, // Restricts message to same origin only
+      );
+    }
+
+    // postMessage can receive messages from other windows,
+    // so verify the origin and source of the request
+    function handleMessage(event: MessageEvent) {
+      // verify origin of the message
+      if (event.origin !== window.location.origin) return;
+      // ensure message came from THIS iframe
+      if (event.source !== iframeRef.current?.contentWindow) return;
+
+      const data = event.data;
+      // Unity -> React
+      switch (data?.type) {
+        // Send initial context into unity after unity reports its ready
+        case "unity-ready": {
+          sendContext();
+          return;
+        }
+
+        // Unity sends this when player progress or save state changes.
+        case "unity-progress": {
+          const payload = data.payload && typeof data.payload === "object" ? data.payload : {};
+
+          onProgress?.({
+            ...payload,
+            sessionId,
+            classroomId,
+          });
+          return;
+        }
+
+        default:
+          return;
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [saveId, userId, sessionId, classroomId, onProgress]);
+
+  // UPDATE: url no longer needs saveId since its sent in site-context
   return (
     <iframe
-      src={`/game/${game}/index.html?saveId=${saveId}`}
+      ref={iframeRef}
+      src={`/game/${encodeURIComponent(game)}/index.html`}
+      title={`${game}`}
       style={{ width: "100%", height: "100vh", border: 0, display: "block" }}
       allow="autoplay; fullscreen; gamepad"
+      referrerPolicy="no-referrer"
     />
   );
 }

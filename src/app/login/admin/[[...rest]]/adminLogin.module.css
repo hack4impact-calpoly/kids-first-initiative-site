@@ -1,0 +1,23 @@
+.container {
+  display: flex;
+  height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--chakra-colors-gray-50);
+}
+
+.headerText {
+  text-align: center;
+}
+
+.heading {
+  color: var(--chakra-colors-blue-600);
+}
+
+.subtitle {
+  color: var(--chakra-colors-gray-500);
+}
+
+.signInWrapper {
+  transform: scale(1.2);
+}
