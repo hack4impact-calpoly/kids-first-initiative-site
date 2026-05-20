@@ -190,6 +190,31 @@
   color: #2f4da4;
 }
 
+.createClassButton {
+  min-width: 240px;
+  height: 72px;
+  padding: 16px 32px;
+  border: 0;
+  border-radius: 20px;
+  background: #2a256f;
+  color: #f8f8f8;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(42, 37, 111, 0.16);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+.createClassButton:hover {
+  background: #231f60;
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
   .content {
     padding: 32px 16px 48px;
@@ -225,5 +250,14 @@
 
   .regenerateButton {
     font-size: 18px;
+  }
+
+  .createClassButton {
+    min-width: 0;
+    width: 100%;
+    max-width: 320px;
+    height: 58px;
+    font-size: 18px;
+    border-radius: 16px;
   }
 }

@@ -18,7 +18,7 @@ export default async function Dashboard() {
       redirect("/parentDashboard");
     }
     if (dbUser?.role === "educator") {
-      redirect("/educatorDashboard");
+      redirect("/educatorCreateClass");
     }
   }
 

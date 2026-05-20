@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import styles from "./educatorDashboard.module.css";
+import styles from "./educatorCreateClass.module.css";
 
 function generateAccessCode() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -95,6 +95,10 @@ export default function EducatorDashboardPage() {
 
         <button type="button" className={styles.regenerateButton} onClick={handleRegenerate}>
           ↻ Regenerate Code
+        </button>
+
+        <button type="button" className={styles.createClassButton}>
+          Create Class
         </button>
       </section>
     </main>
