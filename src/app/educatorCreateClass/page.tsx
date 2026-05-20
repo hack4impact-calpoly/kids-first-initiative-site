@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./educatorCreateClass.module.css";
 
 function generateAccessCode() {
@@ -13,6 +14,7 @@ function generateAccessCode() {
 }
 
 export default function EducatorDashboardPage() {
+  const router = useRouter();
   const [className, setClassName] = useState("");
   const [accessCode, setAccessCode] = useState(generateAccessCode);
   const [copied, setCopied] = useState(false);
@@ -53,6 +55,10 @@ export default function EducatorDashboardPage() {
     setAccessCode(generateAccessCode());
     setCopied(false);
     setShared(false);
+  };
+
+  const handleCreateClass = () => {
+    router.push("/educatorDashboard");
   };
 
   return (
@@ -97,7 +103,7 @@ export default function EducatorDashboardPage() {
           ↻ Regenerate Code
         </button>
 
-        <button type="button" className={styles.createClassButton}>
+        <button type="button" className={styles.createClassButton} onClick={handleCreateClass}>
           Create Class
         </button>
       </section>
