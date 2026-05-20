@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { SignIn } from "@clerk/nextjs";
 import { Box, Button, Flex, Heading, Link as ChakraLink, PinInput, Stack, Text, Tooltip } from "@chakra-ui/react";
 
-const FACILITATOR_LOGIN_ROUTE = "/login/admin";
+const FACILITATOR_LOGIN_ROUTE = "/login/facilitator";
 
 const NAVY = "#211E5D";
 const CARD_BG = "#F8F8F8";

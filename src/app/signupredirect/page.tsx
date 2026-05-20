@@ -12,6 +12,7 @@ function getClerkName(nameParts: Array<string | null | undefined>) {
 function getDashboardRoute(role?: string) {
   if (role === "admin") return "/adminDashboard";
   if (role === "parent") return "/parentDashboard";
+  if (role === "educator") return "/educatorDashboard";
   return "/playerDashboard";
 }
 
