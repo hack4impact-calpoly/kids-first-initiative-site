@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Flex, Spinner } from "@chakra-ui/react";
@@ -9,7 +9,15 @@ function getClerkName(nameParts: Array<string | null | undefined>) {
   return nameParts.filter(Boolean).join(" ").trim();
 }
 
-export default function SignUpRedirectPage() {
+function RedirectSpinner() {
+  return (
+    <Flex minH="100vh" align="center" justify="center">
+      <Spinner size="xl" color="green.500" />
+    </Flex>
+  );
+}
+
+function SignUpRedirectContent() {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,9 +71,13 @@ export default function SignUpRedirectPage() {
     });
   }, [isLoaded, isSignedIn, role, router, user]);
 
+  return <RedirectSpinner />;
+}
+
+export default function SignUpRedirectPage() {
   return (
-    <Flex minH="100vh" align="center" justify="center">
-      <Spinner size="xl" color="green.500" />
-    </Flex>
+    <Suspense fallback={<RedirectSpinner />}>
+      <SignUpRedirectContent />
+    </Suspense>
   );
 }
