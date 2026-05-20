@@ -130,7 +130,7 @@ export function ProfileCardPopup({
 
                 <Separator borderColor="#b9c8df" borderStyle="dashed" />
 
-                <SignOutButton>
+                <SignOutButton redirectUrl="/home">
                   <Button
                     w="full"
                     h="58px"

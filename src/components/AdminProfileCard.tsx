@@ -87,7 +87,7 @@ export default function AdminProfileCard({
               </HStack>
             </Button>
 
-            <SignOutButton redirectUrl="/login">
+            <SignOutButton redirectUrl="/home">
               <Button
                 variant="ghost"
                 h="54px"

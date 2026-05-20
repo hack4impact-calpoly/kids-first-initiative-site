@@ -8,7 +8,7 @@ type AppChromeProps = {
   children: ReactNode;
 };
 
-const HIDE_NAVBAR_PREFIXES = ["/login", "/sign-up"];
+const HIDE_NAVBAR_PREFIXES = ["/login", "/sign-up", "/signupredirect", "/home"];
 
 export default function AppChrome({ children }: AppChromeProps) {
   const pathname = usePathname();
