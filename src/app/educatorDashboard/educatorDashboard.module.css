@@ -1,0 +1,161 @@
+.shell {
+  min-height: 100vh;
+  background: #ffffff;
+  width: 100%;
+}
+
+.main {
+  width: 100%;
+  min-height: calc(100vh - 64px);
+  margin: 0;
+  padding: 28px clamp(24px, 4.2vw, 56px) 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  background: #ffffff;
+}
+
+.title {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 48px;
+  color: #1b1b1b;
+}
+
+.subtitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 28px;
+  color: #747474;
+}
+
+.metricsRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.metricCard {
+  min-height: 132px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  background: #f8f8f8;
+  border-radius: 16px;
+}
+
+.metricLabel {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 22px;
+  color: #747474;
+}
+
+.metricValue {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 42px;
+  line-height: 52px;
+  color: #1b1b1b;
+}
+
+.activityCard {
+  width: 100%;
+  min-height: min(500px, 100%);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  background: #f8f8f8;
+  border-radius: 16px;
+}
+
+.activityTitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 30px;
+  color: #1b1b1b;
+}
+
+.activityList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.activityRow {
+  width: 100%;
+}
+
+.activityBar {
+  display: block;
+  width: 100%;
+  height: 18px;
+  background: #e0e0e0;
+  border-radius: 6px;
+}
+
+@media (max-width: 900px) {
+  .main {
+    min-height: calc(100vh - 64px);
+    padding: 24px 20px 40px;
+  }
+
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .title {
+    font-size: 30px;
+    line-height: 40px;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .metricCard {
+    min-height: 116px;
+    padding: 20px;
+  }
+
+  .metricValue {
+    font-size: 34px;
+    line-height: 44px;
+  }
+
+  .activityCard {
+    min-height: 420px;
+    padding: 20px;
+  }
+
+  .activityTitle {
+    font-size: 18px;
+    line-height: 26px;
+  }
+
+  .activityBar {
+    height: 16px;
+  }
+}
