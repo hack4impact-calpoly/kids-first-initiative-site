@@ -9,6 +9,12 @@ function getClerkName(nameParts: Array<string | null | undefined>) {
   return nameParts.filter(Boolean).join(" ").trim();
 }
 
+function getDashboardRoute(role?: string) {
+  if (role === "admin") return "/adminDashboard";
+  if (role === "parent") return "/parentDashboard";
+  return "/playerDashboard";
+}
+
 function RedirectSpinner() {
   return (
     <Flex minH="100vh" align="center" justify="center">
@@ -61,7 +67,8 @@ function SignUpRedirectContent() {
         throw new Error("Failed to create player record.");
       }
 
-      router.replace("/playerDashboard");
+      const dbUser = (await response.json()) as { role?: string };
+      router.replace(getDashboardRoute(dbUser.role));
     };
 
     createUser().catch((error) => {
