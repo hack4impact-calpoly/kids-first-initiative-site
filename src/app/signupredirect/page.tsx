@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Flex, Spinner } from "@chakra-ui/react";
 
@@ -12,7 +12,9 @@ function getClerkName(nameParts: Array<string | null | undefined>) {
 export default function SignUpRedirectPage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hasPosted = useRef(false);
+  const role = searchParams.get("role") || "player";
 
   useEffect(() => {
     if (!isLoaded || hasPosted.current) return;
@@ -41,7 +43,7 @@ export default function SignUpRedirectPage() {
         },
         body: JSON.stringify({
           name,
-          role: "player",
+          role,
           email,
           clerkId: user.id,
         }),
@@ -59,7 +61,7 @@ export default function SignUpRedirectPage() {
       hasPosted.current = false;
       router.replace("/login/player");
     });
-  }, [isLoaded, isSignedIn, router, user]);
+  }, [isLoaded, isSignedIn, role, router, user]);
 
   return (
     <Flex minH="100vh" align="center" justify="center">

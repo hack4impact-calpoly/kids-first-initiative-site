@@ -44,6 +44,8 @@ const messageFromClerkError = (err: unknown, fallback: string) => {
   return e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message || fallback;
 };
 
+const getPostSignupRoute = (role: Role) => `${POST_SIGNUP_ROUTE}?role=${encodeURIComponent(role)}`;
+
 function PasswordRequirement({ met, text }: { met: boolean; text: string }) {
   return (
     <Flex align="center" gap={2}>
@@ -157,7 +159,7 @@ export default function AdminSignUpPage() {
       });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace(POST_SIGNUP_ROUTE);
+        router.replace(getPostSignupRoute(role));
         return;
       }
       // Common case: Clerk requires email verification before activating the session.
@@ -185,7 +187,7 @@ export default function AdminSignUpPage() {
       const result = await signUp.attemptEmailAddressVerification({ code: code.join("") });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace(POST_SIGNUP_ROUTE);
+        router.replace(getPostSignupRoute(role));
         return;
       }
       router.replace("/sign-up/admin/factor-one");
@@ -218,7 +220,7 @@ export default function AdminSignUpPage() {
   if (isClerkRoute) {
     return (
       <Flex height="100vh" alignItems="center" justifyContent="center">
-        <SignUp path="/sign-up/admin" signInUrl={LOGIN_ROUTE} forceRedirectUrl={POST_SIGNUP_ROUTE} />
+        <SignUp path="/sign-up/admin" signInUrl={LOGIN_ROUTE} forceRedirectUrl={getPostSignupRoute(role)} />
       </Flex>
     );
   }
