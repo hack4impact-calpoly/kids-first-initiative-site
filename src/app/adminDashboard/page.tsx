@@ -19,8 +19,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { FaFlask } from "react-icons/fa";
 import { FiCalendar, FiDownload, FiSettings } from "react-icons/fi";
-import { AdminMetricsCard } from "@/app/components/AdminMetricsCard";
-import { AdminPeriod, AdminPeriodSelector } from "@/app/components/AdminPeriodSelector";
+import { AdminMetricsCard } from "@/components/AdminMetricsCard";
+import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
 import AdminProfileCard from "@/components/AdminProfileCard";
 import AdminSettingsPopup from "@/components/AdminSettingsPopup";
 
