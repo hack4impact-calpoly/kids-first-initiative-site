@@ -12,6 +12,7 @@ export async function GET() {
       name?: string;
       role?: string;
       photo?: string;
+      email?: string;
     } | null>();
 
     if (!user) {

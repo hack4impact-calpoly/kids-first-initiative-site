@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Box, Button, Flex, HStack, Spinner, Text } from "@chakra-ui/react";
 import { ProfileCardPopup } from "./ProfileCardPopup";
+import EducatorProfileCard from "./EducatorProfileCard";
 import { avatarPhotoSrc, DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
 
 type CurrentUserResponse = {
   name?: string;
   role?: string;
   photo?: string;
+  email?: string;
 };
 
 function formatRole(role?: string) {
@@ -24,9 +26,11 @@ function formatRole(role?: string) {
 export default function Navbar() {
   const { user } = useUser();
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
+  const [isEducatorProfileCardOpen, setEducatorProfileCardOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(DEFAULT_AVATAR_PHOTO);
   const [displayName, setDisplayName] = useState("Player");
   const [displayRole, setDisplayRole] = useState("STUDENT");
+  const [displayEmail, setDisplayEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -43,11 +47,13 @@ export default function Navbar() {
         setDisplayName(data.name?.trim() || user?.fullName?.trim() || user?.username || "Player");
         setDisplayRole(formatRole(data.role));
         setSelectedPhoto(isValidAvatarPhoto(data.photo) ? data.photo : DEFAULT_AVATAR_PHOTO);
+        setDisplayEmail(data.email?.trim() || user?.primaryEmailAddress?.emailAddress || "");
       } catch {
         if (!isActive) return;
         setDisplayName(user?.fullName?.trim() || user?.username || "Player");
         setDisplayRole("STUDENT");
         setSelectedPhoto(DEFAULT_AVATAR_PHOTO);
+        setDisplayEmail(user?.primaryEmailAddress?.emailAddress || "");
       } finally {
         if (isActive) setIsLoading(false);
       }
@@ -58,7 +64,7 @@ export default function Navbar() {
     return () => {
       isActive = false;
     };
-  }, [user?.fullName, user?.username]);
+  }, [user?.fullName, user?.username, user?.primaryEmailAddress?.emailAddress]);
 
   const handleSaveAvatar = async (nextPhoto: string) => {
     if (!isValidAvatarPhoto(nextPhoto)) return false;
@@ -86,6 +92,7 @@ export default function Navbar() {
   };
 
   const activeAvatarSrc = avatarPhotoSrc(selectedPhoto);
+  const isEducator = displayRole === "EDUCATOR";
 
   return (
     <>
@@ -124,7 +131,13 @@ export default function Navbar() {
             </Text>
 
             <Button
-              onClick={() => setProfileCardPopupOpen(true)}
+              onClick={() => {
+                if (isEducator) {
+                  setEducatorProfileCardOpen(true);
+                  return;
+                }
+                setProfileCardPopupOpen(true);
+              }}
               variant="ghost"
               minW="unset"
               h="auto"
@@ -159,6 +172,14 @@ export default function Navbar() {
         onSaveAvatar={handleSaveAvatar}
         selectedPhoto={selectedPhoto}
         name={displayName}
+      />
+
+      <EducatorProfileCard
+        isOpen={isEducatorProfileCardOpen}
+        onClose={() => setEducatorProfileCardOpen(false)}
+        name={displayName}
+        email={displayEmail}
+        avatarSrc={activeAvatarSrc}
       />
     </>
   );
