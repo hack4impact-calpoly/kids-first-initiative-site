@@ -17,6 +17,7 @@ import {
 } from "@chakra-ui/react";
 
 const SIGNUP_ROUTE = "/sign-up/facilitator";
+const DASHBOARD_ROUTE = "/dashboard";
 
 const NAVY = "#211E5D";
 const CARD_BG = "#F8F8F8";
@@ -64,7 +65,7 @@ export default function FacilitatorLoginPage() {
 
   useEffect(() => {
     if (authLoaded && isSignedIn) {
-      router.replace("/adminDashboard");
+      router.replace(DASHBOARD_ROUTE);
     }
   }, [authLoaded, isSignedIn, router]);
 
@@ -87,7 +88,7 @@ export default function FacilitatorLoginPage() {
       const result = await signIn.create({ identifier, password });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace("/adminDashboard");
+        router.replace(DASHBOARD_ROUTE);
         return;
       }
       if (result.status === "needs_second_factor") {
@@ -120,7 +121,7 @@ export default function FacilitatorLoginPage() {
       });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace("/adminDashboard");
+        router.replace(DASHBOARD_ROUTE);
         return;
       }
       router.replace("/login/admin/factor-one");
@@ -140,7 +141,7 @@ export default function FacilitatorLoginPage() {
   if (isClerkRoute) {
     return (
       <Flex height="100vh" alignItems="center" justifyContent="center">
-        <SignIn path="/login/admin" forceRedirectUrl="/adminDashboard" />
+        <SignIn path="/login/admin" forceRedirectUrl={DASHBOARD_ROUTE} />
       </Flex>
     );
   }
