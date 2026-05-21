@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { Box, Button, Flex, HStack, Spinner, Text } from "@chakra-ui/react";
 import { ProfileCardPopup } from "./ProfileCardPopup";
@@ -110,12 +111,14 @@ export default function Navbar() {
           <HStack gap={4}>
             <Link href="/dashboard" aria-label="Kids First Initiative Dashboard">
               <Box
+                position="relative"
                 w={{ base: "42px", md: "46px" }}
                 h={{ base: "42px", md: "46px" }}
                 borderRadius="8px"
-                bg="#4761B2"
-                boxShadow="inset 0 1px 0 rgba(255,255,255,0.16)"
-              />
+                overflow="hidden"
+              >
+                <Image src="/Icons/kfi-logo.jpeg" alt="Kids First Initiative logo" fill sizes="46px" />
+              </Box>
             </Link>
             <Text
               fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'

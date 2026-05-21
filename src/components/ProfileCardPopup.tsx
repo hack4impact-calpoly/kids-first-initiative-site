@@ -182,7 +182,7 @@ export function ProfileCardPopup({
                 Change Profile Picture
               </Text>
 
-              <SimpleGrid columns={4} gap={3}>
+              <SimpleGrid columns={2} gap={3} w="full">
                 {AVATAR_OPTIONS.map((option, index) => {
                   const isSelected = pendingPhoto === option.photo;
 
@@ -191,7 +191,10 @@ export function ProfileCardPopup({
                       key={`${option.photo}-${index}`}
                       onClick={() => setPendingPhoto(option.photo)}
                       variant="ghost"
-                      h="76px"
+                      position="relative"
+                      overflow="hidden"
+                      w="full"
+                      h={{ base: "92px", md: "96px" }}
                       minW="unset"
                       p={0}
                       borderRadius="12px"
@@ -201,13 +204,13 @@ export function ProfileCardPopup({
                       _hover={{ bg: isSelected ? "#E6ECFA" : "#F8F8F8" }}
                     >
                       <Box
-                        w="48px"
-                        h="48px"
-                        borderRadius="full"
+                        w="full"
+                        h="full"
+                        bgColor={isSelected ? "#E6ECFA" : "#F8F8F8"}
                         bgImage={`url(${option.src})`}
                         bgRepeat="no-repeat"
                         backgroundPosition="center"
-                        bgSize="cover"
+                        bgSize="contain"
                       />
                     </Button>
                   );
