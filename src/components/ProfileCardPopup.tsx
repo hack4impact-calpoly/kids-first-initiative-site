@@ -10,7 +10,10 @@ export type AvatarOption = {
   src: string;
 };
 
-export const AVATAR_OPTIONS: AvatarOption[] = AVATAR_PHOTOS.map((photo) => ({ photo, src: avatarPhotoSrc(photo) }));
+export const AVATAR_OPTIONS: AvatarOption[] = AVATAR_PHOTOS.slice(0, 4).map((photo) => ({
+  photo,
+  src: avatarPhotoSrc(photo),
+}));
 
 type ProfileCardPopupProps = {
   isOpen: boolean;
@@ -18,7 +21,13 @@ type ProfileCardPopupProps = {
   onSaveAvatar: (nextPhoto: string) => Promise<boolean>;
   selectedPhoto?: string;
   name?: string;
+  role?: string;
 };
+
+function formatProfileRole(role?: string) {
+  if (!role) return "STUDENT";
+  return role.toUpperCase();
+}
 
 export function ProfileCardPopup({
   isOpen,
@@ -26,6 +35,7 @@ export function ProfileCardPopup({
   onSaveAvatar,
   selectedPhoto,
   name = "Player",
+  role,
 }: ProfileCardPopupProps) {
   const [pendingPhoto, setPendingPhoto] = useState(selectedPhoto || DEFAULT_AVATAR_PHOTO);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,168 +66,184 @@ export function ProfileCardPopup({
       <Box position="absolute" inset={0} bg="blackAlpha.500" backdropFilter="blur(7px)" onClick={onClose} />
 
       <Box position="relative" h="full" display="flex" alignItems="center" justifyContent="center" p={4}>
-        <Box w="full" maxW="860px" position="relative">
-          <Button
-            onClick={onClose}
-            position="absolute"
-            top={{ base: "-8px", md: "-14px" }}
-            right={{ base: "-4px", md: "-10px" }}
-            zIndex={3}
-            w="52px"
-            h="52px"
-            minW="52px"
-            borderRadius="full"
-            bg="white"
-            border="1px solid"
-            borderColor="gray.100"
-            boxShadow="0 8px 16px rgba(15, 23, 42, 0.16)"
-            _hover={{ bg: "gray.50" }}
-            color="#94A3B8"
-            fontSize="2xl"
-            fontWeight="700"
-          >
-            x
-          </Button>
+        <VStack
+          w="full"
+          maxW="720px"
+          bg="white"
+          border="1px solid"
+          borderColor="#D9D9D9"
+          borderRadius="20px"
+          px={{ base: 5, md: 9 }}
+          py={{ base: 6, md: 7 }}
+          gap={{ base: 5, md: 6 }}
+          align="center"
+          boxShadow="0 20px 50px rgba(15, 23, 42, 0.18)"
+        >
+          <VStack w="full" align="center" textAlign="center" gap={1}>
+            <Text
+              fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+              color="#1B1B1B"
+              fontSize={{ base: "3xl", md: "5xl" }}
+              fontWeight="700"
+              lineHeight="1"
+            >
+              Your Profile
+            </Text>
+            <Text
+              fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+              color="#747474"
+              fontSize={{ base: "sm", md: "md" }}
+              fontWeight="400"
+            >
+              Pick a new hero or take a break.
+            </Text>
+          </VStack>
 
-          <VStack
-            w="full"
-            bg="#f8f8f8"
-            borderRadius={{ base: "24px", md: "36px" }}
-            px={{ base: 5, md: 10 }}
-            py={{ base: 7, md: 10 }}
-            gap={{ base: 5, md: 8 }}
-            align="stretch"
-            boxShadow="0 22px 48px rgba(15, 23, 42, 0.28)"
-          >
-            <VStack align="center" textAlign="center" gap={1}>
-              <Text color="#273248" fontSize={{ base: "3xl", md: "5xl" }} fontWeight="900" lineHeight="1">
-                Your Profile
+          <HStack w="full" align="stretch" gap={{ base: 4, md: 6 }} flexDirection={{ base: "column", md: "row" }}>
+            <VStack
+              flex={{ base: "1", md: "0 0 200px" }}
+              bg="#F8F8F8"
+              borderRadius="14px"
+              px={{ base: 4, md: 4 }}
+              py={{ base: 5, md: 5 }}
+              gap={3}
+              align="center"
+            >
+              <Box
+                w={{ base: "110px", md: "120px" }}
+                h={{ base: "110px", md: "120px" }}
+                borderRadius="full"
+                bgImage={`url(${previewAvatarSrc})`}
+                bgRepeat="no-repeat"
+                backgroundPosition="center"
+                bgSize="cover"
+                border="3px solid"
+                borderColor="#3952A4"
+              />
+
+              <Text
+                textAlign="center"
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontSize={{ base: "xl", md: "2xl" }}
+                fontWeight="700"
+                color="#1B1B1B"
+              >
+                {name}
               </Text>
-              <Text color="#5f6f88" fontSize={{ base: "sm", md: "lg" }} fontWeight="700">
-                Change your hero or take a break
+
+              <Text
+                textAlign="center"
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontSize="12px"
+                fontWeight="500"
+                letterSpacing="0.5px"
+                color="#747474"
+              >
+                {formatProfileRole(role)}
               </Text>
+
+              <Box flex="1" />
+
+              <SignOutButton redirectUrl="/home">
+                <Button
+                  w="102px"
+                  h="100px"
+                  minW="102px"
+                  borderRadius="999px"
+                  bg="white"
+                  border="1px solid"
+                  borderColor="#D9D9D9"
+                  _hover={{ bg: "white" }}
+                >
+                  <VStack gap={2}>
+                    <Box w="12px" h="12px" bg="#747474" />
+                    <Text
+                      fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                      fontWeight="600"
+                      fontSize="12px"
+                      lineHeight="18px"
+                      color="#1B1B1B"
+                    >
+                      Sign Out
+                    </Text>
+                  </VStack>
+                </Button>
+              </SignOutButton>
             </VStack>
 
-            <HStack align="stretch" gap={{ base: 4, md: 7 }} flexDirection={{ base: "column", md: "row" }} w="full">
-              <VStack
-                flex={{ base: "1", md: "0 0 31%" }}
-                bg="#f1f3f6"
-                borderRadius="22px"
-                border="1px solid"
-                borderColor="#e6e9ee"
-                px={{ base: 4, md: 5 }}
-                py={{ base: 5, md: 6 }}
-                align="center"
-                justify="center"
-                gap={4}
+            <VStack flex="1" align="stretch" gap={4}>
+              <Text
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontWeight="600"
+                fontSize="14px"
+                lineHeight="21px"
+                color="#1B1B1B"
               >
-                <Box
-                  w={{ base: "132px", md: "156px" }}
-                  h={{ base: "132px", md: "156px" }}
-                  borderRadius="full"
-                  bgImage={`url(${previewAvatarSrc})`}
-                  bgRepeat="no-repeat"
-                  backgroundPosition="center"
-                  bgSize="cover"
-                  border="5px solid"
-                  borderColor="white"
-                  boxShadow="0 10px 20px rgba(15, 23, 42, 0.18)"
-                />
+                Change Profile Picture
+              </Text>
 
-                <Text color="#263247" fontSize={{ base: "xl", md: "2xl" }} fontWeight="900">
-                  {name}
-                </Text>
+              <SimpleGrid columns={4} gap={3}>
+                {AVATAR_OPTIONS.map((option, index) => {
+                  const isSelected = pendingPhoto === option.photo;
 
-                <Separator borderColor="#b9c8df" borderStyle="dashed" />
-
-                <SignOutButton redirectUrl="/home">
-                  <Button
-                    w="full"
-                    h="58px"
-                    borderRadius="14px"
-                    bg="white"
-                    border="1px solid"
-                    borderColor="#e4e7ec"
-                    color="#4a5568"
-                    fontSize="lg"
-                    fontWeight="700"
-                    boxShadow="0 6px 0 rgba(0, 0, 0, 0.08)"
-                    _hover={{ bg: "white" }}
-                  >
-                    <Text>Sign Out</Text>
-                  </Button>
-                </SignOutButton>
-              </VStack>
-
-              <VStack flex={{ base: "1", md: "0 0 69%" }} align="stretch" gap={4}>
-                <HStack gap={3} color="#334155">
-                  <Text fontSize={{ base: "xl", md: "3xl" }} fontWeight="900">
-                    Change Profile Picture
-                  </Text>
-                </HStack>
-
-                <SimpleGrid columns={4} gap={4}>
-                  {AVATAR_OPTIONS.map((option, index) => (
+                  return (
                     <Button
                       key={`${option.photo}-${index}`}
                       onClick={() => setPendingPhoto(option.photo)}
                       variant="ghost"
-                      h="auto"
+                      h="76px"
                       minW="unset"
                       p={0}
-                      aspectRatio={1}
-                      borderRadius="full"
-                      border="3px solid"
-                      borderColor={pendingPhoto === option.photo ? "#4ea0df" : "transparent"}
-                      _hover={{ bg: "transparent" }}
+                      borderRadius="12px"
+                      bg={isSelected ? "#E6ECFA" : "#F8F8F8"}
+                      border="2px solid"
+                      borderColor={isSelected ? "#3952A4" : "#D9D9D9"}
+                      _hover={{ bg: isSelected ? "#E6ECFA" : "#F8F8F8" }}
                     >
                       <Box
-                        h="full"
-                        w="full"
+                        w="48px"
+                        h="48px"
                         borderRadius="full"
                         bgImage={`url(${option.src})`}
                         bgRepeat="no-repeat"
                         backgroundPosition="center"
                         bgSize="cover"
-                        boxShadow="0 6px 14px rgba(15, 23, 42, 0.08)"
                       />
                     </Button>
-                  ))}
-                </SimpleGrid>
-              </VStack>
-            </HStack>
+                  );
+                })}
+              </SimpleGrid>
+            </VStack>
+          </HStack>
 
-            <Button
-              alignSelf="center"
-              w={{ base: "100%", md: "340px" }}
-              h="78px"
-              position="relative"
-              overflow="hidden"
-              borderRadius="24px"
-              bg="#78bf68"
-              color="white"
-              fontSize={{ base: "xl", md: "2xl" }}
-              fontWeight="900"
-              letterSpacing="0.04em"
-              _hover={{ bg: "#6faf60" }}
-              boxShadow="0 12px 0 rgba(0, 0, 0, 0.12)"
-              onClick={async () => {
-                if (isSaving) return;
-                setIsSaving(true);
-                let saved = false;
-                try {
-                  saved = await onSaveAvatar(pendingPhoto);
-                } finally {
-                  setIsSaving(false);
-                }
-                if (saved) onClose();
-              }}
-              disabled={isSaving}
-            >
-              <Text>{isSaving ? "SAVING..." : "SAVE & CLOSE"}</Text>
-            </Button>
-          </VStack>
-        </Box>
+          <Button
+            alignSelf="center"
+            minW={{ base: "100%", md: "212px" }}
+            h="56px"
+            borderRadius="999px"
+            bg="#229C54"
+            color="white"
+            fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+            fontSize="16px"
+            fontWeight="700"
+            letterSpacing="0.5px"
+            _hover={{ bg: "#1f8d4c" }}
+            onClick={async () => {
+              if (isSaving) return;
+              setIsSaving(true);
+              let saved = false;
+              try {
+                saved = await onSaveAvatar(pendingPhoto);
+              } finally {
+                setIsSaving(false);
+              }
+              if (saved) onClose();
+            }}
+            disabled={isSaving}
+          >
+            <Text>{isSaving ? "SAVING..." : "SAVE & CLOSE"}</Text>
+          </Button>
+        </VStack>
       </Box>
     </Box>
   );

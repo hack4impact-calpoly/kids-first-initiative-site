@@ -1,38 +1,85 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { GameCard } from "@/components/GameCard";
-import { Box } from "@chakra-ui/react";
 import connectDB from "@/database/db";
 import GameData from "@/database/gameDataSchema";
+import styles from "./playerDashboard.module.css";
 
-//in the mongodb, saveId's are unique,
-//this is cool but this unique is enforced across all users (better if only for specific user)
+type PlayerGameCard = {
+  gameId: "penguinRunGame" | "statesOfMatterGame";
+  title: string;
+  description: string;
+  emoji: string;
+  artClassName: string;
+  saveId?: string;
+};
 
-//TEST IT OUT!
-//hi u can return <h1>{userId}</h1>; below, then paste ur userId into mongo and yay u can see progress
+const GAME_CARDS: Omit<PlayerGameCard, "saveId">[] = [
+  {
+    gameId: "penguinRunGame",
+    title: "Penguin Run",
+    description: "Build tracks to guide the penguin. Learn about gravity and friction.",
+    emoji: "🐧",
+    artClassName: "penguinArt",
+  },
+  {
+    gameId: "statesOfMatterGame",
+    title: "3 States of Matter",
+    description: "Melt ice, boil water, condense steam. Fix the lab and learn matter phases.",
+    emoji: "🧪",
+    artClassName: "matterArt",
+  },
+];
 
-export default async function PlayerDashboard() {
-  // VERY helpful info if your confused on auth https://clerk.com/docs/reference/nextjs/app-router/auth
-  const { userId } = await auth(); //redirects if signed out
+export default async function PlayerDashboardPage() {
+  const { userId } = await auth();
   await connectDB();
 
-  //Ensure the saveId route is protected /api/gameData/:saveId
   const saves = await GameData.find(
-    { userId, gameId: { $in: ["statesOfMatterGame", "penguinRunGame"] } }, // gameId should be one of these two
-    { gameId: 1, saveId: 1, completedLevels: 1 }, //tell mongo to only return these fields from the document
-  ).lean();
+    { userId, gameId: { $in: ["statesOfMatterGame", "penguinRunGame"] } },
+    { gameId: 1, saveId: 1 },
+  ).lean<Array<{ gameId: "statesOfMatterGame" | "penguinRunGame"; saveId?: string }>>();
 
-  const states = saves.find((s) => s.gameId === "statesOfMatterGame");
-  const penguin = saves.find((s) => s.gameId === "penguinRunGame");
-
-  const statesCompleted = states?.completedLevels?.length ?? 0;
-  const penguinCompleted = penguin?.completedLevels?.length ?? 0;
+  const cards: PlayerGameCard[] = GAME_CARDS.map((card) => ({
+    ...card,
+    saveId: saves.find((save) => save.gameId === card.gameId)?.saveId,
+  }));
 
   return (
-    <main>
-      <Box minH="100vh" bg="blue.50" display="flex" justifyContent="space-around" alignItems="center" p={8}>
-        <GameCard game="statesOfMatterGame" completedLevels={statesCompleted} saveId={states?.saveId} />
-        <GameCard game="penguinRunGame" completedLevels={penguinCompleted} saveId={penguin?.saveId} />
-      </Box>
+    <main className={styles.page}>
+      <section className={styles.container}>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>Choose a Game</h1>
+          <p className={styles.subtitle}>Pick a game to start learning.</p>
+        </div>
+
+        <div className={styles.cardsRow}>
+          {cards.map((card) => {
+            const href = card.saveId ? `/${card.gameId}?saveId=${card.saveId}` : `/${card.gameId}`;
+
+            return (
+              <article key={card.gameId} className={styles.card}>
+                <div className={`${styles.art} ${styles[card.artClassName]}`}>
+                  <span className={styles.emoji} aria-hidden="true">
+                    {card.emoji}
+                  </span>
+                </div>
+
+                <div className={styles.content}>
+                  <h2 className={styles.cardTitle}>{card.title}</h2>
+                  <p className={styles.cardDescription}>{card.description}</p>
+
+                  <div className={styles.buttonRow}>
+                    <span aria-hidden="true" />
+                    <Link href={href} className={styles.playButton}>
+                      Play
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
     </main>
   );
 }

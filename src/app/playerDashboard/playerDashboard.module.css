@@ -1,0 +1,167 @@
+.page {
+  min-height: 100vh;
+  background: #f7f9fb;
+}
+
+.container {
+  width: 100%;
+  min-height: calc(100vh - 64px);
+  padding: 32px clamp(20px, 3.75vw, 48px) 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.4rem, 3vw, 3.2rem);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: #1b1b1b;
+}
+
+.subtitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #525252;
+}
+
+.cardsRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e3e6ed;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 368px;
+}
+
+.art {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.penguinArt {
+  background: #d1e6fa;
+}
+
+.matterArt {
+  background: #ffe3d1;
+}
+
+.emoji {
+  font-size: clamp(4.5rem, 7vw, 6rem);
+  line-height: 1;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+  flex: 1;
+}
+
+.cardTitle {
+  margin: 0;
+  width: 100%;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #1b1b1b;
+}
+
+.cardDescription {
+  margin: 0;
+  width: 100%;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #525252;
+}
+
+.buttonRow {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.playButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 44px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  background: #211e5d;
+  color: #f8f8f8;
+  text-decoration: none;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.25;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+.playButton:hover {
+  background: #191748;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(33, 30, 93, 0.16);
+}
+
+@media (max-width: 960px) {
+  .cardsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 24px 16px 36px;
+  }
+
+  .art {
+    min-height: 180px;
+  }
+
+  .content {
+    padding: 20px;
+  }
+
+  .playButton {
+    min-width: 92px;
+  }
+}
