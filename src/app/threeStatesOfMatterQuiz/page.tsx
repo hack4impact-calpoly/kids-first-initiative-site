@@ -7,6 +7,7 @@ export default function ThreeStatesOfMatterQuizPage() {
   return (
     <main>
       <QuizExperience
+        quizId="statesOfMatterQuiz"
         quizTitle="Three States of Matter Quiz 🧪"
         quizSubtitle="Let's see what you know about solids, liquids, and gases!"
         questions={statesOfMatterQuestions}

@@ -1,15 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { Box, Text, VStack } from "@chakra-ui/react";
 import QuizIntroView from "@/components/quiz/QuizIntroView";
 import QuizQuestionView from "@/components/quiz/QuizQuestionView";
 import QuizResultsView from "@/components/quiz/QuizResultsView";
-import { QuizQuestion } from "@/components/quiz/types";
+import { QuizId, QuizQuestion } from "@/components/quiz/types";
 
 export type { QuizOption, QuizQuestion } from "@/components/quiz/types";
 
 type QuizExperienceProps = {
+  quizId: QuizId;
   quizTitle: string;
   quizSubtitle: string;
   questions: QuizQuestion[];
@@ -22,6 +24,7 @@ type QuizExperienceProps = {
 type QuizStage = "intro" | "questions" | "results";
 
 export default function QuizExperience({
+  quizId,
   quizTitle,
   quizSubtitle,
   questions,
@@ -30,10 +33,12 @@ export default function QuizExperience({
   previousCorrectCount = 0,
   backToGamesHref = "/playerDashboard",
 }: QuizExperienceProps) {
+  const { isSignedIn, user } = useUser();
   const [stage, setStage] = useState<QuizStage>("intro");
   const [isReviewingAnswers, setIsReviewingAnswers] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersByQuestionId, setAnswersByQuestionId] = useState<Record<string, string>>({});
+  const hasSavedResults = useRef(false);
 
   const totalQuestions = questions.length;
   const maxPoints = totalQuestions * pointsPerQuestion;
@@ -90,6 +95,94 @@ export default function QuizExperience({
     setIsReviewingAnswers(true);
     setCurrentIndex(0);
   }
+
+  useEffect(() => {
+    hasSavedResults.current = false;
+  }, [quizId]);
+
+  useEffect(() => {
+    if (stage !== "results" || hasSavedResults.current || !isSignedIn || !user?.id) return;
+
+    async function saveQuizResults() {
+      hasSavedResults.current = true;
+      const clerkId = user?.id;
+      if (!clerkId) return;
+
+      const questionResults = questions.map((question) => {
+        const selectedOptionId = answersByQuestionId[question.questionId];
+        const selectedOption = question.options.find((option) => option.id === selectedOptionId);
+        const correctOption = question.options.find((option) => option.id === question.correctOptionId);
+
+        return {
+          questionId: question.questionId,
+          questionText: question.question,
+          answerOptions: question.options.map((option) => option.text),
+          selectedAnswer: selectedOption?.text ?? "",
+          correctAnswer: correctOption?.text ?? "",
+          isCorrect: selectedOptionId === question.correctOptionId,
+        };
+      });
+
+      const isStatesOfMatterQuiz = quizId === "statesOfMatterQuiz";
+      const resultsField = isStatesOfMatterQuiz ? "statesOfMatterQuestionResults" : "penguinRunQuestionResults";
+      const beforeScoreField = isStatesOfMatterQuiz ? "statesOfMatterScoreBefore" : "penguinRunScoreBefore";
+      const afterScoreField = isStatesOfMatterQuiz ? "stateOfMatterScoreAfter" : "penguinRunScoreAfter";
+
+      try {
+        const existingQuizResponse = await fetch(`/api/quiz?clerkId=${encodeURIComponent(clerkId)}`);
+        if (!existingQuizResponse.ok) {
+          throw new Error("Unable to check existing quiz results");
+        }
+
+        const existingQuizzes = await existingQuizResponse.json();
+        const existingQuiz = Array.isArray(existingQuizzes) ? existingQuizzes[0] : null;
+        const existingResults = Array.isArray(existingQuiz?.[resultsField]) ? existingQuiz[resultsField] : [];
+        const hasExistingQuizAttempt = existingResults.length > 0;
+
+        const basePayload = {
+          clerkId,
+          quizId: clerkId,
+          completed: true,
+          [resultsField]: questionResults,
+        };
+
+        if (!existingQuiz) {
+          const response = await fetch("/api/quiz", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...basePayload,
+              [beforeScoreField]: finalCorrectCount,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Unable to create quiz results");
+          }
+          return;
+        }
+
+        const response = await fetch(`/api/quiz/${existingQuiz._id ?? existingQuiz.quizId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...basePayload,
+            [hasExistingQuizAttempt ? afterScoreField : beforeScoreField]: finalCorrectCount,
+            ...(!hasExistingQuizAttempt ? { [afterScoreField]: existingQuiz[afterScoreField] ?? 0 } : {}),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to save quiz results");
+        }
+      } catch (error) {
+        hasSavedResults.current = false;
+        console.error("Unable to save quiz results:", error);
+      }
+    }
+
+    saveQuizResults();
+  }, [answersByQuestionId, finalCorrectCount, isSignedIn, questions, quizId, stage, user?.id]);
 
   if (totalQuestions === 0) {
     return (

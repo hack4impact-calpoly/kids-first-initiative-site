@@ -6,7 +6,7 @@ const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 
 // !IMPORTANT, add this to your env:
 // NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
-//otherwise auth.protect() will default to clerks hosted login route.
+//otherwise auth().protect() will default to clerks hosted login route.
 
 //Keep in mind when you change roles, it wont appear until clerks session token refreshes.
 //https://clerk.com/docs/guides/sessions/customize-session-tokens
