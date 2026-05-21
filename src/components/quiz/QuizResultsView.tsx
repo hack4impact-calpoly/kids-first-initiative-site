@@ -52,7 +52,7 @@ export default function QuizResultsView({
           Awesome Job! 🌟
         </Text>
         <Text mb={{ base: 3, md: 5 }} fontSize={{ base: "16px", md: "30px" }} color="#6e7076">
-          {resultsSubtitle || `You&apos;ve finished the ${quizTitle}.`}
+          {resultsSubtitle || `You've finished the ${quizTitle}.`}
         </Text>
 
         <Box bg="#ededee" borderRadius="15px" px={{ base: 5, md: 8 }} py={{ base: 5, md: 7 }}>
