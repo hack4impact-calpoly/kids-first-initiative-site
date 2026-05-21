@@ -17,6 +17,7 @@ type QuizExperienceProps = {
   estimatedMinutes?: number;
   previousCorrectCount?: number;
   backToGamesHref?: string;
+  backToGamesText?: string;
 };
 
 type QuizStage = "intro" | "questions" | "results";
@@ -29,6 +30,7 @@ export default function QuizExperience({
   estimatedMinutes = 5,
   previousCorrectCount = 0,
   backToGamesHref = "/playerDashboard",
+  backToGamesText,
 }: QuizExperienceProps) {
   const [stage, setStage] = useState<QuizStage>("intro");
   const [isReviewingAnswers, setIsReviewingAnswers] = useState(false);
@@ -127,6 +129,7 @@ export default function QuizExperience({
         boundedPreviousCorrect={boundedPreviousCorrect}
         improvementPct={improvementPct}
         backToGamesHref={backToGamesHref}
+        backToGamesText={backToGamesText}
         onReviewAnswers={handleReviewAnswers}
       />
     );

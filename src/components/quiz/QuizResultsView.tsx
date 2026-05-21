@@ -11,6 +11,7 @@ type QuizResultsViewProps = {
   boundedPreviousCorrect: number;
   improvementPct: number;
   backToGamesHref: string;
+  backToGamesText?: string;
   onReviewAnswers: () => void;
 };
 
@@ -22,6 +23,7 @@ export default function QuizResultsView({
   boundedPreviousCorrect,
   improvementPct,
   backToGamesHref,
+  backToGamesText,
   onReviewAnswers,
 }: QuizResultsViewProps) {
   const beforeProgressPct = totalQuestions > 0 ? (boundedPreviousCorrect / totalQuestions) * 100 : 0;
@@ -136,7 +138,7 @@ export default function QuizResultsView({
             textDecoration="none"
             _hover={{ bg: "#1f1f5f", textDecoration: "none" }}
           >
-            Back to Games →
+            {backToGamesText || "Back to Games →"}
           </ChakraLink>
         </HStack>
       </VStack>

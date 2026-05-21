@@ -54,7 +54,12 @@ export default async function PlayerDashboardPage() {
 
         <div className={styles.cardsRow}>
           {cards.map((card) => {
-            const href = card.saveId ? `/${card.gameId}?saveId=${card.saveId}` : `/${card.gameId}`;
+            const quizRoutes: Record<string, string> = {
+              penguinRunGame: "penguinRunQuiz",
+              statesOfMatterGame: "threeStatesOfMatterQuiz",
+            };
+            const quizRoute = quizRoutes[card.gameId] || card.gameId;
+            const href = card.saveId ? `/${quizRoute}?saveId=${card.saveId}` : `/${quizRoute}`;
 
             return (
               <article key={card.gameId} className={styles.card}>
