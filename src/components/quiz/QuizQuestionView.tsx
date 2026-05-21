@@ -63,6 +63,7 @@ export default function QuizQuestionView({
           <VStack align="stretch" gap={3}>
             {question.options.map((option) => {
               const isSelected = selectedOptionId === option.id;
+              const isCorrectAnswer = isReviewingAnswers && option.id === question.correctOptionId;
               const isSelectedCorrect = isReviewingAnswers && isSelected && option.id === question.correctOptionId;
               const isSelectedWrong = isReviewingAnswers && isSelected && option.id !== question.correctOptionId;
 
@@ -70,24 +71,31 @@ export default function QuizQuestionView({
                 ? "#2f9e44"
                 : isSelectedWrong
                   ? "#d64545"
-                  : isSelected
-                    ? "#3f54a5"
-                    : "#d0d0d3";
+                  : isCorrectAnswer
+                    ? "#2f9e44"
+                    : isSelected
+                      ? "#3f54a5"
+                      : "#d0d0d3";
               const optionBg = isSelectedCorrect
                 ? "#d8f5df"
                 : isSelectedWrong
                   ? "#f9dddd"
-                  : isSelected
-                    ? "#d8dded"
-                    : "white";
+                  : isCorrectAnswer
+                    ? "#d8f5df"
+                    : isSelected
+                      ? "#d8dded"
+                      : "white";
               const badgeBg = isSelectedCorrect
                 ? "#2f9e44"
                 : isSelectedWrong
                   ? "#d64545"
-                  : isSelected
-                    ? "#3f54a5"
-                    : "#f4f4f4";
-              const badgeColor = isSelected ? "white" : "#1a1b1f";
+                  : isCorrectAnswer
+                    ? "#2f9e44"
+                    : isSelected
+                      ? "#3f54a5"
+                      : "#f4f4f4";
+              const badgeColor = isSelected || isCorrectAnswer ? "white" : "#1a1b1f";
+              const isEmphasized = isSelected || isCorrectAnswer;
 
               return (
                 <Button
@@ -113,7 +121,11 @@ export default function QuizQuestionView({
                   >
                     {option.id}
                   </Circle>
-                  <Text fontSize={{ base: "22px", md: "29px" }} color="#1a1b1f" fontWeight={isSelected ? "700" : "500"}>
+                  <Text
+                    fontSize={{ base: "22px", md: "29px" }}
+                    color="#1a1b1f"
+                    fontWeight={isEmphasized ? "700" : "500"}
+                  >
                     {option.text}
                   </Text>
                 </Button>
