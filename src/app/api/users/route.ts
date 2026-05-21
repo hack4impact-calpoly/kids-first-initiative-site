@@ -1,6 +1,7 @@
 import connectDB from "@/database/db";
 import { NextResponse, NextRequest } from "next/server";
 import User from "@/database/userSchema";
+import { DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
 
 function deriveUsername(body: Record<string, unknown>) {
   const username = typeof body.username === "string" ? body.username.trim() : "";
@@ -22,9 +23,12 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
+    const requestedPhoto = typeof body.photo === "string" ? body.photo.trim() : DEFAULT_AVATAR_PHOTO;
+    const photo = isValidAvatarPhoto(requestedPhoto) ? requestedPhoto : DEFAULT_AVATAR_PHOTO;
     const userData = {
       ...body,
       username: deriveUsername(body),
+      photo,
     };
 
     if (userData.clerkId) {

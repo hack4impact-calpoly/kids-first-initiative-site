@@ -1,15 +1,28 @@
 import { auth } from "@clerk/nextjs/server";
+import connectDB from "@/database/db";
+import User from "@/database/userSchema";
 import { redirect } from "next/navigation";
 
 //Redirect the user to the proper dashboard
 
 export default async function Dashboard() {
-  const { sessionClaims } = await auth();
-  console.log("sessionClaims:", sessionClaims);
-  console.log("role:", sessionClaims?.role);
-  const role = sessionClaims?.role;
+  const { userId, sessionClaims } = await auth();
 
-  if (role === "admin") {
+  if (userId) {
+    await connectDB();
+    const dbUser = await User.findOne({ clerkId: userId }).lean<{ role?: string } | null>();
+    if (dbUser?.role === "admin") {
+      redirect("/adminDashboard");
+    }
+    if (dbUser?.role === "parent") {
+      redirect("/parentDashboard");
+    }
+    if (dbUser?.role === "educator") {
+      redirect("/educatorCreateClass");
+    }
+  }
+
+  if (sessionClaims?.role === "admin") {
     redirect("/adminDashboard");
   }
 

@@ -1,4 +1,3 @@
-import Navbar from "@/components/Navbar";
 import StatesOfMatterGameCard from "@/components/StatesOfMatterGameCard";
 import { Box, Flex, Heading, Text, SimpleGrid } from "@chakra-ui/react";
 
@@ -29,8 +28,6 @@ export default function StatesOfMatterPage() {
 
   return (
     <Box minH="100vh" bg="#F4F8FB">
-      <Navbar />
-
       <Flex direction="column" align="center" pt={16} px={4}>
         {/* Main Title: Bumped to 5xl for maximum impact */}
         <Heading as="h1" size={{ base: "3xl", md: "5xl" }} color="gray.900" mb={4} fontWeight="900" textAlign="center">

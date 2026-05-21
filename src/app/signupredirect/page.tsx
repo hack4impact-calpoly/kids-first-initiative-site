@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Flex, Spinner } from "@chakra-ui/react";
 
@@ -9,10 +9,27 @@ function getClerkName(nameParts: Array<string | null | undefined>) {
   return nameParts.filter(Boolean).join(" ").trim();
 }
 
-export default function SignUpRedirectPage() {
+function getDashboardRoute(role?: string) {
+  if (role === "admin") return "/adminDashboard";
+  if (role === "parent") return "/parentDashboard";
+  if (role === "educator") return "/educatorCreateClass";
+  return "/playerDashboard";
+}
+
+function RedirectSpinner() {
+  return (
+    <Flex minH="100vh" align="center" justify="center">
+      <Spinner size="xl" color="green.500" />
+    </Flex>
+  );
+}
+
+function SignUpRedirectContent() {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hasPosted = useRef(false);
+  const role = searchParams.get("role") || "player";
 
   useEffect(() => {
     if (!isLoaded || hasPosted.current) return;
@@ -41,7 +58,7 @@ export default function SignUpRedirectPage() {
         },
         body: JSON.stringify({
           name,
-          role: "player",
+          role,
           email,
           clerkId: user.id,
         }),
@@ -51,7 +68,8 @@ export default function SignUpRedirectPage() {
         throw new Error("Failed to create player record.");
       }
 
-      router.replace("/playerDashboard");
+      const dbUser = (await response.json()) as { role?: string };
+      router.replace(getDashboardRoute(dbUser.role));
     };
 
     createUser().catch((error) => {
@@ -59,11 +77,15 @@ export default function SignUpRedirectPage() {
       hasPosted.current = false;
       router.replace("/login/player");
     });
-  }, [isLoaded, isSignedIn, router, user]);
+  }, [isLoaded, isSignedIn, role, router, user]);
 
+  return <RedirectSpinner />;
+}
+
+export default function SignUpRedirectPage() {
   return (
-    <Flex minH="100vh" align="center" justify="center">
-      <Spinner size="xl" color="green.500" />
-    </Flex>
+    <Suspense fallback={<RedirectSpinner />}>
+      <SignUpRedirectContent />
+    </Suspense>
   );
 }

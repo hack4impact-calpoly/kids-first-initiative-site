@@ -13,7 +13,7 @@ const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
-  const { sessionClaims } = await auth().protect();
+  const { sessionClaims } = await auth();
   const role = sessionClaims?.role;
 
   // Protect admin routes (can pass a error instead)

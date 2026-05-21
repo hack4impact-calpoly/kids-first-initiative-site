@@ -14,12 +14,13 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { FaFlask } from "react-icons/fa";
-import { FiCalendar, FiDownload } from "react-icons/fi";
-import { AdminMetricsCard } from "@/app/components/AdminMetricsCard";
-import { AdminPeriod, AdminPeriodSelector } from "@/app/components/AdminPeriodSelector";
+import { FiCalendar, FiDownload, FiSettings } from "react-icons/fi";
+import { AdminMetricsCard } from "@/components/AdminMetricsCard";
+import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
 
 type SessionRecord = {
   _id: string;
@@ -40,6 +41,14 @@ type SummaryMetrics = {
 type TrendMetric = {
   label: string;
   direction: "up" | "down" | "flat" | "na";
+};
+
+type AdminUser = {
+  _id: string;
+  clerkId?: string;
+  name?: string;
+  email?: string;
+  role?: string;
 };
 
 const GAME_CARDS = [
@@ -123,11 +132,54 @@ function formatDateForRange(date: Date): string {
 }
 
 export default function AdminDashboardPage() {
+  const { user } = useUser();
   const [period, setPeriod] = useState<AdminPeriod>("7d");
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState("");
+  const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
+  const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+
+  const fallbackAdminName = user?.fullName?.trim() || user?.username || "Alex Admin";
+  const fallbackAdminEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const adminName = adminUser?.name ?? fallbackAdminName;
+  const adminEmail = adminUser?.email ?? fallbackAdminEmail;
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadAdminUser() {
+      try {
+        const response = await fetch("/api/users", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to fetch users.");
+
+        const users: AdminUser[] = await response.json();
+        const matchedUser = users.find((candidate) => candidate.clerkId === user?.id) ?? null;
+
+        if (!isActive) return;
+        if (!matchedUser?._id) {
+          setAdminUser(null);
+          return;
+        }
+
+        const userResponse = await fetch(`/api/users/${matchedUser._id}`, { cache: "no-store" });
+        if (!userResponse.ok) throw new Error("Failed to fetch admin profile.");
+
+        const resolvedUser: AdminUser = await userResponse.json();
+        if (isActive) setAdminUser(resolvedUser);
+      } catch (error) {
+        console.error("Failed to load admin user:", error);
+      }
+    }
+
+    loadAdminUser();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let isActive = true;
@@ -260,87 +312,13 @@ export default function AdminDashboardPage() {
     >
       <Container maxW="6xl">
         <VStack align="stretch" gap={6}>
-          <Flex
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            borderRadius="16px"
-            px={{ base: 4, md: 5 }}
-            py={3}
-            justify="space-between"
-            align="center"
-            direction={{ base: "column", md: "row" }}
-            gap={4}
-          >
-            <HStack gap={3}>
-              <Flex
-                h="40px"
-                w="40px"
-                borderRadius="12px"
-                bg="blue.600"
-                color="white"
-                align="center"
-                justify="center"
-                fontWeight="800"
-                fontSize="sm"
-              >
-                KFI
-              </Flex>
-              <Box>
-                <Text fontWeight="800" color="gray.900" lineHeight="1.2">
-                  Kids First Initiative Admin
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  Analytics Console
-                </Text>
-              </Box>
-            </HStack>
-
-            <HStack gap={3}>
-              <Box textAlign="right">
-                <Text fontWeight="700" color="gray.800" lineHeight="1.2">
-                  Alex Admin
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  System Administrator
-                </Text>
-              </Box>
-              <Avatar.Root size="sm">
-                <Avatar.Fallback name="Alex Admin" />
-              </Avatar.Root>
-            </HStack>
-          </Flex>
-
           <Box>
             <Heading color="gray.900" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.1">
               Performance Overview
             </Heading>
-            <Text color="blue.600" fontWeight="600" textDecorationLine="underline" textUnderlineOffset="5px" mt={2}>
-              Real-time data for your educational gaming suite.
-            </Text>
           </Box>
 
-          <Flex
-            justify="space-between"
-            align={{ base: "stretch", md: "center" }}
-            direction={{ base: "column", md: "row" }}
-            gap={3}
-          >
-            <Button
-              variant="outline"
-              borderColor="gray.300"
-              color="gray.700"
-              bg="white"
-              disabled
-              w={{ base: "full", md: "auto" }}
-            >
-              <HStack gap={2}>
-                <Icon as={FiDownload} />
-                <Text>Export Data</Text>
-              </HStack>
-            </Button>
-            <AdminPeriodSelector value={period} onChange={setPeriod} />
-          </Flex>
+          <AdminPeriodSelector value={period} onChange={setPeriod} />
 
           <HStack gap={2} color="gray.600">
             <Icon as={FiCalendar} boxSize={4} />
