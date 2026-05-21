@@ -111,7 +111,7 @@ export default function AdminSignUpPage() {
 
   useEffect(() => {
     if (authLoaded && isSignedIn) {
-      router.replace("/adminDashboard");
+      router.replace("/dashboard");
     }
   }, [authLoaded, isSignedIn, router]);
 
@@ -170,7 +170,7 @@ export default function AdminSignUpPage() {
         return;
       }
       // Anything else (phone verification, other requirements, captcha redirect, etc.) hands off to Clerk's drop-in.
-      router.replace("/sign-up/admin/factor-one");
+      router.replace("/sign-up/facilitator/factor-one");
     } catch (err) {
       setError(messageFromClerkError(err, "Could not create the account. Please check the fields and try again."));
     } finally {
@@ -190,7 +190,7 @@ export default function AdminSignUpPage() {
         router.replace(getPostSignupRoute(role));
         return;
       }
-      router.replace("/sign-up/admin/factor-one");
+      router.replace("/sign-up/facilitator/factor-one");
     } catch (err) {
       setError(messageFromClerkError(err, "That code didn't work. Please try again."));
     } finally {
@@ -220,7 +220,7 @@ export default function AdminSignUpPage() {
   if (isClerkRoute) {
     return (
       <Flex height="100vh" alignItems="center" justifyContent="center">
-        <SignUp path="/sign-up/admin" signInUrl={LOGIN_ROUTE} forceRedirectUrl={getPostSignupRoute(role)} />
+        <SignUp path="/sign-up/facilitator" signInUrl={LOGIN_ROUTE} forceRedirectUrl={getPostSignupRoute(role)} />
       </Flex>
     );
   }
