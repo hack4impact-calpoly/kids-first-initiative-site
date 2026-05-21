@@ -172,6 +172,7 @@ export default function Navbar() {
         onSaveAvatar={handleSaveAvatar}
         selectedPhoto={selectedPhoto}
         name={displayName}
+        role={displayRole}
       />
 
       <EducatorProfileCard

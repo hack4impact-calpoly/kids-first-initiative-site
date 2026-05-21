@@ -112,6 +112,7 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
         onSaveAvatar={handleSaveAvatar}
         selectedPhoto={selectedPhoto}
         name={name}
+        role={role}
       />
     </>
   );

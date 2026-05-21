@@ -18,7 +18,13 @@ type ProfileCardPopupProps = {
   onSaveAvatar: (nextPhoto: string) => Promise<boolean>;
   selectedPhoto?: string;
   name?: string;
+  role?: string;
 };
+
+function formatProfileRole(role?: string) {
+  if (!role) return "STUDENT";
+  return role.toUpperCase();
+}
 
 export function ProfileCardPopup({
   isOpen,
@@ -26,6 +32,7 @@ export function ProfileCardPopup({
   onSaveAvatar,
   selectedPhoto,
   name = "Player",
+  role,
 }: ProfileCardPopupProps) {
   const [pendingPhoto, setPendingPhoto] = useState(selectedPhoto || DEFAULT_AVATAR_PHOTO);
   const [isSaving, setIsSaving] = useState(false);
@@ -129,7 +136,7 @@ export function ProfileCardPopup({
                 letterSpacing="0.5px"
                 color="#747474"
               >
-                EXPLORER
+                {formatProfileRole(role)}
               </Text>
 
               <Box flex="1" />
