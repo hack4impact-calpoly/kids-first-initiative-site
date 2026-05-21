@@ -16,7 +16,7 @@ type CurrentUserResponse = {
 };
 
 function formatRole(role?: string) {
-  if (!role) return "STUDENT";
+  if (!role) return "";
   if (role === "educator") return "EDUCATOR";
   if (role === "parent") return "PARENT";
   if (role === "admin") return "ADMIN";

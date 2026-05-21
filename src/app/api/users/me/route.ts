@@ -5,7 +5,12 @@ import User from "@/database/userSchema";
 
 export async function GET() {
   try {
-    const { userId } = await auth.protect();
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
 
     const user = await User.findOne({ clerkId: userId }).lean<{
