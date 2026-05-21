@@ -1,4 +1,5 @@
 import connectDB from "@/database/db";
+import User from "@/database/userSchema";
 import Quiz from "@/database/quizSchema";
 import User from "@/database/userSchema";
 import { auth } from "@clerk/nextjs/server";
@@ -72,11 +73,13 @@ function normalizeQuestionResults(rawResults: unknown, fieldName: string) {
 
 // GET /api/quiz
 // Fetch all quiz documents
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const quizzes = await Quiz.find({}).sort({ createdAt: -1 }).lean();
+    const clerkId = req.nextUrl.searchParams.get("clerkId")?.trim();
+    const filter = clerkId ? { clerkId } : {};
+    const quizzes = await Quiz.find(filter).sort({ createdAt: -1 }).lean();
     return NextResponse.json(quizzes, { status: 200 });
   } catch (err: any) {
     // Any DB/query failure is returned as a 500 so callers can treat this as a server-side error.
