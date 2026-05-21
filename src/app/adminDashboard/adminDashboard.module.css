@@ -1,0 +1,272 @@
+.page {
+  min-height: calc(100vh - 64px);
+  background: #f7f9fb;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+  min-height: calc(100vh - 64px);
+  padding: 32px clamp(20px, 4vw, 48px);
+  background: #f7f9fb;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 2.6vw, 32px);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: #1b1b1b;
+}
+
+.subtitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #525252;
+}
+
+.statusCard {
+  width: 100%;
+  padding: 24px;
+  border: 1px solid #e3e6ed;
+  border-radius: 12px;
+  background: #ffffff;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: 16px;
+  color: #525252;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.statCard {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 129px;
+  padding: 20px 24px;
+  background: #ffffff;
+  border: 1px solid #e3e6ed;
+  border-radius: 12px;
+}
+
+.statLabel {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.6px;
+  color: #525252;
+}
+
+.statValue {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 2.8vw, 44px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #1b1b1b;
+}
+
+.statHelper {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #228b45;
+}
+
+.activityCard,
+.chartCard {
+  box-sizing: border-box;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e3e6ed;
+  border-radius: 12px;
+}
+
+.activityCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  color: #1b1b1b;
+}
+
+.tableHeader,
+.tableRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 2.1fr) minmax(140px, 1.8fr) minmax(90px, 1fr) minmax(110px, 1.1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.tableHeader {
+  padding: 8px 0;
+  border-bottom: 1px solid #e3e6ed;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.8px;
+  color: #525252;
+}
+
+.tableBody {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tableRow {
+  align-items: center;
+  padding: 12px 0;
+}
+
+.userName,
+.scoreValue {
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #1b1b1b;
+}
+
+.userName,
+.scoreValue {
+  font-weight: 600;
+}
+
+.gameName,
+.lastActive,
+.emptyState {
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #525252;
+}
+
+.emptyState {
+  margin: 0;
+  padding: 12px 0;
+}
+
+.chartCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(12px, 2vw, 24px);
+  align-items: end;
+  width: 100%;
+  min-height: 220px;
+}
+
+.barColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-height: 180px;
+}
+
+.barTrack {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 160px;
+}
+
+.bar {
+  width: min(40px, 55%);
+  min-height: 18px;
+  border-radius: 6px;
+  background: #6694d9;
+}
+
+.barLabel {
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #525252;
+}
+
+@media (max-width: 1100px) {
+  .statsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .main {
+    padding: 24px 20px;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f2f7;
+  }
+
+  .chartCard {
+    overflow-x: auto;
+  }
+
+  .bars {
+    min-width: 560px;
+  }
+}
+
+@media (max-width: 560px) {
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+}

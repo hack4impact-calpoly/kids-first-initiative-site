@@ -16,7 +16,7 @@ export default async function PeguinRunQuizPage({ searchParams }: QuizPageProps)
   const saveId = resolvedSearchParams?.saveId;
   const quizPhase = resolvedSearchParams?.phase === "after" ? "after" : "before";
   const penguinQuestions = getQuizQuestions("penguinRunQuiz");
-  let previousCorrectCount = 0;
+  let previousCorrectCount = -1;
 
   if (quizPhase === "after") {
     const { userId } = await auth();
@@ -24,7 +24,7 @@ export default async function PeguinRunQuizPage({ searchParams }: QuizPageProps)
     if (userId) {
       await connectDB();
       const quiz = await Quiz.findOne({ clerkId: userId }).lean<{ penguinRunScoreBefore?: number } | null>();
-      previousCorrectCount = typeof quiz?.penguinRunScoreBefore === "number" ? quiz.penguinRunScoreBefore : 0;
+      previousCorrectCount = typeof quiz?.penguinRunScoreBefore === "number" ? quiz.penguinRunScoreBefore : -1;
     }
   }
 

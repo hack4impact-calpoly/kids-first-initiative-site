@@ -16,7 +16,7 @@ export default async function ThreeStatesOfMatterQuizPage({ searchParams }: Quiz
   const saveId = resolvedSearchParams?.saveId;
   const quizPhase = resolvedSearchParams?.phase === "after" ? "after" : "before";
   const statesOfMatterQuestions = getQuizQuestions("statesOfMatterQuiz");
-  let previousCorrectCount = 0;
+  let previousCorrectCount = -1;
 
   if (quizPhase === "after") {
     const { userId } = await auth();
@@ -24,7 +24,7 @@ export default async function ThreeStatesOfMatterQuizPage({ searchParams }: Quiz
     if (userId) {
       await connectDB();
       const quiz = await Quiz.findOne({ clerkId: userId }).lean<{ statesOfMatterScoreBefore?: number } | null>();
-      previousCorrectCount = typeof quiz?.statesOfMatterScoreBefore === "number" ? quiz.statesOfMatterScoreBefore : 0;
+      previousCorrectCount = typeof quiz?.statesOfMatterScoreBefore === "number" ? quiz.statesOfMatterScoreBefore : -1;
     }
   }
 
