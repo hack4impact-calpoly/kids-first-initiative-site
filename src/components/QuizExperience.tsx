@@ -11,8 +11,10 @@ export type { QuizOption, QuizQuestion } from "@/components/quiz/types";
 
 type QuizExperienceProps = {
   quizKey: "penguinRunQuiz" | "statesOfMatterQuiz";
+  quizPhase?: "before" | "after";
   quizTitle: string;
   quizSubtitle: string;
+  resultsSubtitle?: string;
   questions: QuizQuestion[];
   pointsPerQuestion?: number;
   estimatedMinutes?: number;
@@ -25,8 +27,10 @@ type QuizStage = "intro" | "questions" | "results";
 
 export default function QuizExperience({
   quizKey,
+  quizPhase = "before",
   quizTitle,
   quizSubtitle,
+  resultsSubtitle,
   questions,
   pointsPerQuestion = 10,
   estimatedMinutes = 5,
@@ -79,7 +83,9 @@ export default function QuizExperience({
     const payload =
       quizKey === "statesOfMatterQuiz"
         ? {
-            statesOfMatterScoreBefore: finalCorrectCount,
+            ...(quizPhase === "after"
+              ? { stateOfMatterScoreAfter: finalCorrectCount }
+              : { statesOfMatterScoreBefore: finalCorrectCount }),
             statesOfMatterQuestionResults: questions.map((question) => {
               const selectedOptionId = answersByQuestionId[question.questionId];
               const selectedOption = question.options.find((option) => option.id === selectedOptionId);
@@ -96,7 +102,9 @@ export default function QuizExperience({
             }),
           }
         : {
-            penguinRunScoreBefore: finalCorrectCount,
+            ...(quizPhase === "after"
+              ? { penguinRunScoreAfter: finalCorrectCount }
+              : { penguinRunScoreBefore: finalCorrectCount }),
             penguinRunQuestionResults: questions.map((question) => {
               const selectedOptionId = answersByQuestionId[question.questionId];
               const selectedOption = question.options.find((option) => option.id === selectedOptionId);
@@ -130,7 +138,7 @@ export default function QuizExperience({
         console.error("Failed to save quiz results:", error);
       }
     })();
-  }, [answersByQuestionId, finalCorrectCount, questions, quizKey, stage]);
+  }, [answersByQuestionId, finalCorrectCount, questions, quizKey, quizPhase, stage]);
 
   function handleSelect(optionId: string) {
     if (!currentQuestion || isReviewingAnswers) return;
@@ -196,6 +204,7 @@ export default function QuizExperience({
     return (
       <QuizResultsView
         quizTitle={quizTitle}
+        resultsSubtitle={resultsSubtitle}
         totalQuestions={totalQuestions}
         finalCorrectCount={finalCorrectCount}
         finalPoints={finalPoints}
@@ -205,6 +214,8 @@ export default function QuizExperience({
         backToGamesText={backToGamesText}
         onReviewAnswers={handleReviewAnswers}
         hasSavedResults={hasSavedResults}
+        showLearningProgress={quizPhase === "after"}
+        showReviewAnswersButton={quizPhase === "after"}
       />
     );
   }
