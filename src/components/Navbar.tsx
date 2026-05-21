@@ -6,9 +6,12 @@ import { useUser } from "@clerk/nextjs";
 import { Box, Button, Flex, HStack, Spinner, Text } from "@chakra-ui/react";
 import { ProfileCardPopup } from "./ProfileCardPopup";
 import EducatorProfileCard from "./EducatorProfileCard";
+import AdminProfileCard from "./AdminProfileCard";
+import AdminSettingsPopup from "./AdminSettingsPopup";
 import { avatarPhotoSrc, DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
 
 type CurrentUserResponse = {
+  _id?: string;
   name?: string;
   role?: string;
   photo?: string;
@@ -27,6 +30,9 @@ export default function Navbar() {
   const { user } = useUser();
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
   const [isEducatorProfileCardOpen, setEducatorProfileCardOpen] = useState(false);
+  const [isAdminProfileCardOpen, setAdminProfileCardOpen] = useState(false);
+  const [isAdminSettingsOpen, setAdminSettingsOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState(DEFAULT_AVATAR_PHOTO);
   const [displayName, setDisplayName] = useState("Player");
   const [displayRole, setDisplayRole] = useState("STUDENT");
@@ -44,12 +50,14 @@ export default function Navbar() {
         const data = (await response.json()) as CurrentUserResponse;
         if (!isActive) return;
 
+        setCurrentUserId(data._id?.trim() || "");
         setDisplayName(data.name?.trim() || user?.fullName?.trim() || user?.username || "Player");
         setDisplayRole(formatRole(data.role));
         setSelectedPhoto(isValidAvatarPhoto(data.photo) ? data.photo : DEFAULT_AVATAR_PHOTO);
         setDisplayEmail(data.email?.trim() || user?.primaryEmailAddress?.emailAddress || "");
       } catch {
         if (!isActive) return;
+        setCurrentUserId("");
         setDisplayName(user?.fullName?.trim() || user?.username || "Player");
         setDisplayRole("STUDENT");
         setSelectedPhoto(DEFAULT_AVATAR_PHOTO);
@@ -93,6 +101,7 @@ export default function Navbar() {
 
   const activeAvatarSrc = avatarPhotoSrc(selectedPhoto);
   const isEducator = displayRole === "EDUCATOR";
+  const isAdmin = displayRole === "ADMIN";
 
   return (
     <>
@@ -132,6 +141,10 @@ export default function Navbar() {
 
             <Button
               onClick={() => {
+                if (isAdmin) {
+                  setAdminProfileCardOpen(true);
+                  return;
+                }
                 if (isEducator) {
                   setEducatorProfileCardOpen(true);
                   return;
@@ -181,6 +194,29 @@ export default function Navbar() {
         name={displayName}
         email={displayEmail}
         avatarSrc={activeAvatarSrc}
+      />
+
+      <AdminProfileCard
+        isOpen={isAdminProfileCardOpen}
+        onClose={() => setAdminProfileCardOpen(false)}
+        name={displayName}
+        avatarSrc={activeAvatarSrc}
+        onAccountSettingsClick={() => {
+          setAdminProfileCardOpen(false);
+          setAdminSettingsOpen(true);
+        }}
+      />
+
+      <AdminSettingsPopup
+        isOpen={isAdminSettingsOpen}
+        onClose={() => setAdminSettingsOpen(false)}
+        userId={currentUserId || undefined}
+        fallbackName={displayName}
+        fallbackEmail={displayEmail}
+        onProfileUpdated={(profile) => {
+          setDisplayName(profile.name);
+          setDisplayEmail(profile.email);
+        }}
       />
     </>
   );

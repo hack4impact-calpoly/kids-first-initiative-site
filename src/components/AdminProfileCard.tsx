@@ -35,78 +35,112 @@ export default function AdminProfileCard({
 
   return (
     <Box position="fixed" inset={0} zIndex={1500}>
-      <Box position="absolute" inset={0} bg="blackAlpha.500" backdropFilter="blur(7px)" onClick={onClose} />
+      <Box position="absolute" inset={0} onClick={onClose} />
 
-      <Box position="relative" h="full" display="flex" alignItems="center" justifyContent="center" p={4}>
-        <VStack
-          w="full"
-          maxW="420px"
-          bg="white"
-          borderRadius={{ base: "28px", md: "36px" }}
-          px={{ base: 7, md: 9 }}
-          pt={{ base: 7, md: 8 }}
-          pb={{ base: 8, md: 9 }}
-          gap={6}
-          align="stretch"
-          boxShadow="0 22px 48px rgba(15, 23, 42, 0.24)"
-        >
-          <HStack gap={{ base: 4, md: 6 }} align="center">
-            <Avatar.Root boxSize={{ base: "76px", md: "88px" }}>
-              <Avatar.Fallback name={name} />
-              <Avatar.Image src={avatarSrc} />
-            </Avatar.Root>
+      <Box
+        position="absolute"
+        top={{ base: "88px", md: "96px" }}
+        right={{ base: "14px", md: "20px", lg: "28px" }}
+        w={{ base: "300px", md: "340px" }}
+        bg="white"
+        border="1px solid #D9D9D9"
+        borderRadius="18px"
+        boxShadow="0 14px 34px rgba(0, 0, 0, 0.12)"
+        overflow="hidden"
+      >
+        <HStack align="center" gap={4} px={5} pt={5} pb={4}>
+          <Avatar.Root boxSize="58px" flexShrink={0}>
+            <Avatar.Fallback name={name} />
+            <Avatar.Image src={avatarSrc} />
+          </Avatar.Root>
 
-            <Box minW={0}>
-              <Text color="#202638" fontSize={{ base: "xl", md: "2xl" }} fontWeight="900" lineHeight="1.05">
-                {name}
-              </Text>
-              <Text color="#6c7078" fontSize={{ base: "md", md: "xl" }} fontWeight="700" lineHeight="1.15" mt={1}>
-                System Admin
+          <VStack align="flex-start" gap={0.5} flex="1" minW={0}>
+            <Text
+              fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+              fontWeight="600"
+              fontSize="17px"
+              lineHeight="24px"
+              color="#1B1B1B"
+              truncate
+            >
+              {name}
+            </Text>
+            <Text
+              fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+              fontWeight="400"
+              fontSize="14px"
+              lineHeight="20px"
+              color="#747474"
+            >
+              System Admin
+            </Text>
+            <Box mt={1} px={3} py={1} borderRadius="999px" bg="#E6ECFA">
+              <Text
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontWeight="600"
+                fontSize="12px"
+                lineHeight="18px"
+                letterSpacing="0.5px"
+                color="#3952A4"
+              >
+                KFI ADMIN
               </Text>
             </Box>
-          </HStack>
-
-          <Separator borderColor="#edf0f4" />
-
-          <VStack align="stretch" gap={6}>
-            <Button
-              onClick={onAccountSettingsClick}
-              variant="ghost"
-              h="54px"
-              px={4}
-              justifyContent="flex-start"
-              color="#273248"
-              borderRadius="14px"
-              _hover={{ bg: "gray.50" }}
-            >
-              <HStack gap={4}>
-                <FiUserCheck size={24} color="#2e74a1" />
-                <Text fontSize={{ base: "md", md: "xl" }} fontWeight="900">
-                  Account Settings
-                </Text>
-              </HStack>
-            </Button>
-
-            <SignOutButton redirectUrl="/home">
-              <Button
-                variant="ghost"
-                h="54px"
-                px={4}
-                justifyContent="flex-start"
-                color="#c74740"
-                borderRadius="14px"
-                _hover={{ bg: "red.50" }}
-              >
-                <HStack gap={4}>
-                  <FiLogOut size={24} />
-                  <Text fontSize={{ base: "md", md: "xl" }} fontWeight="900">
-                    Sign Out
-                  </Text>
-                </HStack>
-              </Button>
-            </SignOutButton>
           </VStack>
-        </VStack>
+        </HStack>
+
+        <Separator borderColor="#D9D9D9" />
+
+        <Button
+          onClick={onAccountSettingsClick}
+          variant="ghost"
+          w="full"
+          h="54px"
+          px={4}
+          borderRadius="0"
+          justifyContent="flex-start"
+          _hover={{ bg: "#F8FAFD" }}
+        >
+          <HStack gap={3}>
+            <FiUserCheck size={18} color="#3952A4" />
+            <Text
+              fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+              fontWeight="500"
+              fontSize="15px"
+              lineHeight="22px"
+              color="#1B1B1B"
+            >
+              Account Settings
+            </Text>
+          </HStack>
+        </Button>
+
+        <Separator borderColor="#D9D9D9" />
+
+        <SignOutButton redirectUrl="/home">
+          <Button
+            variant="ghost"
+            w="full"
+            h="54px"
+            px={4}
+            borderRadius="0"
+            justifyContent="flex-start"
+            _hover={{ bg: "#FCF4F4" }}
+          >
+            <HStack gap={3}>
+              <FiLogOut size={18} color="#C83C3C" />
+              <Text
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontWeight="500"
+                fontSize="15px"
+                lineHeight="22px"
+                color="#C83C3C"
+              >
+                Sign Out
+              </Text>
+            </HStack>
+          </Button>
+        </SignOutButton>
       </Box>
     </Box>
   );

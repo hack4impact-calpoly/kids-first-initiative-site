@@ -314,66 +314,6 @@ export default function AdminDashboardPage() {
     >
       <Container maxW="6xl">
         <VStack align="stretch" gap={6}>
-          <Flex
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            borderRadius="16px"
-            px={{ base: 4, md: 5 }}
-            py={3}
-            justify="space-between"
-            align="center"
-            direction={{ base: "column", md: "row" }}
-            gap={4}
-          >
-            <HStack gap={3}>
-              <Flex
-                h="40px"
-                w="40px"
-                borderRadius="12px"
-                bg="blue.600"
-                color="white"
-                align="center"
-                justify="center"
-                fontWeight="800"
-                fontSize="sm"
-              >
-                KFI
-              </Flex>
-              <Box>
-                <Text fontWeight="800" color="gray.900" lineHeight="1.2">
-                  Kids First Initiative Admin
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  Analytics Console
-                </Text>
-              </Box>
-            </HStack>
-
-            <Button
-              variant="ghost"
-              h="auto"
-              p={2}
-              borderRadius="14px"
-              onClick={() => setIsAdminProfileOpen(true)}
-              _hover={{ bg: "gray.50" }}
-            >
-              <HStack gap={3}>
-                <Box textAlign="right">
-                  <Text fontWeight="700" color="gray.800" lineHeight="1.2">
-                    {adminName}
-                  </Text>
-                  <Text fontSize="xs" color="gray.500">
-                    System Administrator
-                  </Text>
-                </Box>
-                <Avatar.Root size="sm">
-                  <Avatar.Fallback name={adminName} />
-                </Avatar.Root>
-              </HStack>
-            </Button>
-          </Flex>
-
           <Box>
             <Heading color="gray.900" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.1">
               Performance Overview
@@ -463,30 +403,6 @@ export default function AdminDashboardPage() {
           )}
         </VStack>
       </Container>
-      <AdminProfileCard
-        isOpen={isAdminProfileOpen}
-        onClose={() => setIsAdminProfileOpen(false)}
-        name={adminName}
-        onAccountSettingsClick={() => {
-          setIsAdminProfileOpen(false);
-          setIsAdminSettingsOpen(true);
-        }}
-      />
-      <AdminSettingsPopup
-        isOpen={isAdminSettingsOpen}
-        onClose={() => setIsAdminSettingsOpen(false)}
-        userId={adminUser?._id}
-        fallbackName={adminName}
-        fallbackEmail={adminEmail}
-        onProfileUpdated={(profile) => {
-          setAdminUser((currentUser) => ({
-            _id: currentUser?._id ?? "",
-            clerkId: currentUser?.clerkId,
-            role: currentUser?.role,
-            ...profile,
-          }));
-        }}
-      />
     </Box>
   );
 }
