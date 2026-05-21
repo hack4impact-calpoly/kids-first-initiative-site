@@ -10,7 +10,10 @@ export type AvatarOption = {
   src: string;
 };
 
-export const AVATAR_OPTIONS: AvatarOption[] = AVATAR_PHOTOS.map((photo) => ({ photo, src: avatarPhotoSrc(photo) }));
+export const AVATAR_OPTIONS: AvatarOption[] = AVATAR_PHOTOS.slice(0, 4).map((photo) => ({
+  photo,
+  src: avatarPhotoSrc(photo),
+}));
 
 type ProfileCardPopupProps = {
   isOpen: boolean;
