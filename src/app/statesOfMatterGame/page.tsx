@@ -1,7 +1,20 @@
+import Link from "next/link";
 import StatesOfMatterGameCard from "@/components/StatesOfMatterGameCard";
 import { Box, Flex, Heading, Text, SimpleGrid } from "@chakra-ui/react";
 
-export default function StatesOfMatterPage() {
+type StatesOfMatterPageProps = {
+  searchParams?: Promise<{
+    saveId?: string;
+  }>;
+};
+
+export default async function StatesOfMatterPage({ searchParams }: StatesOfMatterPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const saveId = resolvedSearchParams?.saveId;
+  const finishHref = saveId
+    ? `/threeStatesOfMatterQuiz?saveId=${saveId}&phase=after`
+    : "/threeStatesOfMatterQuiz?phase=after";
+
   const games = [
     {
       title: "Wire Spark",
@@ -29,7 +42,6 @@ export default function StatesOfMatterPage() {
   return (
     <Box minH="100vh" bg="#F4F8FB">
       <Flex direction="column" align="center" pt={16} px={4}>
-        {/* Main Title: Bumped to 5xl for maximum impact */}
         <Heading as="h1" size={{ base: "3xl", md: "5xl" }} color="gray.900" mb={4} fontWeight="900" textAlign="center">
           Choose Your Experiment
         </Heading>
@@ -43,6 +55,26 @@ export default function StatesOfMatterPage() {
             <StatesOfMatterGameCard key={index} {...game} />
           ))}
         </SimpleGrid>
+
+        <Box mt={12} w="full" maxW="6xl" px={4} display="flex" justifyContent="flex-end">
+          <Link
+            href={finishHref}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "46px",
+              padding: "0 32px",
+              backgroundColor: "#211E5D",
+              color: "#F8F8F8",
+              borderRadius: "12px",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Finish
+          </Link>
+        </Box>
       </Flex>
     </Box>
   );

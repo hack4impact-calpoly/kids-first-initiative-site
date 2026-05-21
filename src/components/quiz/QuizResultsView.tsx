@@ -5,24 +5,34 @@ import { Box, Button, Circle, HStack, Link as ChakraLink, SimpleGrid, Text, VSta
 
 type QuizResultsViewProps = {
   quizTitle: string;
+  resultsSubtitle?: string;
   totalQuestions: number;
   finalCorrectCount: number;
   finalPoints: number;
   boundedPreviousCorrect: number;
   improvementPct: number;
   backToGamesHref: string;
+  backToGamesText?: string;
   onReviewAnswers: () => void;
+  hasSavedResults?: boolean;
+  showLearningProgress?: boolean;
+  showReviewAnswersButton?: boolean;
 };
 
 export default function QuizResultsView({
   quizTitle,
+  resultsSubtitle,
   totalQuestions,
   finalCorrectCount,
   finalPoints,
   boundedPreviousCorrect,
   improvementPct,
   backToGamesHref,
+  backToGamesText,
   onReviewAnswers,
+  hasSavedResults = false,
+  showLearningProgress = true,
+  showReviewAnswersButton = true,
 }: QuizResultsViewProps) {
   const beforeProgressPct = totalQuestions > 0 ? (boundedPreviousCorrect / totalQuestions) * 100 : 0;
   const afterProgressPct = totalQuestions > 0 ? (finalCorrectCount / totalQuestions) * 100 : 0;
@@ -38,13 +48,11 @@ export default function QuizResultsView({
       justifyContent="center"
     >
       <VStack maxW="700px" mx="auto" align="stretch" textAlign="center" gap={3}>
-        <Circle size={{ base: "70px", md: "85px" }} bg="#b8b8bb" mx="auto" mb={{ base: 2, md: 3 }} />
-
         <Text fontSize={{ base: "32px", md: "48px" }} fontWeight="900" color="#1a1b1f" lineHeight={1}>
           Awesome Job! 🌟
         </Text>
         <Text mb={{ base: 3, md: 5 }} fontSize={{ base: "16px", md: "30px" }} color="#6e7076">
-          You&apos;ve finished the {quizTitle}.
+          {resultsSubtitle || `You've finished the ${quizTitle}.`}
         </Text>
 
         <Box bg="#ededee" borderRadius="15px" px={{ base: 5, md: 8 }} py={{ base: 5, md: 7 }}>
@@ -68,58 +76,62 @@ export default function QuizResultsView({
           </SimpleGrid>
         </Box>
 
-        <Box border="1px solid #ceced0" borderRadius="15px" px={{ base: 4, md: 7 }} py={{ base: 4, md: 5 }}>
-          <Text
-            textAlign="left"
-            fontWeight="700"
-            color="#6a6b70"
-            letterSpacing="0.05em"
-            mb={3}
-            fontSize={{ base: "12px", md: "14px" }}
-          >
-            YOUR LEARNING PROGRESS
-          </Text>
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
-            <VStack align="stretch">
-              <Text fontSize={{ base: "34px", md: "39px" }} color="#1a1b1f" fontWeight="700" lineHeight={1}>
-                {boundedPreviousCorrect}/{totalQuestions}
-              </Text>
-              <Box h="12px" bg="#e2e2e4" borderRadius="999px" overflow="hidden">
-                <Box h="100%" w={`${beforeProgressPct}%`} bg="#cb4d4d" borderRadius="999px" />
-              </Box>
-              <Text color="#6a6b70" fontWeight="600" letterSpacing="0.05em" fontSize={{ base: "12px", md: "14px" }}>
-                BEFORE PLAYING
-              </Text>
-            </VStack>
-            <VStack align="stretch">
-              <Text fontSize={{ base: "34px", md: "39px" }} color="#1a1b1f" fontWeight="700" lineHeight={1}>
-                {finalCorrectCount}/{totalQuestions}
-              </Text>
-              <Box h="12px" bg="#e2e2e4" borderRadius="999px" overflow="hidden">
-                <Box h="100%" w={`${afterProgressPct}%`} bg="#1e9c54" borderRadius="999px" />
-              </Box>
-              <Text color="#6a6b70" fontWeight="600" letterSpacing="0.05em" fontSize={{ base: "12px", md: "14px" }}>
-                AFTER PLAYING
-              </Text>
-            </VStack>
-          </SimpleGrid>
-          <Text mt={3} color="#1e9c54" fontSize={{ base: "20px", md: "30px" }} fontWeight="700">
-            {improvementPct > 0
-              ? `📈 You improved by ${improvementPct}% - way to go!`
-              : "Great effort - keep practicing!"}
-          </Text>
-        </Box>
+        {showLearningProgress ? (
+          <Box border="1px solid #ceced0" borderRadius="15px" px={{ base: 4, md: 7 }} py={{ base: 4, md: 5 }}>
+            <Text
+              textAlign="left"
+              fontWeight="700"
+              color="#6a6b70"
+              letterSpacing="0.05em"
+              mb={3}
+              fontSize={{ base: "12px", md: "14px" }}
+            >
+              YOUR LEARNING PROGRESS
+            </Text>
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
+              <VStack align="stretch">
+                <Text fontSize={{ base: "34px", md: "39px" }} color="#1a1b1f" fontWeight="700" lineHeight={1}>
+                  {boundedPreviousCorrect}/{totalQuestions}
+                </Text>
+                <Box h="12px" bg="#e2e2e4" borderRadius="999px" overflow="hidden">
+                  <Box h="100%" w={`${beforeProgressPct}%`} bg="#cb4d4d" borderRadius="999px" />
+                </Box>
+                <Text color="#6a6b70" fontWeight="600" letterSpacing="0.05em" fontSize={{ base: "12px", md: "14px" }}>
+                  BEFORE PLAYING
+                </Text>
+              </VStack>
+              <VStack align="stretch">
+                <Text fontSize={{ base: "34px", md: "39px" }} color="#1a1b1f" fontWeight="700" lineHeight={1}>
+                  {finalCorrectCount}/{totalQuestions}
+                </Text>
+                <Box h="12px" bg="#e2e2e4" borderRadius="999px" overflow="hidden">
+                  <Box h="100%" w={`${afterProgressPct}%`} bg="#1e9c54" borderRadius="999px" />
+                </Box>
+                <Text color="#6a6b70" fontWeight="600" letterSpacing="0.05em" fontSize={{ base: "12px", md: "14px" }}>
+                  AFTER PLAYING
+                </Text>
+              </VStack>
+            </SimpleGrid>
+            <Text mt={3} color="#1e9c54" fontSize={{ base: "20px", md: "30px" }} fontWeight="700">
+              {improvementPct > 0
+                ? `📈 You improved by ${improvementPct}% - way to go!`
+                : "Great effort - keep practicing!"}
+            </Text>
+          </Box>
+        ) : null}
 
         <HStack justify="center" mt={2} gap={4} flexWrap="wrap">
-          <Button
-            variant="ghost"
-            color="#3f54a5"
-            fontWeight="700"
-            fontSize={{ base: "14px", md: "16px" }}
-            onClick={onReviewAnswers}
-          >
-            Review Answers
-          </Button>
+          {showReviewAnswersButton ? (
+            <Button
+              variant="ghost"
+              color="#3f54a5"
+              fontWeight="700"
+              fontSize={{ base: "14px", md: "16px" }}
+              onClick={onReviewAnswers}
+            >
+              Review Answers
+            </Button>
+          ) : null}
           <ChakraLink
             href={backToGamesHref}
             as={Link}
@@ -136,9 +148,12 @@ export default function QuizResultsView({
             textDecoration="none"
             _hover={{ bg: "#1f1f5f", textDecoration: "none" }}
           >
-            Back to Games →
+            {backToGamesText || "Back to Games →"}
           </ChakraLink>
         </HStack>
+        <Text color={hasSavedResults ? "#1e9c54" : "#7b7d82"} fontSize={{ base: "12px", md: "14px" }}>
+          {hasSavedResults ? "Quiz score saved." : "Saving quiz score..."}
+        </Text>
       </VStack>
     </Box>
   );

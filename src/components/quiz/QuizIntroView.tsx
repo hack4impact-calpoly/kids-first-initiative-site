@@ -30,7 +30,7 @@ export default function QuizIntroView({
       justifyContent="center"
     >
       <VStack maxW="520px" mx="auto" textAlign="center" gap={0}>
-        <Circle size={{ base: "64px", md: "80px" }} bg="#b8b8bb" mb={{ base: 5, md: 6 }} />
+        {/* <Circle size={{ base: "64px", md: "80px" }} bg="#b8b8bb" mb={{ base: 5, md: 6 }} /> */}
 
         <Text
           as="h1"
