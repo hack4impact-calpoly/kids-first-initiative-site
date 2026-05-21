@@ -1,81 +1,75 @@
+import GamePlayer from "@/components/GamePlayer";
 import Link from "next/link";
-import StatesOfMatterGameCard from "@/components/StatesOfMatterGameCard";
-import { Box, Flex, Heading, Text, SimpleGrid } from "@chakra-ui/react";
+import { Box, Flex, Text, VStack } from "@chakra-ui/react";
 
-type StatesOfMatterPageProps = {
+type StatesOfMatterGamePageProps = {
   searchParams?: Promise<{
     saveId?: string;
   }>;
 };
 
-export default async function StatesOfMatterPage({ searchParams }: StatesOfMatterPageProps) {
+export default async function StatesOfMatterGamePage({ searchParams }: StatesOfMatterGamePageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const saveId = resolvedSearchParams?.saveId;
   const finishHref = saveId
     ? `/threeStatesOfMatterQuiz?saveId=${saveId}&phase=after`
     : "/threeStatesOfMatterQuiz?phase=after";
 
-  const games = [
-    {
-      title: "Wire Spark",
-      description: "Master the circuits and light up the city!",
-      href: "/wireGame",
-      bgGradient: "linear(to-br, blue.400, blue.600)",
-      iconSrc: "/icons/wire-icon.svg",
-    },
-    {
-      title: "Heating Station",
-      description: "Cook up some science in the heat lab!",
-      href: "/cookingGame",
-      bgGradient: "linear(to-br, orange.400, red.500)",
-      iconSrc: "/icons/heat-icon.svg",
-    },
-    {
-      title: "Pipe Flow",
-      description: "Connect the flow and fix the leaks!",
-      href: "/pipesGame",
-      bgGradient: "linear(to-br, teal.400, teal.500)",
-      iconSrc: "/icons/pipe-icon.svg",
-    },
-  ];
-
   return (
-    <Box minH="100vh" bg="#F4F8FB">
-      <Flex direction="column" align="center" pt={16} px={4}>
-        <Heading as="h1" size={{ base: "3xl", md: "5xl" }} color="gray.900" mb={4} fontWeight="900" textAlign="center">
-          Choose Your Experiment
-        </Heading>
+    <main>
+      <Flex bg="#F7F9FB" h="calc(100vh - 64px)" overflow="hidden" justify="center">
+        <VStack align="stretch" gap={3} w="full" maxW="1280px" h="full" px={{ base: 4, md: 6 }} py={{ base: 5, md: 6 }}>
+          <Flex justify="space-between" align="center" px={{ base: 1, md: 1 }} flexShrink={0}>
+            <VStack align="flex-start" gap={0.5}>
+              <Text
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontWeight="600"
+                fontSize="11px"
+                lineHeight="140%"
+                letterSpacing="0.8px"
+                color="#525252"
+              >
+                NOW PLAYING
+              </Text>
+              <Text
+                fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
+                fontWeight="700"
+                fontSize={{ base: "xl", md: "2xl" }}
+                lineHeight="120%"
+                letterSpacing="-0.005em"
+                color="#1B1B1B"
+              >
+                States of Matter
+              </Text>
+            </VStack>
 
-        <Text color="gray.500" fontSize="xl" fontWeight="medium" mb={16} textAlign="center">
-          Ready to become a scientist today?
-        </Text>
+            <Link
+              href={finishHref}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "44px",
+                padding: "0 24px",
+                border: "2px solid #4476BB",
+                color: "#4476BB",
+                borderRadius: "12px",
+                fontWeight: 600,
+                textDecoration: "none",
+                fontFamily: "Karla, Avenir Next, Segoe UI, sans-serif",
+                fontSize: "16px",
+                flexShrink: 0,
+              }}
+            >
+              End Game
+            </Link>
+          </Flex>
 
-        <SimpleGrid columns={{ base: 1, md: 3 }} gap={10} maxW="6xl" w="full" px={4}>
-          {games.map((game, index) => (
-            <StatesOfMatterGameCard key={index} {...game} />
-          ))}
-        </SimpleGrid>
-
-        <Box mt={12} w="full" maxW="6xl" px={4} display="flex" justifyContent="flex-end">
-          <Link
-            href={finishHref}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "46px",
-              padding: "0 32px",
-              backgroundColor: "#211E5D",
-              color: "#F8F8F8",
-              borderRadius: "12px",
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Finish
-          </Link>
-        </Box>
+          <Box flex="1" minH={0} maxW="1232px" w="full" mx="auto" borderRadius="8px" overflow="hidden">
+            <GamePlayer game="StatesOfMatter" saveId={saveId} height="100%" />
+          </Box>
+        </VStack>
       </Flex>
-    </Box>
+    </main>
   );
 }
