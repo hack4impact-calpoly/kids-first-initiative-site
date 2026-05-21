@@ -1,9 +1,8 @@
 import connectDB from "@/database/db";
 import User from "@/database/userSchema";
 import Quiz from "@/database/quizSchema";
-import User from "@/database/userSchema";
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 
 type QuizOption = {
