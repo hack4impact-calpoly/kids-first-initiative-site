@@ -84,14 +84,6 @@ export default function AdminLoginPage() {
     if (!sessionId || !setActive) throw new Error(IMPROPER_CREDENTIALS_MESSAGE);
 
     await setActive({ session: sessionId });
-    const hasAdminAccess = await verifyAdminAccess();
-
-    if (!hasAdminAccess) {
-      await signOutToImproperCredentialsHome(signOut);
-      return;
-    }
-
-    router.replace(ADMIN_DASHBOARD_ROUTE);
   };
 
   const handleSubmit = async (e: FormEvent) => {
