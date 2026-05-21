@@ -13,6 +13,7 @@ type QuizResultsViewProps = {
   backToGamesHref: string;
   backToGamesText?: string;
   onReviewAnswers: () => void;
+  hasSavedResults?: boolean;
 };
 
 export default function QuizResultsView({
@@ -25,6 +26,7 @@ export default function QuizResultsView({
   backToGamesHref,
   backToGamesText,
   onReviewAnswers,
+  hasSavedResults = false,
 }: QuizResultsViewProps) {
   const beforeProgressPct = totalQuestions > 0 ? (boundedPreviousCorrect / totalQuestions) * 100 : 0;
   const afterProgressPct = totalQuestions > 0 ? (finalCorrectCount / totalQuestions) * 100 : 0;
@@ -141,6 +143,9 @@ export default function QuizResultsView({
             {backToGamesText || "Back to Games →"}
           </ChakraLink>
         </HStack>
+        <Text color={hasSavedResults ? "#1e9c54" : "#7b7d82"} fontSize={{ base: "12px", md: "14px" }}>
+          {hasSavedResults ? "Quiz score saved." : "Saving quiz score..."}
+        </Text>
       </VStack>
     </Box>
   );

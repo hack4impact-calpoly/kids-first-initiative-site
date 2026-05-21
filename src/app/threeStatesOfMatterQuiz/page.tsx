@@ -17,6 +17,7 @@ export default async function ThreeStatesOfMatterQuizPage({ searchParams }: Quiz
   return (
     <main>
       <QuizExperience
+        quizKey="statesOfMatterQuiz"
         quizTitle="Three States of Matter Quiz 🧪"
         quizSubtitle="Let's see what you know about solids, liquids, and gases!"
         questions={statesOfMatterQuestions}

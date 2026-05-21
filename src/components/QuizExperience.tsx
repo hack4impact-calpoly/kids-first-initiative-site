@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, VStack } from "@chakra-ui/react";
 import QuizIntroView from "@/components/quiz/QuizIntroView";
 import QuizQuestionView from "@/components/quiz/QuizQuestionView";
@@ -10,6 +10,7 @@ import { QuizQuestion } from "@/components/quiz/types";
 export type { QuizOption, QuizQuestion } from "@/components/quiz/types";
 
 type QuizExperienceProps = {
+  quizKey: "penguinRunQuiz" | "statesOfMatterQuiz";
   quizTitle: string;
   quizSubtitle: string;
   questions: QuizQuestion[];
@@ -23,6 +24,7 @@ type QuizExperienceProps = {
 type QuizStage = "intro" | "questions" | "results";
 
 export default function QuizExperience({
+  quizKey,
   quizTitle,
   quizSubtitle,
   questions,
@@ -36,6 +38,8 @@ export default function QuizExperience({
   const [isReviewingAnswers, setIsReviewingAnswers] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersByQuestionId, setAnswersByQuestionId] = useState<Record<string, string>>({});
+  const [hasSavedResults, setHasSavedResults] = useState(false);
+  const saveAttemptKeyRef = useRef<string | null>(null);
 
   const totalQuestions = questions.length;
   const maxPoints = totalQuestions * pointsPerQuestion;
@@ -61,6 +65,73 @@ export default function QuizExperience({
     totalQuestions > 0 ? Math.round(((finalCorrectCount - boundedPreviousCorrect) / totalQuestions) * 100) : 0;
   const progressPct = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
+  useEffect(() => {
+    if (stage !== "results") return;
+
+    const saveKey = `${quizKey}:${finalCorrectCount}:${Object.keys(answersByQuestionId)
+      .sort()
+      .map((questionId) => `${questionId}:${answersByQuestionId[questionId]}`)
+      .join("|")}`;
+
+    if (saveAttemptKeyRef.current === saveKey) return;
+    saveAttemptKeyRef.current = saveKey;
+
+    const payload =
+      quizKey === "statesOfMatterQuiz"
+        ? {
+            statesOfMatterScoreBefore: finalCorrectCount,
+            statesOfMatterQuestionResults: questions.map((question) => {
+              const selectedOptionId = answersByQuestionId[question.questionId];
+              const selectedOption = question.options.find((option) => option.id === selectedOptionId);
+              const correctOption = question.options.find((option) => option.id === question.correctOptionId);
+
+              return {
+                questionId: question.questionId,
+                questionText: question.question,
+                answerOptions: question.options.map((option) => option.text),
+                selectedAnswer: selectedOption?.text ?? "",
+                correctAnswer: correctOption?.text ?? "",
+                isCorrect: selectedOptionId === question.correctOptionId,
+              };
+            }),
+          }
+        : {
+            penguinRunScoreBefore: finalCorrectCount,
+            penguinRunQuestionResults: questions.map((question) => {
+              const selectedOptionId = answersByQuestionId[question.questionId];
+              const selectedOption = question.options.find((option) => option.id === selectedOptionId);
+              const correctOption = question.options.find((option) => option.id === question.correctOptionId);
+
+              return {
+                questionId: question.questionId,
+                questionText: question.question,
+                answerOptions: question.options.map((option) => option.text),
+                selectedAnswer: selectedOption?.text ?? "",
+                correctAnswer: correctOption?.text ?? "",
+                isCorrect: selectedOptionId === question.correctOptionId,
+              };
+            }),
+          };
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/quiz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save quiz results");
+        }
+
+        setHasSavedResults(true);
+      } catch (error) {
+        console.error("Failed to save quiz results:", error);
+      }
+    })();
+  }, [answersByQuestionId, finalCorrectCount, questions, quizKey, stage]);
+
   function handleSelect(optionId: string) {
     if (!currentQuestion || isReviewingAnswers) return;
     setAnswersByQuestionId((prev) => ({
@@ -85,6 +156,8 @@ export default function QuizExperience({
     setIsReviewingAnswers(false);
     setCurrentIndex(0);
     setAnswersByQuestionId({});
+    setHasSavedResults(false);
+    saveAttemptKeyRef.current = null;
   }
 
   function handleReviewAnswers() {
@@ -131,6 +204,7 @@ export default function QuizExperience({
         backToGamesHref={backToGamesHref}
         backToGamesText={backToGamesText}
         onReviewAnswers={handleReviewAnswers}
+        hasSavedResults={hasSavedResults}
       />
     );
   }

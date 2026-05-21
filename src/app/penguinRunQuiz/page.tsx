@@ -17,6 +17,7 @@ export default async function PeguinRunQuizPage({ searchParams }: QuizPageProps)
   return (
     <main>
       <QuizExperience
+        quizKey="penguinRunQuiz"
         quizTitle="Penguin Run Quiz 🎢"
         quizSubtitle="Let's see what you already know about forces and energy!"
         questions={penguinQuestions}
