@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { SignUp, useAuth, useSignUp } from "@clerk/nextjs";
 import { Box, Button, chakra, Flex, Heading, Input, Link as ChakraLink, PinInput, Stack, Text } from "@chakra-ui/react";
@@ -108,9 +108,10 @@ export default function AdminSignUpPage() {
   const router = useRouter();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const isCompletingSignUp = useRef(false);
 
   useEffect(() => {
-    if (authLoaded && isSignedIn) {
+    if (authLoaded && isSignedIn && !isCompletingSignUp.current) {
       router.replace("/dashboard");
     }
   }, [authLoaded, isSignedIn, router]);
@@ -158,8 +159,9 @@ export default function AdminSignUpPage() {
         },
       });
       if (result.status === "complete") {
+        isCompletingSignUp.current = true;
         await setActive({ session: result.createdSessionId });
-        router.replace(getPostSignupRoute(role));
+        window.location.replace(getPostSignupRoute(role));
         return;
       }
       // Common case: Clerk requires email verification before activating the session.
@@ -186,8 +188,9 @@ export default function AdminSignUpPage() {
     try {
       const result = await signUp.attemptEmailAddressVerification({ code: code.join("") });
       if (result.status === "complete") {
+        isCompletingSignUp.current = true;
         await setActive({ session: result.createdSessionId });
-        router.replace(getPostSignupRoute(role));
+        window.location.replace(getPostSignupRoute(role));
         return;
       }
       router.replace("/sign-up/facilitator/factor-one");
