@@ -9,6 +9,7 @@ type Props = {
   sessionId?: string;
   classroomId?: string;
   userId?: string;
+  height?: string;
 };
 
 interface ProgressPayload {
@@ -23,7 +24,7 @@ interface ProgressPayload {
 // Production callers should pass real userId/sessionId/classroomId
 // and use onProgress to call the save endpoint.
 
-export default function GamePlayer({ game, saveId, sessionId, classroomId, userId }: Props) {
+export default function GamePlayer({ game, saveId, sessionId, classroomId, userId, height }: Props) {
   const { userId: authUserId } = useAuth();
   const resolvedUserId = userId ?? authUserId ?? undefined;
 
@@ -97,6 +98,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       sessionId={sessionId}
       classroomId={classroomId}
       onProgress={handleProgress}
+      height={height}
     />
   );
 }

@@ -19,9 +19,18 @@ type Props = {
   sessionId?: string;
   classroomId?: string;
   onProgress?: (payload: unknown) => void;
+  height?: string;
 };
 
-export default function UnityIFrame({ game, saveId, userId, sessionId, classroomId, onProgress }: Props) {
+export default function UnityIFrame({
+  game,
+  saveId,
+  userId,
+  sessionId,
+  classroomId,
+  onProgress,
+  height = "100vh",
+}: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   useEffect(() => {
     function sendContext() {
@@ -86,7 +95,7 @@ export default function UnityIFrame({ game, saveId, userId, sessionId, classroom
       ref={iframeRef}
       src={`/game/${encodeURIComponent(game)}/index.html`}
       title={`${game}`}
-      style={{ width: "100%", height: "100vh", border: 0, display: "block" }}
+      style={{ width: "100%", height, border: 0, display: "block" }}
       allow="autoplay; fullscreen; gamepad"
       referrerPolicy="no-referrer"
     />

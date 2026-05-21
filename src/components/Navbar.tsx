@@ -110,15 +110,19 @@ export default function Navbar() {
         <Flex w="full" minH="64px" align="center" justify="space-between" px={{ base: 5, md: 8, lg: 12 }} py={4}>
           <HStack gap={4}>
             <Link href="/dashboard" aria-label="Kids First Initiative Dashboard">
-              <Box
-                position="relative"
-                w={{ base: "42px", md: "46px" }}
-                h={{ base: "42px", md: "46px" }}
-                borderRadius="8px"
-                overflow="hidden"
-              >
-                <Image src="/Icons/kfi-logo.jpeg" alt="Kids First Initiative logo" fill sizes="46px" />
-              </Box>
+              <Image
+                src="/Icons/kfi-logo.jpeg"
+                alt="Kids First Initiative logo"
+                width={52}
+                height={46}
+                style={{
+                  display: "block",
+                  width: "52px",
+                  height: "46px",
+                  objectFit: "cover",
+                  objectPosition: "center top",
+                }}
+              />
             </Link>
             <Text
               fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
