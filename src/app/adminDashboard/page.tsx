@@ -21,8 +21,6 @@ import { FaFlask } from "react-icons/fa";
 import { FiCalendar, FiDownload, FiSettings } from "react-icons/fi";
 import { AdminMetricsCard } from "@/components/AdminMetricsCard";
 import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
-import AdminProfileCard from "@/components/AdminProfileCard";
-import AdminSettingsPopup from "@/components/AdminSettingsPopup";
 
 type SessionRecord = {
   _id: string;
@@ -318,45 +316,9 @@ export default function AdminDashboardPage() {
             <Heading color="gray.900" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.1">
               Performance Overview
             </Heading>
-            <Text color="blue.600" fontWeight="600" textDecorationLine="underline" textUnderlineOffset="5px" mt={2}>
-              Real-time data for your educational gaming suite.
-            </Text>
           </Box>
 
-          <Flex
-            justify="space-between"
-            align={{ base: "stretch", md: "center" }}
-            direction={{ base: "column", md: "row" }}
-            gap={3}
-          >
-            <Button
-              variant="outline"
-              borderColor="gray.300"
-              color="gray.700"
-              bg="white"
-              disabled
-              w={{ base: "full", md: "auto" }}
-            >
-              <HStack gap={2}>
-                <Icon as={FiDownload} />
-                <Text>Export Data</Text>
-              </HStack>
-            </Button>
-            <Button
-              variant="outline"
-              borderColor="gray.300"
-              color="gray.700"
-              bg="white"
-              w={{ base: "full", md: "auto" }}
-              onClick={() => setIsAdminSettingsOpen(true)}
-            >
-              <HStack gap={2}>
-                <Icon as={FiSettings} />
-                <Text>Account Settings</Text>
-              </HStack>
-            </Button>
-            <AdminPeriodSelector value={period} onChange={setPeriod} />
-          </Flex>
+          <AdminPeriodSelector value={period} onChange={setPeriod} />
 
           <HStack gap={2} color="gray.600">
             <Icon as={FiCalendar} boxSize={4} />

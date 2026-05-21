@@ -1,11 +1,21 @@
-import { Box, Container, Flex, Grid, Heading, HStack, Link as ChakraLink, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Container,
+  Flex,
+  Grid,
+  Heading,
+  HStack,
+  Link as ChakraLink,
+  Text,
+  VStack,
+  Checkmark,
+} from "@chakra-ui/react";
 import type { ReactNode } from "react";
 
 const STUDENT_ACCESS_CODE_ROUTE = "/login/player";
 const FACILITATOR_LOGIN_ROUTE = "/login/facilitator";
 const AUTH_SIGNUP_ROUTE = "/sign-up/facilitator";
-const IMPROPER_CREDENTIALS_CODE = "improper-credentials";
-
+const ADMIN_LOGIN_ROUTE = "/login/admin";
 type EntryCardProps = {
   accentBg: string;
   icon: string;
@@ -64,13 +74,13 @@ function EntryCard({ accentBg, icon, title, description, ctaLabel, ctaHref, prim
 
 type HomePageProps = {
   searchParams?: Promise<{
-    error?: string;
+    message?: string;
   }>;
 };
 
 export default async function Home({ searchParams }: HomePageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const showImproperCredentialsMessage = resolvedSearchParams?.error === IMPROPER_CREDENTIALS_CODE;
+  const redirectMessage = resolvedSearchParams?.message?.trim();
 
   return (
     <Box minH="100vh" bg="#f3f5f8" px={{ base: 4, md: 8 }} pb={{ base: 8, md: 12 }}>
@@ -87,7 +97,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           </Text>
         </VStack>
 
-        {showImproperCredentialsMessage ? (
+        {redirectMessage ? (
           <Box
             mb={{ base: 6, md: 8 }}
             mx="auto"
@@ -102,7 +112,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             textAlign="center"
           >
             <Text fontWeight="700" fontSize={{ base: "md", md: "lg" }}>
-              You do not have the proper credentials.
+              {redirectMessage}
             </Text>
           </Box>
         ) : null}
@@ -135,6 +145,12 @@ export default async function Home({ searchParams }: HomePageProps) {
             }
           />
         </Grid>
+        <Text mt={{ base: 6, md: 8 }} fontSize="lg" color="gray.600" textAlign="center">
+          or{" "}
+          <ChakraLink href={ADMIN_LOGIN_ROUTE} color="blue.600" fontWeight="700" textDecoration="underline">
+            I&apos;m a KFI Admin
+          </ChakraLink>
+        </Text>
       </Container>
     </Box>
   );

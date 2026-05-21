@@ -8,7 +8,6 @@ import { Box, Button, Flex, Heading, Input, Stack, Text } from "@chakra-ui/react
 const ADMIN_DASHBOARD_ROUTE = "/adminDashboard";
 const ADMIN_CLERK_FALLBACK_ROUTE = "/login/admin/factor-one";
 const HOME_ROUTE = "/home";
-const IMPROPER_CREDENTIALS_QUERY = "error=improper-credentials";
 const IMPROPER_CREDENTIALS_MESSAGE =
   "You do not have the proper credentials to login as admin, try another login method.";
 
@@ -39,7 +38,8 @@ async function verifyAdminAccess() {
 }
 
 async function signOutToImproperCredentialsHome(signOut: ReturnType<typeof useClerk>["signOut"]) {
-  await signOut({ redirectUrl: `${HOME_ROUTE}?${IMPROPER_CREDENTIALS_QUERY}` });
+  const searchParams = new URLSearchParams({ message: IMPROPER_CREDENTIALS_MESSAGE });
+  await signOut({ redirectUrl: `${HOME_ROUTE}?${searchParams.toString()}` });
 }
 
 export default function AdminLoginPage() {
