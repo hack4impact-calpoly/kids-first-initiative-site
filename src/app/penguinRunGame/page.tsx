@@ -16,8 +16,8 @@ export default async function PenguinRunPage({ searchParams }: PenguinRunPagePro
   return (
     <main>
       <Flex bg="#F7F9FB" h="calc(100vh - 64px)" overflow="hidden" justify="center">
-        <VStack align="stretch" gap={3} w="full" maxW="1280px" h="full" px={{ base: 4, md: 6 }} py={{ base: 5, md: 6 }}>
-          <Flex justify="space-between" align="center" px={{ base: 1, md: 1 }} flexShrink={0}>
+        <VStack align="stretch" gap={4} w="full" h="full" px={{ base: 4, md: 8, lg: 10 }} py={{ base: 5, md: 6 }}>
+          <Flex justify="space-between" align="center" w="full" flexShrink={0}>
             <VStack align="flex-start" gap={0.5}>
               <Text
                 fontFamily='"Poppins", "Trebuchet MS", "Avenir Next", sans-serif'
@@ -63,8 +63,10 @@ export default async function PenguinRunPage({ searchParams }: PenguinRunPagePro
             </Link>
           </Flex>
 
-          <Box flex="1" minH={0} maxW="1232px" w="full" mx="auto" borderRadius="8px" overflow="hidden">
-            <GamePlayer game="PenguinRun" saveId={saveId} height="100%" />
+          <Box flex="1" minH={0} w="full" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
+            <Box w="80vw" h="80vh" borderRadius="8px" overflow="hidden">
+              <GamePlayer game="PenguinRun" saveId={saveId} height="100%" />
+            </Box>
           </Box>
         </VStack>
       </Flex>

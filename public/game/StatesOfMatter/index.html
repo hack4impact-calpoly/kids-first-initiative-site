@@ -134,9 +134,9 @@
         // performance, uncomment the following line:
         // config.devicePixelRatio = 1;
       } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
+        // Desktop style: let the parent iframe/page control the canvas size responsively.
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
       }
 
       document.querySelector("#unity-loading-bar").style.display = "block";
