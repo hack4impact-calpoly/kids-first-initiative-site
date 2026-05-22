@@ -34,7 +34,7 @@ export default function QuizExperience({
   questions,
   pointsPerQuestion = 10,
   estimatedMinutes = 5,
-  previousCorrectCount = 0,
+  previousCorrectCount = -1,
   backToGamesHref = "/playerDashboard",
   backToGamesText,
 }: QuizExperienceProps) {
@@ -64,7 +64,8 @@ export default function QuizExperience({
 
   const finalCorrectCount = provisionalCorrectCount;
   const finalPoints = finalCorrectCount * pointsPerQuestion;
-  const boundedPreviousCorrect = Math.min(Math.max(previousCorrectCount, 0), totalQuestions);
+  const boundedPreviousCorrect =
+    previousCorrectCount >= 0 ? Math.min(Math.max(previousCorrectCount, 0), totalQuestions) : 0;
   const improvementPct =
     totalQuestions > 0 ? Math.round(((finalCorrectCount - boundedPreviousCorrect) / totalQuestions) * 100) : 0;
   const progressPct = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;

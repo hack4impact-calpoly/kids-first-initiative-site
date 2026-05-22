@@ -1,370 +1,345 @@
 "use client";
 
-import {
-  Avatar,
-  Box,
-  Button,
-  Container,
-  Flex,
-  Grid,
-  Heading,
-  HStack,
-  Icon,
-  Spinner,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
-import { useUser } from "@clerk/nextjs";
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { FaFlask } from "react-icons/fa";
-import { FiCalendar, FiDownload, FiSettings } from "react-icons/fi";
-import { AdminMetricsCard } from "@/components/AdminMetricsCard";
-import { AdminPeriod, AdminPeriodSelector } from "@/components/AdminPeriodSelector";
-
-type SessionRecord = {
-  _id: string;
-  anonUserId: string;
-  gameId?: "penguinRunGame" | "statesOfMatterGame" | null;
-  startedAt: string;
-  endedAt: string | null;
-  durationMs: number;
-};
-
-type SupportedGameId = "penguinRunGame" | "statesOfMatterGame";
-
-type SummaryMetrics = {
-  uniquePlayers: number;
-  totalPlayTimeMs: number;
-};
-
-type TrendMetric = {
-  label: string;
-  direction: "up" | "down" | "flat" | "na";
-};
+import styles from "./adminDashboard.module.css";
+import quizData from "@/data/quiz.json";
 
 type AdminUser = {
   _id: string;
   clerkId?: string;
   name?: string;
-  email?: string;
+  username?: string;
   role?: string;
 };
 
-const GAME_CARDS = [
-  {
-    gameId: "penguinRunGame" as SupportedGameId,
-    title: "Penguin Run",
-    accentColor: "blue.500",
-  },
-  {
-    gameId: "statesOfMatterGame" as SupportedGameId,
-    title: "Matter Lab",
-    accentColor: "purple.500",
-  },
-];
+type QuizRecord = {
+  clerkId: string;
+  statesOfMatterScoreBefore?: number;
+  stateOfMatterScoreAfter?: number;
+  penguinRunScoreBefore?: number;
+  penguinRunScoreAfter?: number;
+};
 
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
+type GameDataRecord = {
+  _id?: string;
+  saveId: string;
+  userId: string;
+  gameId: string;
+  lastUpdated?: string;
+};
 
-function getSessionDurationMs(session: SessionRecord): number {
-  if (typeof session.durationMs === "number" && session.durationMs > 0) {
-    return session.durationMs;
-  }
+type ActivityRow = {
+  userLabel: string;
+  gameLabel: string;
+  averageScoreLabel: string;
+  lastActiveLabel: string;
+  lastUpdatedMs: number;
+};
 
-  if (!session.startedAt || !session.endedAt) return 0;
+type DashboardData = {
+  users: AdminUser[];
+  quizzes: QuizRecord[];
+  gameData: GameDataRecord[];
+};
 
-  const startedAt = new Date(session.startedAt).getTime();
-  const endedAt = new Date(session.endedAt).getTime();
-  const diff = endedAt - startedAt;
+type StatCard = {
+  label: string;
+  value: string;
+  helper: string;
+};
 
-  if (!Number.isFinite(diff) || diff <= 0) return 0;
-  return diff;
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const PENGUIN_RUN_QUESTION_COUNT = quizData.penguinRunQuiz.length || 1;
+const STATES_OF_MATTER_QUESTION_COUNT = quizData.statesOfMatterQuiz.length || 1;
+
+function getGameLabel(gameId?: string) {
+  if (gameId === "penguinRunGame") return "Penguin Run";
+  if (gameId === "statesOfMatterGame") return "3 States of Matter";
+  return "No game yet";
 }
 
-function getSummaryMetrics(sessions: SessionRecord[], gameId: SupportedGameId): SummaryMetrics {
-  const filteredSessions = sessions.filter((session) => session.gameId === gameId);
-  const uniquePlayers = new Set(
-    filteredSessions.map((session) => session.anonUserId).filter((anonUserId) => Boolean(anonUserId)),
-  ).size;
-  const totalPlayTimeMs = filteredSessions.reduce((sum, session) => sum + getSessionDurationMs(session), 0);
+function formatRelativeTime(dateLike?: string) {
+  if (!dateLike) return "No activity";
 
-  return { uniquePlayers, totalPlayTimeMs };
+  const dateMs = new Date(dateLike).getTime();
+  if (!Number.isFinite(dateMs)) return "No activity";
+
+  const diffMs = Date.now() - dateMs;
+  const minutes = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-function formatDuration(ms: number): string {
-  if (ms <= 0) return "0m";
-
-  const totalMinutes = Math.round(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) return `${minutes}m`;
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes}m`;
+function toPercentLabel(value: number) {
+  const rounded = Math.round(value);
+  return `${rounded}%`;
 }
 
-function formatTrend(currentValue: number, previousValue: number, period: AdminPeriod): TrendMetric {
-  if (period === "all") {
-    return { label: "N/A", direction: "na" as const };
-  }
+function getAverageScore(quiz?: QuizRecord) {
+  if (!quiz) return 0;
 
-  const comparisonLabel = period === "7d" ? "vs LW" : "vs prior 30d";
-  if (previousValue <= 0) {
-    return { label: `N/A ${comparisonLabel}`, direction: "na" as const };
-  }
+  const normalizedScores = [
+    typeof quiz.statesOfMatterScoreBefore === "number" && quiz.statesOfMatterScoreBefore >= 0
+      ? (quiz.statesOfMatterScoreBefore / STATES_OF_MATTER_QUESTION_COUNT) * 100
+      : null,
+    typeof quiz.stateOfMatterScoreAfter === "number" && quiz.stateOfMatterScoreAfter >= 0
+      ? (quiz.stateOfMatterScoreAfter / STATES_OF_MATTER_QUESTION_COUNT) * 100
+      : null,
+    typeof quiz.penguinRunScoreBefore === "number" && quiz.penguinRunScoreBefore >= 0
+      ? (quiz.penguinRunScoreBefore / PENGUIN_RUN_QUESTION_COUNT) * 100
+      : null,
+    typeof quiz.penguinRunScoreAfter === "number" && quiz.penguinRunScoreAfter >= 0
+      ? (quiz.penguinRunScoreAfter / PENGUIN_RUN_QUESTION_COUNT) * 100
+      : null,
+  ];
+  const scores = normalizedScores.filter((score): score is number => typeof score === "number");
 
-  const changePercent = ((currentValue - previousValue) / previousValue) * 100;
-  const direction: TrendMetric["direction"] = changePercent > 0 ? "up" : changePercent < 0 ? "down" : "flat";
-  const prefix = changePercent > 0 ? "+" : "";
-
-  return {
-    label: `${prefix}${changePercent.toFixed(1)}% ${comparisonLabel}`,
-    direction,
-  };
+  if (scores.length === 0) return 0;
+  return scores.reduce((sum, score) => sum + score, 0) / scores.length;
 }
 
-function formatDateForRange(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+function getAverageGain(quizzes: QuizRecord[]) {
+  const gains: number[] = [];
+
+  quizzes.forEach((quiz) => {
+    if (
+      typeof quiz.penguinRunScoreBefore === "number" &&
+      quiz.penguinRunScoreBefore >= 0 &&
+      typeof quiz.penguinRunScoreAfter === "number" &&
+      quiz.penguinRunScoreAfter >= 0
+    ) {
+      gains.push(((quiz.penguinRunScoreAfter - quiz.penguinRunScoreBefore) / PENGUIN_RUN_QUESTION_COUNT) * 100);
+    }
+
+    if (
+      typeof quiz.statesOfMatterScoreBefore === "number" &&
+      quiz.statesOfMatterScoreBefore >= 0 &&
+      typeof quiz.stateOfMatterScoreAfter === "number" &&
+      quiz.stateOfMatterScoreAfter >= 0
+    ) {
+      gains.push(
+        ((quiz.stateOfMatterScoreAfter - quiz.statesOfMatterScoreBefore) / STATES_OF_MATTER_QUESTION_COUNT) * 100,
+      );
+    }
   });
+
+  if (gains.length === 0) return 0;
+  return gains.reduce((sum, gain) => sum + gain, 0) / gains.length;
+}
+
+function getWeeklyChartData(gameData: GameDataRecord[]) {
+  const today = new Date();
+  const bars = DAY_LABELS.map((label, offset) => {
+    const day = new Date(today);
+    const startOffset = 6 - offset;
+    day.setHours(0, 0, 0, 0);
+    day.setDate(today.getDate() - startOffset);
+
+    const nextDay = new Date(day);
+    nextDay.setDate(day.getDate() + 1);
+
+    const count = gameData.filter((entry) => {
+      const updatedMs = entry.lastUpdated ? new Date(entry.lastUpdated).getTime() : NaN;
+      return Number.isFinite(updatedMs) && updatedMs >= day.getTime() && updatedMs < nextDay.getTime();
+    }).length;
+
+    return { label, count };
+  });
+
+  const maxCount = Math.max(...bars.map((bar) => bar.count), 1);
+  return bars.map((bar) => ({
+    ...bar,
+    heightPercent: Math.max(18, Math.round((bar.count / maxCount) * 100)),
+  }));
 }
 
 export default function AdminDashboardPage() {
-  const { user } = useUser();
-  const [period, setPeriod] = useState<AdminPeriod>("7d");
-  const [sessions, setSessions] = useState<SessionRecord[]>([]);
-  const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(false);
-  const [sessionsError, setSessionsError] = useState("");
-  const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
-  const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-
-  const fallbackAdminName = user?.fullName?.trim() || user?.username || "Alex Admin";
-  const fallbackAdminEmail = user?.primaryEmailAddress?.emailAddress ?? "";
-  const adminName = adminUser?.name ?? fallbackAdminName;
-  const adminEmail = adminUser?.email ?? fallbackAdminEmail;
+  const [data, setData] = useState<DashboardData>({ users: [], quizzes: [], gameData: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let isActive = true;
 
-    async function loadAdminUser() {
+    async function loadDashboard() {
       try {
-        const response = await fetch("/api/users", { cache: "no-store" });
-        if (!response.ok) throw new Error("Failed to fetch users.");
+        setLoading(true);
+        setError("");
 
-        const users: AdminUser[] = await response.json();
-        const matchedUser = users.find((candidate) => candidate.clerkId === user?.id) ?? null;
+        const [usersResponse, quizzesResponse, gameDataResponse] = await Promise.all([
+          fetch("/api/users", { cache: "no-store" }),
+          fetch("/api/quiz", { cache: "no-store" }),
+          fetch("/api/gameData", { cache: "no-store" }),
+        ]);
+
+        if (!usersResponse.ok || !quizzesResponse.ok || !gameDataResponse.ok) {
+          throw new Error("Failed to load dashboard data.");
+        }
+
+        const [users, quizzes, gameData] = await Promise.all([
+          usersResponse.json() as Promise<AdminUser[]>,
+          quizzesResponse.json() as Promise<QuizRecord[]>,
+          gameDataResponse.json() as Promise<GameDataRecord[]>,
+        ]);
 
         if (!isActive) return;
-        if (!matchedUser?._id) {
-          setAdminUser(null);
-          return;
-        }
-
-        const userResponse = await fetch(`/api/users/${matchedUser._id}`, { cache: "no-store" });
-        if (!userResponse.ok) throw new Error("Failed to fetch admin profile.");
-
-        const resolvedUser: AdminUser = await userResponse.json();
-        if (isActive) setAdminUser(resolvedUser);
-      } catch (error) {
-        console.error("Failed to load admin user:", error);
-      }
-    }
-
-    loadAdminUser();
-
-    return () => {
-      isActive = false;
-    };
-  }, [user?.id]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    function sleep(ms: number) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
-    async function fetchSessionsByPeriod(periodValue: AdminPeriod): Promise<SessionRecord[]> {
-      const endpoints = [`/api/sessions?period=${periodValue}`, `/api/sessions/?period=${periodValue}`];
-      const maxAttempts = 3;
-
-      let lastError: Error | null = null;
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        for (const endpoint of endpoints) {
-          try {
-            const response = await fetch(endpoint, { cache: "no-store" });
-            if (response.status === 404) {
-              lastError = new Error(`Not found: ${endpoint}`);
-              continue;
-            }
-            if (!response.ok) {
-              throw new Error(`Failed to fetch sessions (${response.status})`);
-            }
-            const data: SessionRecord[] = await response.json();
-            return data;
-          } catch (error) {
-            lastError = error instanceof Error ? error : new Error("Unknown session fetch error");
-          }
-        }
-
-        if (attempt < maxAttempts) {
-          await sleep(300);
-        }
-      }
-
-      throw lastError ?? new Error("Failed to fetch sessions");
-    }
-
-    async function loadSessions() {
-      try {
-        setLoadingSessions(true);
-        setSessionsError("");
-
-        const currentPeriodRequest = fetchSessionsByPeriod(period);
-        const allSessionsRequest = period === "all" ? null : fetchSessionsByPeriod("all");
-        const currentPeriodSessions = await currentPeriodRequest;
-        let comparisonSessions = currentPeriodSessions;
-
-        if (allSessionsRequest) {
-          try {
-            comparisonSessions = await allSessionsRequest;
-          } catch (comparisonError) {
-            console.error("Failed to load comparison sessions:", comparisonError);
-            comparisonSessions = [];
-          }
-        }
-
-        if (isActive) {
-          setSessions(currentPeriodSessions);
-          setAllSessions(comparisonSessions);
-        }
-      } catch (error) {
-        console.error("Failed to load sessions for admin dashboard:", error);
-        if (isActive) setSessionsError("Could not load session data.");
+        setData({ users, quizzes, gameData });
+      } catch (loadError) {
+        console.error("Failed to load admin dashboard:", loadError);
+        if (isActive) setError("Could not load admin statistics.");
       } finally {
-        if (isActive) setLoadingSessions(false);
+        if (isActive) setLoading(false);
       }
     }
 
-    loadSessions();
+    loadDashboard();
+
     return () => {
       isActive = false;
     };
-  }, [period]);
+  }, []);
 
-  const previousWindowSessions = useMemo(() => {
-    if (period === "all") return [] as SessionRecord[];
+  const quizByClerkId = useMemo(() => new Map(data.quizzes.map((quiz) => [quiz.clerkId, quiz])), [data.quizzes]);
 
-    const windowDurationMs = period === "7d" ? 7 * DAY_IN_MS : 30 * DAY_IN_MS;
-    const currentWindowStart = Date.now() - windowDurationMs;
-    const previousWindowStart = currentWindowStart - windowDurationMs;
+  const mostRecentGameByUserId = useMemo(() => {
+    const map = new Map<string, GameDataRecord>();
 
-    return allSessions.filter((session) => {
-      const sessionStart = new Date(session.startedAt).getTime();
-      if (!Number.isFinite(sessionStart)) return false;
-      return sessionStart >= previousWindowStart && sessionStart < currentWindowStart;
+    data.gameData.forEach((entry) => {
+      const current = map.get(entry.userId);
+      const entryMs = entry.lastUpdated ? new Date(entry.lastUpdated).getTime() : 0;
+      const currentMs = current?.lastUpdated ? new Date(current.lastUpdated).getTime() : 0;
+
+      if (!current || entryMs > currentMs) {
+        map.set(entry.userId, entry);
+      }
     });
-  }, [allSessions, period]);
 
-  const gameMetrics = useMemo(() => {
-    return GAME_CARDS.map((game) => {
-      const currentSummary = getSummaryMetrics(sessions, game.gameId);
-      const previousSummary = getSummaryMetrics(previousWindowSessions, game.gameId);
-      const averageTimeMs =
-        currentSummary.uniquePlayers === 0 ? 0 : currentSummary.totalPlayTimeMs / currentSummary.uniquePlayers;
+    return map;
+  }, [data.gameData]);
 
-      return {
-        ...game,
-        playersValue: currentSummary.uniquePlayers.toString(),
-        totalPlayTimeValue: formatDuration(currentSummary.totalPlayTimeMs),
-        averageTimeValue: formatDuration(averageTimeMs),
-        playersTrend: formatTrend(currentSummary.uniquePlayers, previousSummary.uniquePlayers, period),
-        totalPlayTimeTrend: formatTrend(currentSummary.totalPlayTimeMs, previousSummary.totalPlayTimeMs, period),
-      };
-    });
-  }, [period, previousWindowSessions, sessions]);
+  const statCards = useMemo<StatCard[]>(() => {
+    const averageGain = getAverageGain(data.quizzes);
+    const gainPrefix = averageGain > 0 ? "+" : "";
 
-  const periodSummary = useMemo(() => {
-    const end = new Date();
+    return [
+      {
+        label: "TOTAL STUDENTS",
+        value: data.users.length.toLocaleString(),
+        helper: "All registered users",
+      },
+      {
+        label: "ACTIVE CLASSROOMS",
+        value: "0",
+        helper: "Dummy data for now",
+      },
+      {
+        label: "GAMES PLAYED",
+        value: data.gameData.length.toLocaleString(),
+        helper: "From saved game records",
+      },
+      {
+        label: "AVG PRE→POST GAIN",
+        value: `${gainPrefix}${Math.round(averageGain)}%`,
+        helper: "Across completed post-quizzes",
+      },
+    ];
+  }, [data.gameData.length, data.quizzes, data.users.length]);
 
-    if (period === "7d") {
-      const start = new Date(end.getTime() - 7 * DAY_IN_MS);
-      return `${formatDateForRange(start)} - ${formatDateForRange(end)}`;
-    }
+  const activityRows = useMemo<ActivityRow[]>(() => {
+    return data.users
+      .map((user) => {
+        const latestGame = user.clerkId ? mostRecentGameByUserId.get(user.clerkId) : undefined;
+        const latestUpdatedMs = latestGame?.lastUpdated ? new Date(latestGame.lastUpdated).getTime() : 0;
+        const averageScore = user.clerkId ? getAverageScore(quizByClerkId.get(user.clerkId)) : 0;
 
-    if (period === "30d") {
-      const start = new Date(end.getTime() - 30 * DAY_IN_MS);
-      return `${formatDateForRange(start)} - ${formatDateForRange(end)}`;
-    }
+        return {
+          userLabel: user.username || user.name || "Unknown user",
+          gameLabel: getGameLabel(latestGame?.gameId),
+          averageScoreLabel: toPercentLabel(averageScore),
+          lastActiveLabel: formatRelativeTime(latestGame?.lastUpdated),
+          lastUpdatedMs: latestUpdatedMs,
+        };
+      })
+      .sort((a, b) => b.lastUpdatedMs - a.lastUpdatedMs)
+      .slice(0, 5);
+  }, [data.users, mostRecentGameByUserId, quizByClerkId]);
 
-    return "All time";
-  }, [period]);
+  const chartData = useMemo(() => getWeeklyChartData(data.gameData), [data.gameData]);
 
   return (
-    <Box
-      minH="100vh"
-      bg="linear-gradient(180deg, rgba(245,248,255,1) 0%, rgba(249,250,251,1) 240px, rgba(249,250,251,1) 100%)"
-      py={{ base: 5, md: 8 }}
-    >
-      <Container maxW="6xl">
-        <VStack align="stretch" gap={6}>
-          <Box>
-            <Heading color="gray.900" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.1">
-              Performance Overview
-            </Heading>
-          </Box>
+    <main className={styles.page}>
+      <section className={styles.main}>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>Statistics</h1>
+          <p className={styles.subtitle}>Usage across all classrooms and families.</p>
+        </div>
 
-          <AdminPeriodSelector value={period} onChange={setPeriod} />
-
-          <HStack gap={2} color="gray.600">
-            <Icon as={FiCalendar} boxSize={4} />
-            <Text fontSize="sm" fontWeight="500">
-              Showing data for:{" "}
-              <Text as="span" fontWeight="700" color="gray.800">
-                {periodSummary}
-              </Text>
-            </Text>
-          </HStack>
-
-          {loadingSessions ? (
-            <Flex py={14} justify="center">
-              <Spinner size="lg" color="blue.500" />
-            </Flex>
-          ) : sessionsError ? (
-            <Box bg="red.50" border="1px solid" borderColor="red.200" borderRadius="16px" p={4}>
-              <Text color="red.600" fontWeight="600">
-                {sessionsError}
-              </Text>
-            </Box>
-          ) : (
-            <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-              {gameMetrics.map((game) => (
-                <AdminMetricsCard
-                  key={game.gameId}
-                  title={game.title}
-                  icon={
-                    game.gameId === "penguinRunGame" ? (
-                      <Image src="/Icons/FaPenguin.png" alt="Penguin Run icon" width={28} height={28} />
-                    ) : (
-                      <Icon as={FaFlask} boxSize={5} color="purple.500" />
-                    )
-                  }
-                  accentColor={game.accentColor}
-                  playersValue={game.playersValue}
-                  playersTrend={game.playersTrend}
-                  totalPlayTimeValue={game.totalPlayTimeValue}
-                  totalPlayTimeTrend={game.totalPlayTimeTrend}
-                  averageTimeValue={game.averageTimeValue}
-                />
+        {loading ? (
+          <div className={styles.statusCard}>Loading statistics...</div>
+        ) : error ? (
+          <div className={styles.statusCard}>{error}</div>
+        ) : (
+          <>
+            <section className={styles.statsRow}>
+              {statCards.map((card) => (
+                <article key={card.label} className={styles.statCard}>
+                  <p className={styles.statLabel}>{card.label}</p>
+                  <p className={styles.statValue}>{card.value}</p>
+                  <p className={styles.statHelper}>{card.helper}</p>
+                </article>
               ))}
-            </Grid>
-          )}
-        </VStack>
-      </Container>
-    </Box>
+            </section>
+
+            <section className={styles.activityCard}>
+              <h2 className={styles.cardTitle}>Recent Activity</h2>
+
+              <div className={styles.tableHeader}>
+                <span>CLASSROOM / FAMILY</span>
+                <span>GAME</span>
+                <span>AVG SCORE</span>
+                <span>LAST ACTIVE</span>
+              </div>
+
+              <div className={styles.tableBody}>
+                {activityRows.length === 0 ? (
+                  <p className={styles.emptyState}>No recent activity yet.</p>
+                ) : (
+                  activityRows.map((row) => (
+                    <div key={`${row.userLabel}-${row.lastUpdatedMs}`} className={styles.tableRow}>
+                      <span className={styles.userName}>{row.userLabel}</span>
+                      <span className={styles.gameName}>{row.gameLabel}</span>
+                      <span className={styles.scoreValue}>{row.averageScoreLabel}</span>
+                      <span className={styles.lastActive}>{row.lastActiveLabel}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className={styles.chartCard}>
+              <h2 className={styles.cardTitle}>Games Played — Last 7 Days</h2>
+
+              <div className={styles.bars}>
+                {chartData.map((bar) => (
+                  <div key={bar.label} className={styles.barColumn}>
+                    <div className={styles.barTrack}>
+                      <div className={styles.bar} style={{ height: `${bar.heightPercent}%` }} />
+                    </div>
+                    <span className={styles.barLabel}>{bar.label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+      </section>
+    </main>
   );
 }
