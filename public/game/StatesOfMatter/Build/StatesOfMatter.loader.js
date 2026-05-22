@@ -38,7 +38,7 @@ function createUnityInstance(t, n, d) {
     m = {
       canvas: t,
       webglContextAttributes: { preserveDrawingBuffer: !1, powerPreference: 2 },
-      wasmFileSize: 50067838,
+      wasmFileSize: 50113516,
       cacheControl: function (e) {
         return e == m.dataUrl || e.match(/\.bundle/) ? "must-revalidate" : "no-store";
       },
