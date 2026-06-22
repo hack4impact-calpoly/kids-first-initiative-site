@@ -19,23 +19,23 @@ Kids First Initiative is a non-profit organization whose mission is to spark a p
 
 The Kids First Initiative team consists of 17 Cal Poly students. Over the course of about 9 months, we worked as a team to deploy this web application. The team members are listed below:
 
-- Matthew Lin (https://www.linkedin.com/in/matthewlin-sd/) - Project Manager
-- Jennifer Le (https://www.linkedin.com/in/jenniferhle/) - Designer
-- Edrick Wong (https://www.linkedin.com/in/edrick-wong-liang/) - Designer
-- Catherine Zheng - Designer
-- Donya Ahmady - Designer
-- Kasey Liu (https://www.linkedin.com/in/kasey-liu/) - Tech Lead
-- Emi Dinh (https://www.linkedin.com/in/emi-d/) - Tech Lead
-- Justin Chan
-- Vincent Le
-- Theodore Weicker
-- Rishan Baweja
-- Tharini Senthil
-- Nick Endresen
-- Emma Walker
-- Chloe Low
-- Trisha Chandwani
-- Nathaniel Victorino
+- [Matthew Lin](https://www.linkedin.com/in/matthewlin-sd/) - Project Manager
+- [Jennifer Le](https://www.linkedin.com/in/jenniferhle/) - Designer
+- [Edrick Wong](https://www.linkedin.com/in/edrick-wong-liang/) - Designer
+- [Catherine Zheng](https://www.linkedin.com) - Designer
+- [Donya Ahmady](https://www.linkedin.com) - Designer
+- [Kasey Liu](https://www.linkedin.com/in/kasey-liu/) - Tech Lead
+- [Emi Dinh](https://www.linkedin.com/in/emi-d/) - Tech Lead
+- [Justin Chan](https://www.linkedin.com) - Developer
+- [Vincent Le](https://www.linkedin.com) - Developer
+- [Theodore Weicker](https://www.linkedin.com) - Developer
+- [Rishan Baweja](https://www.linkedin.com) - Developer
+- [Tharini Senthil](https://www.linkedin.com) - Developer
+- [Nick Endresen](https://www.linkedin.com) - Developer
+- [Emma Walker](https://www.linkedin.com) - Developer
+- [Chloe Low](https://www.linkedin.com) - Developer
+- [Trisha Chandwani](https://www.linkedin.com) - Developer
+- [Nathaniel Victorino](https://www.linkedin.com) - Developer
 
 
 ## Getting Started And Contributing
