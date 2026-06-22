@@ -30,37 +30,6 @@ function formatPercent(value: number) {
   return `${Math.round(value)}%`;
 }
 
-function getAverageQuizScore(
-  quizzes: Array<{
-    statesOfMatterScoreBefore?: number;
-    stateOfMatterScoreAfter?: number;
-    penguinRunScoreBefore?: number;
-    penguinRunScoreAfter?: number;
-  }>,
-) {
-  const scores = quizzes.flatMap((quiz) => {
-    const normalizedScores = [
-      typeof quiz.statesOfMatterScoreBefore === "number" && quiz.statesOfMatterScoreBefore >= 0
-        ? (quiz.statesOfMatterScoreBefore / STATES_OF_MATTER_QUESTION_COUNT) * 100
-        : null,
-      typeof quiz.stateOfMatterScoreAfter === "number" && quiz.stateOfMatterScoreAfter >= 0
-        ? (quiz.stateOfMatterScoreAfter / STATES_OF_MATTER_QUESTION_COUNT) * 100
-        : null,
-      typeof quiz.penguinRunScoreBefore === "number" && quiz.penguinRunScoreBefore >= 0
-        ? (quiz.penguinRunScoreBefore / PENGUIN_RUN_QUESTION_COUNT) * 100
-        : null,
-      typeof quiz.penguinRunScoreAfter === "number" && quiz.penguinRunScoreAfter >= 0
-        ? (quiz.penguinRunScoreAfter / PENGUIN_RUN_QUESTION_COUNT) * 100
-        : null,
-    ];
-
-    return normalizedScores.filter((score): score is number => typeof score === "number");
-  });
-
-  if (scores.length === 0) return 0;
-  return scores.reduce((sum, score) => sum + score, 0) / scores.length;
-}
-
 function getAveragePreQuizScore(
   quizzes: Array<{
     statesOfMatterScoreBefore?: number;
@@ -242,7 +211,6 @@ export default async function EducatorDashboardPage() {
 
   const metrics = [
     { label: "Total Students", value: String(participants.length) },
-    { label: "Avg. Quiz Score", value: quizzes.length ? formatPercent(getAverageQuizScore(quizzes)) : "0%" },
     { label: "Avg. Pre-Quiz Score", value: quizzes.length ? formatPercent(getAveragePreQuizScore(quizzes)) : "0%" },
     { label: "Avg. Post-Quiz Score", value: quizzes.length ? formatPercent(getAveragePostQuizScore(quizzes)) : "0%" },
     { label: "Games Played", value: String(gameData.length) },

@@ -118,17 +118,18 @@
 .metricsRow {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
 .metricCard {
-  min-height: 132px;
-  padding: 24px;
+  min-height: 124px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
   background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
   border: 1px solid #dbe6f6;
   border-radius: 16px;
@@ -148,8 +149,8 @@
   margin: 0;
   font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
   font-weight: 700;
-  font-size: 42px;
-  line-height: 52px;
+  font-size: clamp(2.2rem, 2.8vw, 3rem);
+  line-height: 1;
   color: #1b1b1b;
 }
 
@@ -249,7 +250,7 @@
   }
 
   .metricsRow {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .title {
@@ -269,7 +270,7 @@
 
   .metricValue {
     font-size: 34px;
-    line-height: 44px;
+    line-height: 1;
   }
 
   .activityCard,
@@ -285,5 +286,11 @@
 
   .activityDescription {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
   }
 }
