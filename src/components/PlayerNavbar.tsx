@@ -5,6 +5,7 @@ import { Box, Button, HStack, Spacer, Text } from "@chakra-ui/react";
 import ChakraButton from "./ChakraButton";
 import { ProfileCardPopup } from "./ProfileCardPopup";
 import { avatarPhotoSrc, DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
+import { readLocalAvatarPhoto, writeLocalAvatarPhoto } from "@/lib/avatarPreferences";
 
 type NavbarProps = {
   role?: string;
@@ -15,11 +16,17 @@ type NavbarProps = {
 
 export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<string>(isValidAvatarPhoto(photo) ? photo : DEFAULT_AVATAR_PHOTO);
+  const [selectedPhoto, setSelectedPhoto] = useState<string>(
+    isValidAvatarPhoto(photo) ? photo : readLocalAvatarPhoto(),
+  );
 
   useEffect(() => {
-    if (!photo) return;
-    setSelectedPhoto(isValidAvatarPhoto(photo) ? photo : DEFAULT_AVATAR_PHOTO);
+    if (!photo) {
+      setSelectedPhoto(readLocalAvatarPhoto());
+      return;
+    }
+
+    setSelectedPhoto(isValidAvatarPhoto(photo) ? photo : readLocalAvatarPhoto());
   }, [photo]);
 
   const handleSaveAvatar = async (nextPhoto: string) => {
@@ -27,6 +34,7 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
 
     const previousPhoto = selectedPhoto;
     setSelectedPhoto(nextPhoto);
+    writeLocalAvatarPhoto(nextPhoto);
 
     try {
       const response = await fetch("/api/users/me/photo", {
@@ -36,13 +44,19 @@ export function PlayerNavbar({ role, name, coins = "0", photo }: NavbarProps) {
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 404) {
+          return true;
+        }
+
         setSelectedPhoto(previousPhoto);
+        writeLocalAvatarPhoto(previousPhoto);
         return false;
       }
 
       return true;
     } catch {
       setSelectedPhoto(previousPhoto);
+      writeLocalAvatarPhoto(previousPhoto);
       return false;
     }
   };
