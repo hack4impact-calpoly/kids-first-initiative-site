@@ -71,6 +71,50 @@
   background: #231f60;
 }
 
+.accessCodeCard {
+  width: 100%;
+  padding: 22px 24px;
+  border-radius: 16px;
+  border: 1px solid #dbe6f6;
+  background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+  box-shadow: 0 16px 34px rgba(45, 73, 133, 0.07);
+}
+
+.accessCodeCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accessCodeLabel {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5a74ba;
+}
+
+.accessCodeValue {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #243f95;
+}
+
+.accessCodeHelp {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #667085;
+}
+
 .metricsRow {
   width: 100%;
   display: grid;

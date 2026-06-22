@@ -4,6 +4,7 @@ import ClassroomParticipant from "@/database/classroomParticipantSchema";
 import ClassroomSession from "@/database/classroomSessionSchema";
 import GameData from "@/database/gameDataSchema";
 import Quiz from "@/database/quizSchema";
+import StudentAccessCode from "@/database/studentAccessCodeSchema";
 import Teacher from "@/database/teacherSchema";
 import User from "@/database/userSchema";
 import quizData from "@/data/quiz.json";
@@ -207,7 +208,7 @@ export default async function EducatorDashboardPage() {
 
   const sessionId = String(classroomSession._id);
 
-  const [participants, gameData, quizzes] = await Promise.all([
+  const [participants, gameData, quizzes, accessCode] = await Promise.all([
     ClassroomParticipant.find({ sessionId }).sort({ joinedAt: 1 }).lean<
       Array<{
         _id: { toString(): string } | string;
@@ -234,6 +235,9 @@ export default async function EducatorDashboardPage() {
         penguinRunScoreAfter?: number;
       }>
     >(),
+    StudentAccessCode.findOne({ sessionId, isActive: true }).lean<{
+      code: string;
+    } | null>(),
   ]);
 
   const metrics = [
@@ -276,6 +280,15 @@ export default async function EducatorDashboardPage() {
             Start New Class
           </Link>
         </div>
+
+        {accessCode ? (
+          <section className={styles.accessCodeCard}>
+            <div className={styles.accessCodeCopy}>
+              <p className={styles.accessCodeLabel}>Active Access Code</p>
+              <h2 className={styles.accessCodeValue}>{accessCode.code}</h2>
+            </div>
+          </section>
+        ) : null}
 
         <div className={styles.metricsRow}>
           {metrics.map((metric) => (
