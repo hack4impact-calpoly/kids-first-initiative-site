@@ -1,6 +1,6 @@
 # Kids First Initiative
 
-Educational web game to teach students about STEM topics like physics and states of matter
+An educational web game to teach students about STEM topics like physics and states of matter.
 
 ## Table of Contents
 
@@ -20,12 +20,12 @@ Kids First Initiative is a non-profit organization whose mission is to spark a p
 The Kids First Initiative team consists of 17 Cal Poly students. Over the course of about 9 months, we worked as a team to deploy this web application. The team members are listed below:
 
 - [Matthew Lin](https://www.linkedin.com/in/matthewlin-sd/) - Project Manager
+- [Kasey Liu](https://www.linkedin.com/in/kasey-liu/) - Tech Lead
+- [Emi Dinh](https://www.linkedin.com/in/emi-d/) - Tech Lead
 - [Jennifer Le](https://www.linkedin.com/in/jenniferhle/) - Designer
 - [Edrick Wong](https://www.linkedin.com/in/edrick-wong-liang/) - Designer
 - [Catherine Zheng](https://www.linkedin.com) - Designer
 - [Donya Ahmady](https://www.linkedin.com) - Designer
-- [Kasey Liu](https://www.linkedin.com/in/kasey-liu/) - Tech Lead
-- [Emi Dinh](https://www.linkedin.com/in/emi-d/) - Tech Lead
 - [Justin Chan](https://www.linkedin.com) - Developer
 - [Vincent Le](https://www.linkedin.com) - Developer
 - [Theodore Weicker](https://www.linkedin.com) - Developer
