@@ -11,8 +11,8 @@ import AdminProfileCard from "./AdminProfileCard";
 import AdminSettingsPopup from "./AdminSettingsPopup";
 import { avatarPhotoSrc, DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
 import { readLocalAvatarPhoto, writeLocalAvatarPhoto } from "@/lib/avatarPreferences";
+import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
-const CLASSROOM_SESSION_KEY = "kfi_current_classroom_session";
 const STUDENT_EXPERIENCE_PREFIXES = [
   "/playerDashboard",
   "/penguinRunGame",
@@ -30,29 +30,12 @@ type CurrentUserResponse = {
   email?: string;
 };
 
-type ClassroomSessionSnapshot = {
-  displayName?: string;
-};
-
 function formatRole(role?: string) {
   if (!role) return "";
   if (role === "educator") return "EDUCATOR";
   if (role === "parent") return "PARENT";
   if (role === "admin") return "ADMIN";
   return role.toUpperCase();
-}
-
-function readJoinedClassroomSession() {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = window.localStorage.getItem(CLASSROOM_SESSION_KEY);
-    if (!raw) return null;
-
-    return JSON.parse(raw) as ClassroomSessionSnapshot;
-  } catch {
-    return null;
-  }
 }
 
 export default function Navbar() {
@@ -82,7 +65,7 @@ export default function Navbar() {
         const data = (await response.json()) as CurrentUserResponse;
         if (!isActive) return;
 
-        const joinedSession = isStudentExperience ? readJoinedClassroomSession() : null;
+        const joinedSession = isStudentExperience ? readClassroomSessionSnapshot() : null;
 
         setCurrentUserId(data._id?.trim() || "");
         setDisplayName(
@@ -98,7 +81,7 @@ export default function Navbar() {
       } catch {
         if (!isActive) return;
 
-        const joinedSession = isStudentExperience ? readJoinedClassroomSession() : null;
+        const joinedSession = isStudentExperience ? readClassroomSessionSnapshot() : null;
 
         setCurrentUserId("");
         setDisplayName(joinedSession?.displayName?.trim() || user?.fullName?.trim() || user?.username || "Player");

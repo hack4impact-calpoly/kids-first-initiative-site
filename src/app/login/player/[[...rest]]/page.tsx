@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { SignIn, useUser } from "@clerk/nextjs";
 import { Box, Button, Flex, Heading, Input, Link as ChakraLink, Stack, Text, Tooltip } from "@chakra-ui/react";
+import { writeClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 const FACILITATOR_LOGIN_ROUTE = "/login/facilitator";
 
@@ -25,7 +26,6 @@ const fieldInputStyle = {
   _focus: { borderColor: NAVY, boxShadow: `0 0 0 1px ${NAVY}` },
 };
 
-const CLASSROOM_SESSION_KEY = "kfi_current_classroom_session";
 const GUEST_TOKEN_KEY = "kfi_guest_participant_token";
 
 function getStoredGuestToken() {
@@ -94,22 +94,20 @@ export default function PlayerLoginPage() {
         error?: string;
         sessionId?: string;
         title?: string;
-        participant?: { displayName: string };
+        participant?: { id: string; displayName: string };
       };
 
       if (!response.ok || !result.sessionId) {
         throw new Error(result.error || "Unable to join classroom session.");
       }
 
-      window.localStorage.setItem(
-        CLASSROOM_SESSION_KEY,
-        JSON.stringify({
-          sessionId: result.sessionId,
-          title: result.title,
-          displayName: result.participant?.displayName ?? studentName.trim(),
-          code: normalizedCode,
-        }),
-      );
+      writeClassroomSessionSnapshot({
+        sessionId: result.sessionId,
+        title: result.title,
+        displayName: result.participant?.displayName ?? studentName.trim(),
+        code: normalizedCode,
+        participantId: result.participant?.id,
+      });
       window.sessionStorage.removeItem(GUEST_TOKEN_KEY);
 
       router.push("/playerDashboard");

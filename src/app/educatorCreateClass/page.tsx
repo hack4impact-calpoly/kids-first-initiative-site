@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./educatorCreateClass.module.css";
 
 type ClassroomParticipant = {
@@ -57,6 +57,7 @@ async function requestNewSession(title: string) {
 
 export default function EducatorDashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [className, setClassName] = useState("");
   const [session, setSession] = useState<ClassroomSession | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,6 +66,7 @@ export default function EducatorDashboardPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
   const hasInitialized = useRef(false);
+  const shouldStartFresh = searchParams.get("fresh") === "1";
 
   const accessCode = session?.accessCode ?? "Loading...";
   const resolvedClassName = className.trim() || session?.title || DEFAULT_CLASS_NAME;
@@ -98,7 +100,17 @@ export default function EducatorDashboardPage() {
         const currentSession = await loadCurrentSession();
         if (ignore) return;
 
-        if (currentSession && !hasInitialized.current) {
+        if (shouldStartFresh && !hasInitialized.current) {
+          hasInitialized.current = true;
+          const nextSession = await requestNewSession(DEFAULT_CLASS_NAME);
+          if (ignore) return;
+          setSession(nextSession);
+          setClassName("");
+          setCopied(false);
+          setShared(false);
+          setError("");
+          router.replace("/educatorCreateClass");
+        } else if (currentSession && !hasInitialized.current) {
           hasInitialized.current = true;
           setSession(currentSession);
           setClassName(currentSession.title === DEFAULT_CLASS_NAME ? "" : currentSession.title);
@@ -128,7 +140,7 @@ export default function EducatorDashboardPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [router, shouldStartFresh]);
 
   useEffect(() => {
     if (!session?.sessionId) return;
