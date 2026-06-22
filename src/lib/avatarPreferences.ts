@@ -2,16 +2,20 @@ import { DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "./avatarPhotos";
 
 export const LOCAL_AVATAR_PHOTO_KEY = "kfi_local_avatar_photo";
 
-export function readLocalAvatarPhoto() {
+function buildAvatarPhotoKey(scope?: string) {
+  return scope ? `${LOCAL_AVATAR_PHOTO_KEY}:${scope}` : LOCAL_AVATAR_PHOTO_KEY;
+}
+
+export function readLocalAvatarPhoto(scope?: string) {
   if (typeof window === "undefined") return DEFAULT_AVATAR_PHOTO;
 
-  const storedPhoto = window.localStorage.getItem(LOCAL_AVATAR_PHOTO_KEY);
+  const storedPhoto = window.localStorage.getItem(buildAvatarPhotoKey(scope));
   return isValidAvatarPhoto(storedPhoto) ? storedPhoto : DEFAULT_AVATAR_PHOTO;
 }
 
-export function writeLocalAvatarPhoto(photo: string) {
+export function writeLocalAvatarPhoto(photo: string, scope?: string) {
   if (typeof window === "undefined") return;
   if (!isValidAvatarPhoto(photo)) return;
 
-  window.localStorage.setItem(LOCAL_AVATAR_PHOTO_KEY, photo);
+  window.localStorage.setItem(buildAvatarPhotoKey(scope), photo);
 }

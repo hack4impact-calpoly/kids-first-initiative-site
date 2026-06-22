@@ -41,6 +41,13 @@ function formatRole(role?: string) {
 export default function Navbar() {
   const pathname = usePathname();
   const { user } = useUser();
+  const isStudentExperience = pathname
+    ? STUDENT_EXPERIENCE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    : false;
+  const joinedSession = isStudentExperience ? readClassroomSessionSnapshot() : null;
+  const isJoinedStudent = Boolean(joinedSession);
+  const joinedSessionDisplayName = joinedSession?.displayName?.trim();
+  const studentAvatarScope = joinedSession?.participantId ?? joinedSession?.sessionId;
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
   const [isAdminProfileCardOpen, setAdminProfileCardOpen] = useState(false);
   const [isAdminSettingsOpen, setAdminSettingsOpen] = useState(false);
@@ -50,9 +57,6 @@ export default function Navbar() {
   const [displayRole, setDisplayRole] = useState("STUDENT");
   const [displayEmail, setDisplayEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const isStudentExperience = pathname
-    ? STUDENT_EXPERIENCE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-    : false;
 
   useEffect(() => {
     let isActive = true;
@@ -65,28 +69,26 @@ export default function Navbar() {
         const data = (await response.json()) as CurrentUserResponse;
         if (!isActive) return;
 
-        const joinedSession = isStudentExperience ? readClassroomSessionSnapshot() : null;
-
         setCurrentUserId(data._id?.trim() || "");
         setDisplayName(
-          joinedSession?.displayName?.trim() ||
-            data.name?.trim() ||
-            user?.fullName?.trim() ||
-            user?.username ||
-            "Player",
+          joinedSessionDisplayName || data.name?.trim() || user?.fullName?.trim() || user?.username || "Player",
         );
-        setDisplayRole(joinedSession ? "STUDENT" : formatRole(data.role));
-        setSelectedPhoto(isValidAvatarPhoto(data.photo) ? data.photo : readLocalAvatarPhoto());
+        setDisplayRole(isJoinedStudent ? "STUDENT" : formatRole(data.role));
+        setSelectedPhoto(
+          isJoinedStudent
+            ? readLocalAvatarPhoto(studentAvatarScope)
+            : isValidAvatarPhoto(data.photo)
+              ? data.photo
+              : readLocalAvatarPhoto(),
+        );
         setDisplayEmail(data.email?.trim() || user?.primaryEmailAddress?.emailAddress || "");
       } catch {
         if (!isActive) return;
 
-        const joinedSession = isStudentExperience ? readClassroomSessionSnapshot() : null;
-
         setCurrentUserId("");
-        setDisplayName(joinedSession?.displayName?.trim() || user?.fullName?.trim() || user?.username || "Player");
+        setDisplayName(joinedSessionDisplayName || user?.fullName?.trim() || user?.username || "Player");
         setDisplayRole("STUDENT");
-        setSelectedPhoto(readLocalAvatarPhoto());
+        setSelectedPhoto(readLocalAvatarPhoto(studentAvatarScope));
         setDisplayEmail(user?.primaryEmailAddress?.emailAddress || "");
       } finally {
         if (isActive) setIsLoading(false);
@@ -98,14 +100,26 @@ export default function Navbar() {
     return () => {
       isActive = false;
     };
-  }, [isStudentExperience, user?.fullName, user?.username, user?.primaryEmailAddress?.emailAddress]);
+  }, [
+    isStudentExperience,
+    isJoinedStudent,
+    joinedSessionDisplayName,
+    studentAvatarScope,
+    user?.fullName,
+    user?.username,
+    user?.primaryEmailAddress?.emailAddress,
+  ]);
 
   const handleSaveAvatar = async (nextPhoto: string) => {
     if (!isValidAvatarPhoto(nextPhoto)) return false;
 
     const previousPhoto = selectedPhoto;
     setSelectedPhoto(nextPhoto);
-    writeLocalAvatarPhoto(nextPhoto);
+    writeLocalAvatarPhoto(nextPhoto, joinedSession ? studentAvatarScope : undefined);
+
+    if (joinedSession) {
+      return true;
+    }
 
     try {
       const response = await fetch("/api/users/me/photo", {
