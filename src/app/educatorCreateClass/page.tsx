@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./educatorCreateClass.module.css";
 
@@ -55,7 +55,7 @@ async function requestNewSession(title: string) {
   return result.session;
 }
 
-export default function EducatorDashboardPage() {
+function EducatorCreateClassContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [className, setClassName] = useState("");
@@ -328,5 +328,13 @@ export default function EducatorDashboardPage() {
         </button>
       </section>
     </main>
+  );
+}
+
+export default function EducatorDashboardPage() {
+  return (
+    <Suspense fallback={<main className={styles.page} />}>
+      <EducatorCreateClassContent />
+    </Suspense>
   );
 }

@@ -83,7 +83,11 @@ async function getTeacherForCurrentUser(userId: string) {
       },
     },
     { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
-  ).lean<{ _id: mongoose.Types.ObjectId }>();
+  ).lean<{ _id: mongoose.Types.ObjectId } | null>();
+
+  if (!teacher) {
+    return { error: NextResponse.json({ error: "Unable to create educator profile." }, { status: 500 }) };
+  }
 
   return { teacherId: teacher._id };
 }

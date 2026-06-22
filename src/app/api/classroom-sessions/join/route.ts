@@ -90,7 +90,11 @@ export async function POST(request: NextRequest) {
       displayName: string;
       joinedAt: Date;
       lastSeenAt: Date;
-    }>();
+    } | null>();
+
+    if (!participant) {
+      return NextResponse.json({ error: "Unable to create a student session." }, { status: 500 });
+    }
 
     await StudentAccessCode.findByIdAndUpdate(accessCode._id, { $set: { lastSeenAt: new Date() } });
 

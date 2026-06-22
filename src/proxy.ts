@@ -6,17 +6,17 @@ const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 
 // !IMPORTANT, add this to your env:
 // NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
-//otherwise auth().protect() will default to clerks hosted login route.
+// otherwise auth().protect() will default to Clerk's hosted login route.
 
-//Keep in mind when you change roles, it wont appear until clerks session token refreshes.
-//https://clerk.com/docs/guides/sessions/customize-session-tokens
+// Keep in mind when you change roles, it won't appear until Clerk's session token refreshes.
+// https://clerk.com/docs/guides/sessions/customize-session-tokens
 
 export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
   const { sessionClaims } = await auth();
   const role = sessionClaims?.role;
 
-  // Protect admin routes (can pass a error instead)
+  // Protect admin routes (can pass an error instead)
   if (isAdminRoute(req) && role !== "admin") {
     return NextResponse.redirect(new URL("/playerDashboard", req.url));
   }
