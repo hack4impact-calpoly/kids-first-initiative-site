@@ -1,6 +1,6 @@
 # Kids First Initiative
 
-{One sentence description of the project}
+Educational web game to teach students about STEM topics like physics and states of matter
 
 ## Table of Contents
 
@@ -13,17 +13,30 @@
 
 ### Purpose
 
-{Short paragraph description of the non-profit mission and the purpose of this project. Who will this project help, why is it necessary. Impact of the project.}
+Kids First Initiative is a non-profit organization whose mission is to spark a passion for Science, Technology, Engineering, Arts, and Math (STEAM) in young people from underserved communities. They teach live lessons using tangible, hands-on materials. This website aims to expand access to those lessons by enabling students to learn the same topics remotely.
 
 ### Team
 
-The {non-profit name} team consists of {#} Cal Poly students. Over the course of about 9 months, we worked as a team to deploy this web application. The team members are listed below:
+The Kids First Initiative team consists of 17 Cal Poly students. Over the course of about 9 months, we worked as a team to deploy this web application. The team members are listed below:
 
-- [First Last](https://www.linkedin.com/) - Project Manager
-- [First Last](https://www.linkedin.com/) - Designer
-- [First Last](https://www.linkedin.com/) - Tech Lead
-- [First Last](https://www.linkedin.com/) - Tech Lead
-- [First Last](https://www.linkedin.com/) - Software Developer
+- Matthew Lin (https://www.linkedin.com/in/matthewlin-sd/) - Project Manager
+- Jennifer Le (https://www.linkedin.com/in/jenniferhle/) - Designer
+- Edrick Wong (https://www.linkedin.com/in/edrick-wong-liang/) - Designer
+- Catherine Zheng - Designer
+- Donya Ahmady - Designer
+- Kasey Liu (https://www.linkedin.com/in/kasey-liu/) - Tech Lead
+- Emi Dinh (https://www.linkedin.com/in/emi-d/) - Tech Lead
+- Justin Chan
+- Vincent Le
+- Theodore Weicker
+- Rishan Baweja
+- Tharini Senthil
+- Nick Endresen
+- Emma Walker
+- Chloe Low
+- Trisha Chandwani
+- Nathaniel Victorino
+
 
 ## Getting Started And Contributing
 
