@@ -20,6 +20,9 @@ const QuizSchema = new Schema(
   {
     quizId: { type: String, required: true, unique: true, trim: true },
     clerkId: { type: String, required: true, trim: true },
+    classroomSessionId: { type: String, default: null, index: true },
+    classroomParticipantId: { type: String, default: null, index: true },
+    studentDisplayName: { type: String, default: null, trim: true },
     statesOfMatterScoreBefore: { type: Number, required: true, default: -1 },
     stateOfMatterScoreAfter: { type: Number, required: true, default: -1 },
     penguinRunScoreBefore: { type: Number, required: true, default: -1 },

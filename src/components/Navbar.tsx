@@ -3,13 +3,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Box, Button, Flex, HStack, Spinner, Text } from "@chakra-ui/react";
 import { ProfileCardPopup } from "./ProfileCardPopup";
-import EducatorProfileCard from "./EducatorProfileCard";
 import AdminProfileCard from "./AdminProfileCard";
 import AdminSettingsPopup from "./AdminSettingsPopup";
 import { avatarPhotoSrc, DEFAULT_AVATAR_PHOTO, isValidAvatarPhoto } from "@/lib/avatarPhotos";
+import { readLocalAvatarPhoto, writeLocalAvatarPhoto } from "@/lib/avatarPreferences";
+import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
+
+const STUDENT_EXPERIENCE_PREFIXES = [
+  "/playerDashboard",
+  "/penguinRunGame",
+  "/penguinRunQuiz",
+  "/statesOfMatterGame",
+  "/threeStatesOfMatterQuiz",
+  "/shop",
+];
 
 type CurrentUserResponse = {
   _id?: string;
@@ -28,9 +39,16 @@ function formatRole(role?: string) {
 }
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { user } = useUser();
+  const isStudentExperience = pathname
+    ? STUDENT_EXPERIENCE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    : false;
+  const joinedSession = isStudentExperience ? readClassroomSessionSnapshot() : null;
+  const isJoinedStudent = Boolean(joinedSession);
+  const joinedSessionDisplayName = joinedSession?.displayName?.trim();
+  const studentAvatarScope = joinedSession?.participantId ?? joinedSession?.sessionId;
   const [isProfileCardPopupOpen, setProfileCardPopupOpen] = useState(false);
-  const [isEducatorProfileCardOpen, setEducatorProfileCardOpen] = useState(false);
   const [isAdminProfileCardOpen, setAdminProfileCardOpen] = useState(false);
   const [isAdminSettingsOpen, setAdminSettingsOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -52,16 +70,25 @@ export default function Navbar() {
         if (!isActive) return;
 
         setCurrentUserId(data._id?.trim() || "");
-        setDisplayName(data.name?.trim() || user?.fullName?.trim() || user?.username || "Player");
-        setDisplayRole(formatRole(data.role));
-        setSelectedPhoto(isValidAvatarPhoto(data.photo) ? data.photo : DEFAULT_AVATAR_PHOTO);
+        setDisplayName(
+          joinedSessionDisplayName || data.name?.trim() || user?.fullName?.trim() || user?.username || "Player",
+        );
+        setDisplayRole(isJoinedStudent ? "STUDENT" : formatRole(data.role));
+        setSelectedPhoto(
+          isJoinedStudent
+            ? readLocalAvatarPhoto(studentAvatarScope)
+            : isValidAvatarPhoto(data.photo)
+              ? data.photo
+              : readLocalAvatarPhoto(),
+        );
         setDisplayEmail(data.email?.trim() || user?.primaryEmailAddress?.emailAddress || "");
       } catch {
         if (!isActive) return;
+
         setCurrentUserId("");
-        setDisplayName(user?.fullName?.trim() || user?.username || "Player");
+        setDisplayName(joinedSessionDisplayName || user?.fullName?.trim() || user?.username || "Player");
         setDisplayRole("STUDENT");
-        setSelectedPhoto(DEFAULT_AVATAR_PHOTO);
+        setSelectedPhoto(readLocalAvatarPhoto(studentAvatarScope));
         setDisplayEmail(user?.primaryEmailAddress?.emailAddress || "");
       } finally {
         if (isActive) setIsLoading(false);
@@ -73,13 +100,26 @@ export default function Navbar() {
     return () => {
       isActive = false;
     };
-  }, [user?.fullName, user?.username, user?.primaryEmailAddress?.emailAddress]);
+  }, [
+    isStudentExperience,
+    isJoinedStudent,
+    joinedSessionDisplayName,
+    studentAvatarScope,
+    user?.fullName,
+    user?.username,
+    user?.primaryEmailAddress?.emailAddress,
+  ]);
 
   const handleSaveAvatar = async (nextPhoto: string) => {
     if (!isValidAvatarPhoto(nextPhoto)) return false;
 
     const previousPhoto = selectedPhoto;
     setSelectedPhoto(nextPhoto);
+    writeLocalAvatarPhoto(nextPhoto, joinedSession ? studentAvatarScope : undefined);
+
+    if (joinedSession) {
+      return true;
+    }
 
     try {
       const response = await fetch("/api/users/me/photo", {
@@ -89,19 +129,24 @@ export default function Navbar() {
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 404) {
+          return true;
+        }
+
         setSelectedPhoto(previousPhoto);
+        writeLocalAvatarPhoto(previousPhoto);
         return false;
       }
 
       return true;
     } catch {
       setSelectedPhoto(previousPhoto);
+      writeLocalAvatarPhoto(previousPhoto);
       return false;
     }
   };
 
   const activeAvatarSrc = avatarPhotoSrc(selectedPhoto);
-  const isEducator = displayRole === "EDUCATOR";
   const isAdmin = displayRole === "ADMIN";
 
   return (
@@ -152,10 +197,6 @@ export default function Navbar() {
                   setAdminProfileCardOpen(true);
                   return;
                 }
-                if (isEducator) {
-                  setEducatorProfileCardOpen(true);
-                  return;
-                }
                 setProfileCardPopupOpen(true);
               }}
               variant="ghost"
@@ -194,15 +235,6 @@ export default function Navbar() {
         name={displayName}
         role={displayRole}
       />
-
-      <EducatorProfileCard
-        isOpen={isEducatorProfileCardOpen}
-        onClose={() => setEducatorProfileCardOpen(false)}
-        name={displayName}
-        email={displayEmail}
-        avatarSrc={activeAvatarSrc}
-      />
-
       <AdminProfileCard
         isOpen={isAdminProfileCardOpen}
         onClose={() => setAdminProfileCardOpen(false)}

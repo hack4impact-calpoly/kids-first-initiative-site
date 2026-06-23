@@ -52,6 +52,18 @@
   gap: 28px;
 }
 
+.errorBanner {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #fff1f1;
+  border: 1px solid #f3b3b3;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  color: #9b2c2c;
+}
+
 .fieldBlock {
   display: flex;
   flex-direction: column;
@@ -86,6 +98,14 @@
 .input:focus {
   border-color: #b7cbf8;
   box-shadow: 0 0 0 4px rgba(183, 203, 248, 0.22);
+}
+
+.helperText {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #6b7280;
 }
 
 .codeBlock {
@@ -125,6 +145,15 @@
   color: #3b57b0;
 }
 
+.sessionStatus {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #5e6270;
+  text-align: center;
+}
+
 .actions {
   display: flex;
   justify-content: center;
@@ -155,6 +184,12 @@
   transform: translateY(-1px);
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
 .buttonPrimary {
   background: #2a256f;
   color: #f8f8f8;
@@ -175,6 +210,126 @@
   background: #f5f9ff;
 }
 
+.rosterSection {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 8px;
+  padding-top: 26px;
+  border-top: 1px solid #e5eaf1;
+}
+
+.rosterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.rosterEyebrow {
+  margin: 0 0 6px;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.rosterTitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  line-height: 1.1;
+  color: #171717;
+}
+
+.rosterList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.rosterCard {
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f9fbff 0%, #eef4ff 100%);
+  border: 1px solid #d7e3fb;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rosterAvatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #2a256f;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rosterMeta {
+  min-width: 0;
+  flex: 1;
+}
+
+.rosterName {
+  margin: 0 0 4px;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #161616;
+}
+
+.rosterTime {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #5f6572;
+}
+
+.rosterIndex {
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 700;
+  color: #5a74ba;
+}
+
+.emptyState {
+  padding: 28px 24px;
+  border-radius: 20px;
+  border: 2px dashed #c9d8f8;
+  background: #f8fbff;
+  text-align: center;
+}
+
+.emptyStateTitle {
+  margin: 0 0 8px;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.emptyStateText {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #5e6270;
+}
+
 .regenerateButton {
   border: 0;
   background: transparent;
@@ -188,6 +343,11 @@
 
 .regenerateButton:hover {
   color: #2f4da4;
+}
+
+.regenerateButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .createClassButton {
@@ -246,6 +406,18 @@
     height: 58px;
     font-size: 18px;
     border-radius: 16px;
+  }
+
+  .rosterSection {
+    padding-top: 20px;
+  }
+
+  .rosterCard {
+    padding: 16px;
+  }
+
+  .rosterTitle {
+    font-size: 1.6rem;
   }
 
   .regenerateButton {

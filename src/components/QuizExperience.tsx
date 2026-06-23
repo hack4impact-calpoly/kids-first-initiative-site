@@ -6,6 +6,7 @@ import QuizIntroView from "@/components/quiz/QuizIntroView";
 import QuizQuestionView from "@/components/quiz/QuizQuestionView";
 import QuizResultsView from "@/components/quiz/QuizResultsView";
 import { QuizQuestion } from "@/components/quiz/types";
+import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 export type { QuizOption, QuizQuestion } from "@/components/quiz/types";
 
@@ -73,6 +74,8 @@ export default function QuizExperience({
   useEffect(() => {
     if (stage !== "results") return;
 
+    const classroomSession = readClassroomSessionSnapshot();
+
     const saveKey = `${quizKey}:${finalCorrectCount}:${Object.keys(answersByQuestionId)
       .sort()
       .map((questionId) => `${questionId}:${answersByQuestionId[questionId]}`)
@@ -127,7 +130,12 @@ export default function QuizExperience({
         const response = await fetch("/api/quiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            classroomSessionId: classroomSession?.sessionId,
+            classroomParticipantId: classroomSession?.participantId,
+            studentDisplayName: classroomSession?.displayName,
+          }),
         });
 
         if (!response.ok) {

@@ -2,6 +2,8 @@
 
 import UnityIFrame from "@/components/UnityIFrame";
 import { useAuth } from "@clerk/nextjs";
+import { useState } from "react";
+import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 type Props = {
   game: string;
@@ -27,6 +29,13 @@ interface ProgressPayload {
 export default function GamePlayer({ game, saveId, sessionId, classroomId, userId, height }: Props) {
   const { userId: authUserId } = useAuth();
   const resolvedUserId = userId ?? authUserId ?? undefined;
+  const [clientSaveId, setClientSaveId] = useState<string | undefined>(saveId);
+
+  const activeClassroomSession = readClassroomSessionSnapshot();
+  const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
+  const classroomParticipantId = activeClassroomSession?.participantId;
+  const studentDisplayName = activeClassroomSession?.displayName;
+  const effectiveSaveId = saveId ?? clientSaveId;
 
   const handleProgress = async (payload: unknown) => {
     const progressPayload = payload as ProgressPayload;
@@ -36,16 +45,37 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     try {
       // Save player progress to gameData endpoint
       if (progressPayload.completedLevels && Array.isArray(progressPayload.completedLevels)) {
-        const response = await fetch(`/api/gameData/${saveId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            completedLevels: progressPayload.completedLevels,
-            lastUpdated: new Date().toISOString(),
-          }),
-        });
+        const payload = {
+          completedLevels: progressPayload.completedLevels,
+          lastUpdated: new Date().toISOString(),
+          classroomSessionId: classroomSessionId ?? null,
+          classroomParticipantId: classroomParticipantId ?? null,
+          studentDisplayName: studentDisplayName ?? null,
+        };
+
+        const response = effectiveSaveId
+          ? await fetch(`/api/gameData/${effectiveSaveId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            })
+          : await fetch("/api/gameData", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                saveId: crypto.randomUUID(),
+                saveVersion: 1,
+                gameVersion: "1.0.0",
+                gameId: game,
+                userId:
+                  resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : "guest-player"),
+                ...payload,
+              }),
+            });
 
         if (!response.ok) {
           console.error("Failed to save game data:", response.statusText);
@@ -53,6 +83,9 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
         }
 
         const updatedData = await response.json();
+        if (!effectiveSaveId && typeof updatedData?.saveId === "string") {
+          setClientSaveId(updatedData.saveId);
+        }
         console.log("Game data saved successfully:", updatedData);
       }
 
@@ -93,7 +126,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   return (
     <UnityIFrame
       game={game}
-      saveId={saveId}
+      saveId={effectiveSaveId}
       userId={resolvedUserId}
       sessionId={sessionId}
       classroomId={classroomId}

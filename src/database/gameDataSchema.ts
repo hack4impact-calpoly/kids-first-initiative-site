@@ -7,6 +7,9 @@ const gameDataSchema = new Schema({
   userId: { type: String, required: true },
   gameVersion: { type: String, required: true },
   gameId: { type: String, required: true },
+  classroomSessionId: { type: String, default: null, index: true },
+  classroomParticipantId: { type: String, default: null, index: true },
+  studentDisplayName: { type: String, default: null, trim: true },
   completedLevels: { type: [Number], default: [] },
 });
 

@@ -13,13 +13,27 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 18px;
-  background: #ffffff;
+  background: radial-gradient(circle at top right, rgba(193, 221, 255, 0.45), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.headerRow {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.headerCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .title {
   margin: 0;
   font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
-  font-style: normal;
   font-weight: 700;
   font-size: 36px;
   line-height: 48px;
@@ -28,36 +42,103 @@
 
 .subtitle {
   margin: 0;
+  max-width: 860px;
   font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
-  font-style: normal;
   font-weight: 400;
   font-size: 18px;
   line-height: 28px;
   color: #747474;
 }
 
+.restartButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 14px;
+  background: #2a256f;
+  color: #ffffff;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 14px 28px rgba(42, 37, 111, 0.16);
+}
+
+.restartButton:hover {
+  background: #231f60;
+}
+
+.accessCodeCard {
+  width: 100%;
+  padding: 22px 24px;
+  border-radius: 16px;
+  border: 1px solid #dbe6f6;
+  background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+  box-shadow: 0 16px 34px rgba(45, 73, 133, 0.07);
+}
+
+.accessCodeCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accessCodeLabel {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5a74ba;
+}
+
+.accessCodeValue {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #243f95;
+}
+
+.accessCodeHelp {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #667085;
+}
+
 .metricsRow {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
 .metricCard {
-  min-height: 132px;
-  padding: 24px;
+  min-height: 124px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  background: #f8f8f8;
+  justify-content: space-between;
+  gap: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+  border: 1px solid #dbe6f6;
   border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(45, 73, 133, 0.07);
 }
 
 .metricLabel {
   margin: 0;
   font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
-  font-style: normal;
   font-weight: 500;
   font-size: 15px;
   line-height: 22px;
@@ -67,29 +148,30 @@
 .metricValue {
   margin: 0;
   font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
-  font-style: normal;
   font-weight: 700;
-  font-size: 42px;
-  line-height: 52px;
+  font-size: clamp(2.2rem, 2.8vw, 3rem);
+  line-height: 1;
   color: #1b1b1b;
 }
 
-.activityCard {
+.activityCard,
+.emptyCard {
   width: 100%;
-  min-height: min(500px, 100%);
   padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 18px;
-  background: #f8f8f8;
+  background: #ffffff;
+  border: 1px solid #dbe6f6;
   border-radius: 16px;
+  box-shadow: 0 18px 36px rgba(45, 73, 133, 0.06);
 }
 
-.activityTitle {
+.activityTitle,
+.emptyTitle {
   margin: 0;
   font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
-  font-style: normal;
   font-weight: 600;
   font-size: 20px;
   line-height: 30px;
@@ -100,19 +182,56 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
-.activityRow {
+.activityItem {
   width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fbff;
+  border: 1px solid #e3ebf8;
 }
 
-.activityBar {
-  display: block;
+.activityDot {
+  width: 12px;
+  height: 12px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #4476bb;
+  flex-shrink: 0;
+}
+
+.activityContent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activityDescription {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.45;
+  color: #23262f;
+}
+
+.activityTimestamp,
+.emptyText {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.emptyActivity {
   width: 100%;
-  height: 18px;
-  background: #e0e0e0;
-  border-radius: 6px;
+  padding: 8px 0 4px;
 }
 
 @media (max-width: 900px) {
@@ -121,8 +240,17 @@
     padding: 24px 20px 40px;
   }
 
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .restartButton {
+    width: 100%;
+  }
+
   .metricsRow {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .title {
@@ -142,20 +270,27 @@
 
   .metricValue {
     font-size: 34px;
-    line-height: 44px;
+    line-height: 1;
   }
 
-  .activityCard {
-    min-height: 420px;
+  .activityCard,
+  .emptyCard {
     padding: 20px;
   }
 
-  .activityTitle {
+  .activityTitle,
+  .emptyTitle {
     font-size: 18px;
     line-height: 26px;
   }
 
-  .activityBar {
-    height: 16px;
+  .activityDescription {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { SignIn } from "@clerk/nextjs";
-import { Box, Button, Flex, Heading, Link as ChakraLink, PinInput, Stack, Text, Tooltip } from "@chakra-ui/react";
+import { FormEvent, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { SignIn, useUser } from "@clerk/nextjs";
+import { Box, Button, Flex, Heading, Input, Link as ChakraLink, Stack, Text, Tooltip } from "@chakra-ui/react";
+import { writeClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 const FACILITATOR_LOGIN_ROUTE = "/login/facilitator";
 
@@ -12,30 +13,109 @@ const CARD_BG = "#F8F8F8";
 const INPUT_BORDER = "#D9D9D9";
 const LINK_BLUE = "#4476BB";
 
-const inputBoxStyle = {
-  width: "55px",
-  height: "62px",
-  borderRadius: "7px",
+const fieldInputStyle = {
+  width: "100%",
+  height: "56px",
+  borderRadius: "10px",
   border: `1.5px solid ${INPUT_BORDER}`,
   bg: "white",
-  textAlign: "center" as const,
-  fontSize: "xl",
+  textAlign: "left" as const,
+  fontSize: "lg",
   fontWeight: 600,
+  px: 4,
   _focus: { borderColor: NAVY, boxShadow: `0 0 0 1px ${NAVY}` },
 };
 
+const GUEST_TOKEN_KEY = "kfi_guest_participant_token";
+
+function getStoredGuestToken() {
+  if (typeof window === "undefined") return "";
+
+  const existing = window.sessionStorage.getItem(GUEST_TOKEN_KEY);
+  if (existing) return existing;
+
+  const created = crypto.randomUUID();
+  window.sessionStorage.setItem(GUEST_TOKEN_KEY, created);
+  return created;
+}
+
 export default function PlayerLoginPage() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useUser();
   const rest = params?.rest as string[] | undefined;
   const isClerkRoute = rest && rest.length > 0;
 
-  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
-  const isComplete = code.every((c) => c.length === 1);
+  const [studentName, setStudentName] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (!isComplete) return;
-    // TODO(K1-68): submit access code to backend session-join endpoint
-    console.log("Access code submitted:", code.join(""));
+  useEffect(() => {
+    const prefilledCode = searchParams.get("code")?.trim().toUpperCase();
+    if (prefilledCode) {
+      setCode(prefilledCode);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (user && !studentName.trim()) {
+      const suggestedName = user.fullName?.trim() || user.username?.trim() || user.firstName?.trim() || "";
+      if (suggestedName) {
+        setStudentName(suggestedName);
+      }
+    }
+  }, [studentName, user]);
+
+  const normalizedCode = code.trim().toUpperCase();
+  const canSubmit = normalizedCode.length >= 4 && studentName.trim().length > 0;
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!canSubmit || loading) return;
+
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/classroom-sessions/join", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code: normalizedCode,
+          displayName: studentName.trim(),
+          guestToken: getStoredGuestToken(),
+        }),
+      });
+
+      const result = (await response.json()) as {
+        error?: string;
+        sessionId?: string;
+        title?: string;
+        participant?: { id: string; displayName: string };
+      };
+
+      if (!response.ok || !result.sessionId) {
+        throw new Error(result.error || "Unable to join classroom session.");
+      }
+
+      writeClassroomSessionSnapshot({
+        sessionId: result.sessionId,
+        title: result.title,
+        displayName: result.participant?.displayName ?? studentName.trim(),
+        code: normalizedCode,
+        participantId: result.participant?.id,
+      });
+      window.sessionStorage.removeItem(GUEST_TOKEN_KEY);
+
+      router.push("/playerDashboard");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to join classroom session.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (isClerkRoute) {
@@ -57,45 +137,71 @@ export default function PlayerLoginPage() {
             </Box>
           </Heading>
           <Text color="gray.600" fontSize="md">
-            Enter your classroom access code to begin.
+            Enter your name and classroom access code to begin.
           </Text>
         </Stack>
 
-        <Box bg={CARD_BG} borderRadius="12px" px={{ base: 6, md: 10 }} py={{ base: 6, md: 8 }} w="full">
+        <Box
+          as="form"
+          onSubmit={handleSubmit}
+          bg={CARD_BG}
+          borderRadius="12px"
+          px={{ base: 6, md: 10 }}
+          py={{ base: 6, md: 8 }}
+          w="full"
+        >
           <Stack gap={6} align="center">
-            <Text fontWeight={700} fontSize="lg" color="black">
-              Access Code
-            </Text>
-
-            <PinInput.Root value={code} onValueChange={(e) => setCode(e.value)}>
-              <PinInput.Control display="flex" alignItems="center" gap="14px">
-                <PinInput.Input index={0} {...inputBoxStyle} />
-                <PinInput.Input index={1} {...inputBoxStyle} />
-                <PinInput.Input index={2} {...inputBoxStyle} />
-                <Text color="gray.400" fontSize="2xl" fontWeight={500} px={1} aria-hidden>
-                  —
+            <Stack gap={4} w="full">
+              <Box w="full">
+                <Text fontWeight={700} fontSize="sm" color="black" mb={2}>
+                  Student Name
                 </Text>
-                <PinInput.Input index={3} {...inputBoxStyle} />
-                <PinInput.Input index={4} {...inputBoxStyle} />
-                <PinInput.Input index={5} {...inputBoxStyle} />
-              </PinInput.Control>
-              <PinInput.HiddenInput />
-            </PinInput.Root>
+                <Input
+                  value={studentName}
+                  onChange={(event) => setStudentName(event.target.value)}
+                  placeholder="Enter your name"
+                  autoComplete="name"
+                  {...fieldInputStyle}
+                />
+              </Box>
+
+              <Box w="full">
+                <Text fontWeight={700} fontSize="sm" color="black" mb={2}>
+                  Access Code
+                </Text>
+                <Input
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.toUpperCase())}
+                  placeholder="ABCDEF-123"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  {...fieldInputStyle}
+                />
+              </Box>
+            </Stack>
+
+            {error ? (
+              <Box w="full" borderRadius="10px" bg="#FFF3F3" border="1px solid #F3B3B3" px={4} py={3}>
+                <Text color="#9B2C2C" fontSize="sm" fontWeight={600}>
+                  {error}
+                </Text>
+              </Box>
+            ) : null}
 
             <Button
-              onClick={handleSubmit}
-              disabled={!isComplete}
+              type="submit"
+              disabled={!canSubmit || loading}
               bg={NAVY}
               color="white"
               _hover={{ bg: "#1a1850" }}
-              opacity={isComplete ? 1 : 0.6}
+              opacity={canSubmit ? 1 : 0.6}
               h="48px"
               w="full"
               borderRadius="10px"
               fontWeight={600}
               fontSize="md"
             >
-              Continue
+              {loading ? "Joining..." : "Continue"}
             </Button>
 
             <Tooltip.Root openDelay={150}>

@@ -1,6 +1,7 @@
 import connectDB from "@/database/db";
 import User from "@/database/userSchema";
 import Quiz from "@/database/quizSchema";
+import ClassroomParticipant from "@/database/classroomParticipantSchema";
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
@@ -93,10 +94,6 @@ export async function POST(req: Request) {
   try {
     const { userId } = await auth();
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const rawBody: unknown = await req.json();
     if (!isObject(rawBody)) {
       return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
@@ -138,13 +135,47 @@ export async function POST(req: Request) {
 
     await connectDB();
 
+    const classroomParticipantId =
+      typeof rawBody.classroomParticipantId === "string" ? rawBody.classroomParticipantId.trim() : "";
+    const classroomSessionId = typeof rawBody.classroomSessionId === "string" ? rawBody.classroomSessionId.trim() : "";
+    const studentDisplayName = typeof rawBody.studentDisplayName === "string" ? rawBody.studentDisplayName.trim() : "";
+
+    let recordKey = userId ?? "";
+    let resolvedStudentDisplayName = studentDisplayName;
+
+    if (classroomParticipantId) {
+      const participant = await ClassroomParticipant.findById(classroomParticipantId).lean<{
+        _id: mongoose.Types.ObjectId;
+        sessionId: mongoose.Types.ObjectId;
+        displayName: string;
+      } | null>();
+
+      if (!participant) {
+        return NextResponse.json({ error: "Classroom participant not found." }, { status: 404 });
+      }
+
+      if (classroomSessionId && String(participant.sessionId) !== classroomSessionId) {
+        return NextResponse.json({ error: "Classroom participant does not belong to this session." }, { status: 400 });
+      }
+
+      recordKey = `participant:${classroomParticipantId}`;
+      resolvedStudentDisplayName = resolvedStudentDisplayName || participant.displayName;
+      updates.classroomParticipantId = classroomParticipantId;
+      updates.classroomSessionId = classroomSessionId || String(participant.sessionId);
+      updates.studentDisplayName = resolvedStudentDisplayName;
+    }
+
+    if (!recordKey) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const quiz = await Quiz.findOneAndUpdate(
-      { clerkId: userId },
+      { clerkId: recordKey },
       {
         $set: updates,
         $setOnInsert: {
-          clerkId: userId,
-          quizId: `quiz-${userId}`,
+          clerkId: recordKey,
+          quizId: `quiz-${recordKey}`,
         },
       },
       {
@@ -154,7 +185,7 @@ export async function POST(req: Request) {
       },
     );
 
-    if (quiz?._id && mongoose.Types.ObjectId.isValid(String(quiz._id))) {
+    if (userId && quiz?._id && mongoose.Types.ObjectId.isValid(String(quiz._id))) {
       await User.findOneAndUpdate({ clerkId: userId }, { $set: { quizId: quiz._id } }, { runValidators: true });
     }
 
