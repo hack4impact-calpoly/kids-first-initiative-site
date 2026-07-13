@@ -11,6 +11,7 @@ const gameDataSchema = new Schema({
   classroomParticipantId: { type: String, default: null, index: true },
   studentDisplayName: { type: String, default: null, trim: true },
   completedLevels: { type: [Number], default: [] },
+  completedStageIds: { type: [String], default: [] },
 });
 
 const GameData = mongoose.models.GameData || mongoose.model("GameData", gameDataSchema);
