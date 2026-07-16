@@ -34,8 +34,9 @@ Games with multiple activities or phases should report stable IDs:
 
 `completedLevels` and `completedStageIds` are complete save snapshots, not
 incremental additions. Send `levelCompleted` or `stageCompleted` only for the
-completion that triggered the message. The website stores the snapshot and
-uses the singular completion field for analytics.
+completion that triggered the message. The website unions completion snapshots
+with stored progress so an older or newly initialized client cannot erase a
+completion. The singular completion field is used for analytics.
 
 Activity and stage IDs use lowercase kebab case and must not be renamed when a
 Unity scene or display label changes. A stage's persisted key is
