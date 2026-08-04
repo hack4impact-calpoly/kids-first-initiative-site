@@ -89,12 +89,12 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/StatesOfMatter.loader.js";
+      var loaderUrl = buildUrl + "/WebGL.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/StatesOfMatter.data.br",
-        frameworkUrl: buildUrl + "/StatesOfMatter.framework.js.br",
-        codeUrl: buildUrl + "/StatesOfMatter.wasm.br",
+        dataUrl: buildUrl + "/WebGL.data.br",
+        frameworkUrl: buildUrl + "/WebGL.framework.js.br",
+        codeUrl: buildUrl + "/WebGL.wasm.br",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "States of Matter",
@@ -139,9 +139,9 @@
         // performance, uncomment the following line:
         // config.devicePixelRatio = 1;
       } else {
-        // Desktop style: let the parent iframe/page control the canvas size responsively.
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
+        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+        canvas.style.width = "960px";
+        canvas.style.height = "600px";
       }
 
       document.querySelector("#unity-loading-bar").style.display = "block";
