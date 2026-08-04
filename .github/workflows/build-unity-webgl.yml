@@ -1,0 +1,137 @@
+name: build-unity-webgl
+
+run-name: Build ${{ inputs.game }} WebGL from ${{ inputs.source_ref }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: Unity game to build
+        required: true
+        type: choice
+        options:
+          - penguin-run
+          - states-of-matter
+      source_ref:
+        description: Source branch, tag, or commit
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unity-webgl-${{ inputs.game }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ inputs.game }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      SOURCE_REPOSITORY: ${{ inputs.game == 'penguin-run' && 'hack4impact-calpoly/kids-first-initiative-penguin-run' || 'hack4impact-calpoly/kids-first-initiative-states-of-matter' }}
+
+    steps:
+      - name: Checkout Unity source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPOSITORY }}
+          ref: ${{ inputs.source_ref }}
+          path: unity-source
+          fetch-depth: 0
+          lfs: true
+          token: ${{ secrets.UNITY_REPO_TOKEN }}
+
+      - name: Record source revision
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="$(git -C unity-source rev-parse HEAD)"
+          source_short_sha="$(git -C unity-source rev-parse --short=12 HEAD)"
+          unity_version="$(awk '/m_EditorVersion:/ { print $2 }' unity-source/ProjectSettings/ProjectVersion.txt)"
+
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$source_short_sha" >> "$GITHUB_OUTPUT"
+          echo "unity_version=$unity_version" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Unity WebGL source"
+            echo "- Game: ${{ inputs.game }}"
+            echo "- Repository: $SOURCE_REPOSITORY"
+            echo "- Revision: $source_sha"
+            echo "- Unity: $unity_version"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: unity-source/Library
+          key: unity-${{ inputs.game }}-${{ steps.source.outputs.unity_version }}-webgl-${{ hashFiles('unity-source/Packages/manifest.json', 'unity-source/Packages/packages-lock.json') }}
+          restore-keys: |
+            unity-${{ inputs.game }}-${{ steps.source.outputs.unity_version }}-webgl-
+
+      - name: Free disk space
+        shell: bash
+        run: |
+          docker system prune -af || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost || true
+          df -h
+
+      - name: Build WebGL
+        id: unity_build
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: unity-source
+          unityVersion: auto
+          targetPlatform: WebGL
+          buildsPath: build
+          buildName: WebGL
+          versioning: None
+
+      - name: Normalize WebGL artifact
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          SOURCE_SHORT_SHA: ${{ steps.source.outputs.short_sha }}
+        run: |
+          set -euo pipefail
+
+          output_dir=""
+          for candidate in build/WebGL build/WebGL/WebGL; do
+            if [ -f "$candidate/index.html" ]; then
+              output_dir="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$output_dir" ]; then
+            echo "WebGL index.html was not found under build/."
+            find build -maxdepth 4 -type f -print || true
+            exit 1
+          fi
+
+          artifact_dir="${RUNNER_TEMP}/webgl-build"
+          rm -rf "$artifact_dir"
+          mkdir -p "$artifact_dir"
+          cp -R "$output_dir"/. "$artifact_dir"/
+
+          printf '%s\n' "$SOURCE_SHORT_SHA" > "$artifact_dir/_build_id.txt"
+          printf '%s\n' "$SOURCE_SHA" > "$artifact_dir/_source_sha.txt"
+          printf '%s\n' "$SOURCE_REPOSITORY" > "$artifact_dir/_source_repository.txt"
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > "$artifact_dir/_built_at_utc.txt"
+
+      - name: Upload WebGL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webgl-${{ inputs.game }}-${{ steps.source.outputs.short_sha }}
+          path: ${{ runner.temp }}/webgl-build
+          if-no-files-found: error
+          retention-days: 7
