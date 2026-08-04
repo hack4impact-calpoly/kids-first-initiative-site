@@ -43,7 +43,6 @@ jobs:
           path: unity-source
           fetch-depth: 0
           lfs: true
-          token: ${{ secrets.UNITY_REPO_TOKEN }}
 
       - name: Record source revision
         id: source
