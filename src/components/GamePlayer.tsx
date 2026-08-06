@@ -2,7 +2,8 @@
 
 import UnityIFrame from "@/components/UnityIFrame";
 import { useAuth } from "@clerk/nextjs";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   classroomId?: string;
   userId?: string;
   height?: string;
+  completionHref?: string;
 };
 
 interface ProgressPayload {
@@ -21,6 +23,7 @@ interface ProgressPayload {
   stageCompleted?: StageCompletion;
   sessionId?: string;
   classroomId?: string;
+  gameCompleted?: boolean;
   [key: string]: unknown;
 }
 
@@ -60,10 +63,12 @@ function readStageCompletion(value: unknown): StageCompletion | undefined {
 // Production callers should pass real userId/sessionId/classroomId
 // and use onProgress to call the save endpoint.
 
-export default function GamePlayer({ game, saveId, sessionId, classroomId, userId, height }: Props) {
+export default function GamePlayer({ game, saveId, sessionId, classroomId, userId, height, completionHref }: Props) {
   const { userId: authUserId } = useAuth();
+  const router = useRouter();
   const resolvedUserId = userId ?? authUserId ?? undefined;
   const [clientSaveId, setClientSaveId] = useState<string | undefined>(saveId);
+  const completionStarted = useRef(false);
 
   const activeClassroomSession = readClassroomSessionSnapshot();
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
@@ -73,6 +78,12 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
   const handleProgress = async (payload: unknown) => {
     const progressPayload = payload as ProgressPayload;
+    const shouldCompleteGame =
+      progressPayload.gameCompleted === true && Boolean(completionHref) && !completionStarted.current;
+    if (shouldCompleteGame) {
+      completionStarted.current = true;
+    }
+
     const completedLevels = readNumberArray(progressPayload.completedLevels);
     const completedStageIds = readStringArray(progressPayload.completedStageIds);
     const stageCompleted = readStageCompletion(progressPayload.stageCompleted);
@@ -83,6 +94,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     const resolvedSessionId = progressPayload.sessionId ?? sessionId ?? classroomSessionId;
     const eventUserId =
       resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : undefined);
+    let completionSaveId = effectiveSaveId;
     console.log("Unity progress received: ", progressPayload);
 
     try {
@@ -123,14 +135,14 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
         if (!response.ok) {
           console.error("Failed to save game data:", response.statusText);
-          return;
+        } else {
+          const updatedData = await response.json();
+          if (!effectiveSaveId && typeof updatedData?.saveId === "string") {
+            completionSaveId = updatedData.saveId;
+            setClientSaveId(updatedData.saveId);
+          }
+          console.log("Game data saved successfully:", updatedData);
         }
-
-        const updatedData = await response.json();
-        if (!effectiveSaveId && typeof updatedData?.saveId === "string") {
-          setClientSaveId(updatedData.saveId);
-        }
-        console.log("Game data saved successfully:", updatedData);
       }
 
       // Create an event record for level completion
@@ -160,14 +172,21 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
         if (!response.ok) {
           console.error("Failed to save event:", response.statusText);
-          return;
+        } else {
+          const eventData = await response.json();
+          console.log("Event saved successfully:", eventData);
         }
-
-        const eventData = await response.json();
-        console.log("Event saved successfully:", eventData);
       }
     } catch (error) {
       console.error("Error saving player data:", error);
+    }
+
+    if (shouldCompleteGame && completionHref) {
+      const destination = new URL(completionHref, window.location.origin);
+      if (completionSaveId && !destination.searchParams.has("saveId")) {
+        destination.searchParams.set("saveId", completionSaveId);
+      }
+      router.push(`${destination.pathname}${destination.search}${destination.hash}`);
     }
   };
 

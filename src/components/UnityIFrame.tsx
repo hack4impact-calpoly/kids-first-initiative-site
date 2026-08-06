@@ -18,7 +18,7 @@ type Props = {
   userId?: string;
   sessionId?: string;
   classroomId?: string;
-  onProgress?: (payload: unknown) => void;
+  onProgress?: (payload: unknown) => void | Promise<void>;
   height?: string;
 };
 
@@ -73,7 +73,7 @@ export default function UnityIFrame({
         case "unity-progress": {
           const payload = data.payload && typeof data.payload === "object" ? data.payload : {};
 
-          onProgress?.({
+          void onProgress?.({
             ...payload,
             sessionId,
             classroomId,
