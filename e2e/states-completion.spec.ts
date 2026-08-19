@@ -28,7 +28,7 @@ async function prepareGamePage(page: Page) {
   await page.route("**/api/users/me", (route) => route.fulfill({ status: 401, body: "{}" }));
 }
 
-async function sendCompletion(page: Page) {
+async function sendUnityProgress(page: Page, payload: Record<string, unknown>) {
   await expect
     .poll(() => page.frames().some((frame) => frame.url().includes("/game/StatesOfMatter/index.html")), {
       message: "States of Matter iframe should be loaded",
@@ -36,15 +36,19 @@ async function sendCompletion(page: Page) {
     .toBe(true);
   const unityFrame = page.frames().find((frame) => frame.url().includes("/game/StatesOfMatter/index.html"));
 
-  await unityFrame!.evaluate((stageIds) => {
+  await unityFrame!.evaluate((progressPayload) => {
     window.parent.postMessage(
       {
         type: "unity-progress",
-        payload: { completedStageIds: stageIds, gameCompleted: true },
+        payload: progressPayload,
       },
       window.location.origin,
     );
-  }, completedStageIds);
+  }, payload);
+}
+
+function sendCompletion(page: Page) {
+  return sendUnityProgress(page, { completedStageIds, gameCompleted: true });
 }
 
 function jsonResponse(route: Route, body: unknown) {
@@ -354,6 +358,55 @@ test("keeps transient classroom save failures separate from expired sessions", a
   expect(saveBodies[1]).toMatchObject({
     saveId: stableSaveId,
     classroomParticipantId: "current-participant",
+  });
+});
+
+test("offers rejoin recovery when earlier progress already cleared the classroom session", async ({ page }) => {
+  const classroomSessionKey = "kfi_current_classroom_session";
+  const classroomSnapshot = (participantId: string) => ({
+    sessionId: "class-session",
+    participantId,
+    displayName: "Student",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+  });
+  const saveBodies: Array<Record<string, unknown>> = [];
+
+  await page.addInitScript(({ key, snapshot }) => window.localStorage.setItem(key, JSON.stringify(snapshot)), {
+    key: classroomSessionKey,
+    snapshot: classroomSnapshot("expired-participant"),
+  });
+  await page.route("**/api/gameData", async (route) => {
+    saveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (saveBodies.length <= 2) {
+      await route.fulfill({ status: 401, body: "Class session expired" });
+      return;
+    }
+
+    await jsonResponse(route, { saveId: saveBodies[2].saveId });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendUnityProgress(page, { completedStageIds: [completedStageIds[0]] });
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), classroomSessionKey)).toBeNull();
+
+  await sendCompletion(page);
+  await expect(page.getByRole("button", { name: "Rejoin Class" })).toBeVisible();
+
+  await page.evaluate(({ key, snapshot }) => window.localStorage.setItem(key, JSON.stringify(snapshot)), {
+    key: classroomSessionKey,
+    snapshot: classroomSnapshot("new-participant"),
+  });
+  await page.getByRole("button", { name: "Try Again" }).click();
+
+  const replacementSaveId = String(saveBodies[2].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  expect(saveBodies).toHaveLength(3);
+  expect(saveBodies[0]).toMatchObject({ classroomParticipantId: "expired-participant" });
+  expect(saveBodies[1]).toMatchObject({ classroomParticipantId: null });
+  expect(saveBodies[2]).toMatchObject({
+    saveId: replacementSaveId,
+    classroomParticipantId: "new-participant",
   });
 });
 

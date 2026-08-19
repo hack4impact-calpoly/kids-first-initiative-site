@@ -195,7 +195,8 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
             }
 
             if (!response.ok) {
-              if (currentParticipantId && (response.status === 401 || response.status === 403)) {
+              const isAuthenticationFailure = response.status === 401 || response.status === 403;
+              if (currentParticipantId && isAuthenticationFailure) {
                 clearClassroomSessionSnapshot();
                 setActiveClassroomSession(null);
                 setClassroomSaveId(undefined);
@@ -204,6 +205,9 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
                   ok: false,
                   reason: resolvedUserId ? "save-failed" : "classroom-session-expired",
                 };
+              }
+              if (!resolvedUserId && isAuthenticationFailure) {
+                return { ok: false, reason: "classroom-session-expired" };
               }
               console.error("Failed to save game data:", response.statusText);
               return { ok: false, reason: "save-failed" };
