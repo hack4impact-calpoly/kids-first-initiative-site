@@ -92,6 +92,10 @@ test("saves final States progress before routing once to the post-game quiz", as
 });
 
 test("keeps the game open and retries when the final States save fails", async ({ page }) => {
+  let releaseRetry!: () => void;
+  const retryGate = new Promise<void>((resolve) => {
+    releaseRetry = resolve;
+  });
   const saveBodies: unknown[] = [];
 
   await page.route("**/api/gameData/existing-save", async (route) => {
@@ -101,6 +105,7 @@ test("keeps the game open and retries when the final States save fails", async (
       return;
     }
 
+    await retryGate;
     await jsonResponse(route, { saveId: "existing-save" });
   });
 
@@ -113,6 +118,13 @@ test("keeps the game open and retries when the final States save fails", async (
   await expect(retryButton).toBeVisible();
 
   await retryButton.click();
+
+  const savingButton = page.getByRole("button", { name: "Saving..." });
+  await expect(savingButton).toBeVisible();
+  await expect(savingButton).toBeDisabled();
+  await expect(page).toHaveURL(/\/statesOfMatterGame\?saveId=existing-save$/);
+
+  releaseRetry();
 
   await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after$/);
   expect(saveBodies).toHaveLength(2);
@@ -137,6 +149,38 @@ test("adds a newly created save ID to the post-game quiz destination", async ({ 
     completedStageIds,
     classroomParticipantId: null,
   });
+});
+
+test("reuses a new save ID when a completion POST response is lost", async ({ page }) => {
+  const createBodies: Array<Record<string, unknown>> = [];
+  const recoveryBodies: unknown[] = [];
+
+  await page.route("**/api/gameData", async (route) => {
+    createBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (createBodies.length === 1) {
+      await route.abort("failed");
+      return;
+    }
+
+    await route.fulfill({ status: 409, body: "Save already exists" });
+  });
+  await page.route("**/api/gameData/*", async (route) => {
+    recoveryBodies.push(route.request().postDataJSON());
+    await jsonResponse(route, { saveId: createBodies[0].saveId });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await page.getByRole("button", { name: "Try Again" }).click();
+
+  const stableSaveId = String(createBodies[0].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}$`));
+  expect(createBodies).toHaveLength(2);
+  expect(createBodies[1].saveId).toBe(stableSaveId);
+  expect(recoveryBodies).toHaveLength(1);
+  expect(recoveryBodies[0]).toMatchObject({ completedStageIds, classroomParticipantId: null });
 });
 
 test("keeps End Game as a manual post-game quiz fallback", async ({ page }) => {

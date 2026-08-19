@@ -36,6 +36,13 @@ interface StageCompletion {
   completedAt?: string;
 }
 
+type ProgressSaveResult = { ok: true; saveId?: string } | { ok: false };
+
+type PendingCompletionSave = {
+  href: string;
+  save: () => Promise<ProgressSaveResult>;
+};
+
 function readNumberArray(value: unknown) {
   return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isInteger(item))
     ? value
@@ -75,11 +82,19 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const [completionSaveFailed, setCompletionSaveFailed] = useState(false);
   const [completionRetrying, setCompletionRetrying] = useState(false);
   const completionStarted = useRef(false);
-  const pendingCompletion = useRef<ProgressPayload>();
+  const pendingCompletionSave = useRef<PendingCompletionSave>();
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
   const effectiveSaveId = classroomParticipantId ? classroomSaveId : (saveId ?? personalSaveId);
+
+  const navigateToCompletion = (href: string, completedSaveId?: string) => {
+    const destination = new URL(href, window.location.origin);
+    if (completedSaveId && !destination.searchParams.has("saveId")) {
+      destination.searchParams.set("saveId", completedSaveId);
+    }
+    router.push(`${destination.pathname}${destination.search}${destination.hash}`);
+  };
 
   const handleProgress = async (payload: unknown) => {
     const progressPayload = payload as ProgressPayload;
@@ -105,65 +120,92 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : undefined);
     let completionSaveId = effectiveSaveId;
     let progressSaveSucceeded = !completedLevels && !completedStageIds;
+    let retryProgressSave: (() => Promise<ProgressSaveResult>) | undefined;
     console.log("Unity progress received: ", progressPayload);
 
     try {
       // Save player progress to gameData endpoint
       if (completedLevels || completedStageIds) {
-        const payload = {
+        const progressData = {
           ...(completedLevels ? { completedLevels } : {}),
           ...(completedStageIds ? { completedStageIds } : {}),
           classroomParticipantId: classroomParticipantId ?? null,
         };
-
+        const createdSaveId = crypto.randomUUID();
+        const patchSave = (targetSaveId: string) =>
+          fetch(`/api/gameData/${targetSaveId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(progressData),
+          });
         const createSave = () =>
           fetch("/api/gameData", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              saveId: crypto.randomUUID(),
+              saveId: createdSaveId,
               saveVersion: 1,
               gameVersion: "1.0.0",
               gameId: game,
-              ...payload,
+              ...progressData,
             }),
           });
 
-        let response = effectiveSaveId
-          ? await fetch(`/api/gameData/${effectiveSaveId}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(payload),
-            })
-          : await createSave();
+        retryProgressSave = async () => {
+          try {
+            let attemptedCreate = false;
+            const attemptCreate = () => {
+              attemptedCreate = true;
+              return createSave();
+            };
 
-        if (response.status === 404 && classroomParticipantId && effectiveSaveId) {
-          response = await createSave();
-        }
+            let response = effectiveSaveId ? await patchSave(effectiveSaveId) : await attemptCreate();
 
-        if (!response.ok) {
-          if (classroomParticipantId && (response.status === 401 || response.status === 403)) {
-            clearClassroomSessionSnapshot();
-            setActiveClassroomSession(null);
-            setClassroomSaveId(undefined);
-          }
-          console.error("Failed to save game data:", response.statusText);
-        } else {
-          const updatedData = await response.json();
-          progressSaveSucceeded = true;
-          if (typeof updatedData?.saveId === "string") {
-            completionSaveId = updatedData.saveId;
-            if (classroomParticipantId) {
-              setClassroomSaveId(updatedData.saveId);
-            } else {
-              setPersonalSaveId(updatedData.saveId);
+            if (response.status === 404 && classroomParticipantId && effectiveSaveId) {
+              response = await attemptCreate();
             }
+
+            // A lost POST response means the stable save ID may already exist. Finish with an idempotent PATCH.
+            if (response.status === 409 && attemptedCreate) {
+              response = await patchSave(createdSaveId);
+            }
+
+            if (!response.ok) {
+              if (classroomParticipantId && (response.status === 401 || response.status === 403)) {
+                clearClassroomSessionSnapshot();
+                setActiveClassroomSession(null);
+                setClassroomSaveId(undefined);
+              }
+              console.error("Failed to save game data:", response.statusText);
+              return { ok: false };
+            }
+
+            const updatedData = await response.json();
+            const updatedSaveId =
+              typeof updatedData?.saveId === "string"
+                ? updatedData.saveId
+                : attemptedCreate
+                  ? createdSaveId
+                  : effectiveSaveId;
+            if (updatedSaveId) {
+              if (classroomParticipantId) {
+                setClassroomSaveId(updatedSaveId);
+              } else {
+                setPersonalSaveId(updatedSaveId);
+              }
+            }
+            console.log("Game data saved successfully:", updatedData);
+            return { ok: true, saveId: updatedSaveId };
+          } catch (error) {
+            console.error("Error saving game data:", error);
+            return { ok: false };
           }
-          console.log("Game data saved successfully:", updatedData);
+        };
+
+        const saveResult = await retryProgressSave();
+        progressSaveSucceeded = saveResult.ok;
+        if (saveResult.ok) {
+          completionSaveId = saveResult.saveId;
         }
       }
 
@@ -204,27 +246,35 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
     if (shouldCompleteGame && completionHref) {
       if (!progressSaveSucceeded) {
-        pendingCompletion.current = progressPayload;
-        completionStarted.current = false;
+        if (retryProgressSave) {
+          pendingCompletionSave.current = { href: completionHref, save: retryProgressSave };
+        }
         setCompletionRetrying(false);
         setCompletionSaveFailed(true);
         return;
       }
 
-      pendingCompletion.current = undefined;
+      pendingCompletionSave.current = undefined;
       setCompletionRetrying(false);
-      const destination = new URL(completionHref, window.location.origin);
-      if (completionSaveId && !destination.searchParams.has("saveId")) {
-        destination.searchParams.set("saveId", completionSaveId);
-      }
-      router.push(`${destination.pathname}${destination.search}${destination.hash}`);
+      navigateToCompletion(completionHref, completionSaveId);
     }
   };
 
-  const retryCompletionSave = () => {
-    if (pendingCompletion.current) {
-      void handleProgress(pendingCompletion.current);
+  const retryCompletionSave = async () => {
+    const pending = pendingCompletionSave.current;
+    if (!pending || completionRetrying) return;
+
+    setCompletionRetrying(true);
+    const saveResult = await pending.save();
+    if (!saveResult.ok) {
+      setCompletionRetrying(false);
+      return;
     }
+
+    pendingCompletionSave.current = undefined;
+    setCompletionSaveFailed(false);
+    setCompletionRetrying(false);
+    navigateToCompletion(pending.href, saveResult.saveId);
   };
 
   return (
@@ -251,6 +301,8 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           p={3}
           gap={3}
           justify="space-between"
+          align={{ base: "stretch", sm: "center" }}
+          flexDirection={{ base: "column", sm: "row" }}
           bg="white"
           border="2px solid #B42318"
           borderRadius="8px"
@@ -260,9 +312,10 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
             We could not save your game. Check your connection and try again.
           </Text>
           <Button
-            onClick={retryCompletionSave}
+            onClick={() => void retryCompletionSave()}
             disabled={completionRetrying}
             flexShrink={0}
+            w={{ base: "full", sm: "auto" }}
             minH="44px"
             px={4}
             bg="#4476BB"
