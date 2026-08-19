@@ -6,6 +6,7 @@ const ClassroomParticipantSchema = new Schema(
     accessCodeId: { type: Schema.Types.ObjectId, ref: "StudentAccessCode", required: true, index: true },
     participantKey: { type: String, required: true, trim: true, maxlength: 160 },
     clerkId: { type: String, default: null, trim: true },
+    authTokenHash: { type: String, default: null, select: false },
     displayName: { type: String, required: true, trim: true, maxlength: 80 },
     joinedAt: { type: Date, default: Date.now },
     lastSeenAt: { type: Date, default: Date.now },

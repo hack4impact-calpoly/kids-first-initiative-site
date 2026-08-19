@@ -10,6 +10,9 @@ const EventSchema = new Schema({
     gameId: { type: String, default: null },
     durationMs: { type: Number, default: null },
     result: { type: String, default: null },
+    levelCompleted: { type: Number, default: null },
+    activityId: { type: String, default: null },
+    stageId: { type: String, default: null },
   },
 });
 

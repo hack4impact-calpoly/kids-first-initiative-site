@@ -121,7 +121,7 @@ export async function GET() {
     return NextResponse.json({ session }, { status: 200 });
   } catch (error: any) {
     console.error("GET /api/classroom-sessions error:", error);
-    return NextResponse.json({ error: error?.message ?? "Failed to load classroom session." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load classroom session." }, { status: 500 });
   }
 }
 
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ session: payload }, { status: 201 });
   } catch (error: any) {
     console.error("POST /api/classroom-sessions error:", error);
-    return NextResponse.json({ error: error?.message ?? "Failed to create classroom session." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create classroom session." }, { status: 500 });
   }
 }
 
@@ -227,6 +227,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ session: payload }, { status: 200 });
   } catch (error: any) {
     console.error("PATCH /api/classroom-sessions error:", error);
-    return NextResponse.json({ error: error?.message ?? "Failed to update classroom session." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update classroom session." }, { status: 500 });
   }
 }
