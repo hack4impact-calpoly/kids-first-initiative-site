@@ -6,6 +6,11 @@ import ClassroomSession from "@/database/classroomSessionSchema";
 import StudentAccessCode from "@/database/studentAccessCodeSchema";
 import ClassroomParticipant from "@/database/classroomParticipantSchema";
 import User from "@/database/userSchema";
+import {
+  createClassroomCredential,
+  hashClassroomSecret,
+  setClassroomCredentialCookie,
+} from "@/lib/server/classroomAuthorization";
 
 function normalizeCode(value: string) {
   return value.trim().toUpperCase();
@@ -46,6 +51,7 @@ export async function POST(request: NextRequest) {
     }).lean<{
       _id: mongoose.Types.ObjectId;
       title: string;
+      expiresAt: Date;
     } | null>();
 
     if (!session) {
@@ -65,12 +71,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A student name is required." }, { status: 400 });
     }
 
-    const participantKey = userId ? `clerk:${userId}` : guestToken ? `guest:${guestToken}` : "";
+    const participantKey = userId ? `clerk:${userId}` : guestToken ? `guest:${hashClassroomSecret(guestToken)}` : "";
 
     if (!participantKey) {
       return NextResponse.json({ error: "Unable to create a student session." }, { status: 400 });
     }
 
+    const credentialParticipantId = new mongoose.Types.ObjectId();
     const participant = await ClassroomParticipant.findOneAndUpdate(
       { sessionId: session._id, participantKey },
       {
@@ -81,6 +88,7 @@ export async function POST(request: NextRequest) {
           lastSeenAt: new Date(),
         },
         $setOnInsert: {
+          _id: credentialParticipantId,
           joinedAt: new Date(),
         },
       },
@@ -96,11 +104,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unable to create a student session." }, { status: 500 });
     }
 
+    const participantCredential = createClassroomCredential(String(participant._id));
+    await ClassroomParticipant.updateOne(
+      { _id: participant._id },
+      { $set: { authTokenHash: participantCredential.tokenHash } },
+    );
+
     await StudentAccessCode.findByIdAndUpdate(accessCode._id, { $set: { lastSeenAt: new Date() } });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         sessionId: String(session._id),
+        expiresAt: session.expiresAt.toISOString(),
         title: session.title,
         participant: {
           id: String(participant._id),
@@ -111,8 +126,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 },
     );
+    setClassroomCredentialCookie(response, participantCredential.cookieValue, session.expiresAt);
+    return response;
   } catch (error: any) {
     console.error("POST /api/classroom-sessions/join error:", error);
-    return NextResponse.json({ error: error?.message ?? "Failed to join classroom session." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to join classroom session." }, { status: 500 });
   }
 }

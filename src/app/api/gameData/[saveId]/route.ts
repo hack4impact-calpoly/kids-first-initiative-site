@@ -1,72 +1,85 @@
 import connectDB from "@/database/db";
-import { auth } from "@clerk/nextjs/server";
 import GameData from "@/database/gameDataSchema";
-import { NextResponse, NextRequest } from "next/server";
+import { getRequestActor, isPlainObject } from "@/lib/server/apiAuthorization";
+import { canEducatorReadClassroom, DataPrincipal, resolveDataPrincipal } from "@/lib/server/classroomAuthorization";
+import { parseGameDataProgress } from "@/lib/server/gameDataValidation";
+import { ApiInputError } from "@/lib/server/apiErrors";
+import { NextRequest, NextResponse } from "next/server";
 
-function isIntegerArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isInteger(item));
+type GameDataRecord = {
+  userId: string;
+  classroomSessionId?: string | null;
+};
+
+async function canReadGameData(principal: DataPrincipal, record: GameDataRecord) {
+  return (
+    record.userId === principal.ownerId ||
+    principal.actor.role === "admin" ||
+    (await canEducatorReadClassroom(principal.actor, record.classroomSessionId))
+  );
 }
 
-function isNonEmptyStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string" && item.length > 0);
-}
-
-export async function GET(_req: Request, { params }: { params: Promise<{ saveId: string }> }) {
-  const { userId } = await auth();
-  await connectDB();
-  const { saveId } = await params;
-
-  const data = await GameData.findOne({ saveId, userId }).lean();
-  if (!data) {
-    return NextResponse.json({ error: "Game data not found" }, { status: 404 });
-  }
-  return NextResponse.json(data, { status: 200 });
-}
-
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ saveId: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ saveId: string }> }) {
   try {
     await connectDB();
+    const principal = await resolveDataPrincipal(request, await getRequestActor());
+    if (!principal.ok) return principal.response;
+
     const { saveId } = await params;
-    const changes = await req.json();
-    if (!changes || typeof changes !== "object" || Array.isArray(changes)) {
-      return NextResponse.json({ error: "Invalid patch" }, { status: 400 });
+    const data = await GameData.findOne({ saveId }).lean<GameDataRecord | null>();
+    if (!data || !(await canReadGameData(principal.value, data))) {
+      return NextResponse.json({ error: "Game data not found" }, { status: 404 });
     }
 
-    const patch = changes as Record<string, unknown>;
-    const hasCompletedLevels = Object.prototype.hasOwnProperty.call(patch, "completedLevels");
-    const hasCompletedStageIds = Object.prototype.hasOwnProperty.call(patch, "completedStageIds");
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    console.error("GET /api/gameData/:saveId error:", error);
+    return NextResponse.json({ error: "Failed to load game data" }, { status: 500 });
+  }
+}
 
-    if (hasCompletedLevels && !isIntegerArray(patch.completedLevels)) {
-      return NextResponse.json({ error: "completedLevels must be an array of integers" }, { status: 400 });
-    }
-    if (hasCompletedStageIds && !isNonEmptyStringArray(patch.completedStageIds)) {
-      return NextResponse.json({ error: "completedStageIds must be an array of non-empty strings" }, { status: 400 });
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ saveId: string }> }) {
+  try {
+    const rawBody: unknown = await request.json().catch(() => null);
+    if (!isPlainObject(rawBody)) {
+      return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
     }
 
-    const { completedLevels, completedStageIds, ...fieldsToSet } = patch;
-    const update: Record<string, unknown> = {};
+    const progress = parseGameDataProgress(rawBody);
+    const claimedParticipantId =
+      typeof rawBody.classroomParticipantId === "string" ? rawBody.classroomParticipantId.trim() : undefined;
+
+    await connectDB();
+    const principal = await resolveDataPrincipal(request, await getRequestActor(), claimedParticipantId);
+    if (!principal.ok) return principal.response;
+
+    const update: Record<string, unknown> = { $set: { lastUpdated: new Date() } };
     const completionAdditions: Record<string, unknown> = {};
-
-    if (Object.keys(fieldsToSet).length > 0) {
-      update.$set = fieldsToSet;
+    if (progress.completedLevels) {
+      completionAdditions.completedLevels = { $each: progress.completedLevels };
     }
-    if (hasCompletedLevels) {
-      completionAdditions.completedLevels = { $each: Array.from(new Set(completedLevels as number[])) };
-    }
-    if (hasCompletedStageIds) {
-      completionAdditions.completedStageIds = { $each: Array.from(new Set(completedStageIds as string[])) };
+    if (progress.completedStageIds) {
+      completionAdditions.completedStageIds = { $each: progress.completedStageIds };
     }
     if (Object.keys(completionAdditions).length > 0) {
       update.$addToSet = completionAdditions;
     }
 
-    const updated = await GameData.findOneAndUpdate({ saveId }, update, { new: true, runValidators: true }).lean();
+    const { saveId } = await params;
+    const updated = await GameData.findOneAndUpdate({ saveId, userId: principal.value.ownerId }, update, {
+      new: true,
+      runValidators: true,
+    }).lean();
     if (!updated) {
-      return NextResponse.json({ error: "Save not found" }, { status: 404 });
+      return NextResponse.json({ error: "Game data not found" }, { status: 404 });
     }
+
     return NextResponse.json(updated, { status: 200 });
-  } catch (err: any) {
-    console.error("Server error", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error) {
+    if (error instanceof ApiInputError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    console.error("PATCH /api/gameData/:saveId error:", error);
+    return NextResponse.json({ error: "Failed to update game data" }, { status: 500 });
   }
 }

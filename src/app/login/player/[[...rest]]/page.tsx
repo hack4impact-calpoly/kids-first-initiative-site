@@ -93,16 +93,18 @@ export default function PlayerLoginPage() {
       const result = (await response.json()) as {
         error?: string;
         sessionId?: string;
+        expiresAt?: string;
         title?: string;
         participant?: { id: string; displayName: string };
       };
 
-      if (!response.ok || !result.sessionId) {
+      if (!response.ok || !result.sessionId || !result.expiresAt) {
         throw new Error(result.error || "Unable to join classroom session.");
       }
 
       writeClassroomSessionSnapshot({
         sessionId: result.sessionId,
+        expiresAt: result.expiresAt,
         title: result.title,
         displayName: result.participant?.displayName ?? studentName.trim(),
         code: normalizedCode,

@@ -3,6 +3,9 @@ import Quiz from "@/database/quizSchema";
 import quizData from "@/data/quiz.json";
 import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
+import { getRequestActor } from "@/lib/server/apiAuthorization";
+import { canEducatorReadClassroom, DataPrincipal, resolveDataPrincipal } from "@/lib/server/classroomAuthorization";
+import { ApiInputError } from "@/lib/server/apiErrors";
 
 type QuizOption = {
   id: string;
@@ -47,6 +50,19 @@ function getQuizLookupFilter(id: string) {
   return { quizId: id };
 }
 
+type QuizRecord = {
+  clerkId: string;
+  classroomSessionId?: string | null;
+};
+
+async function canReadQuiz(principal: DataPrincipal, quiz: QuizRecord) {
+  return (
+    quiz.clerkId === principal.ownerId ||
+    principal.actor.role === "admin" ||
+    (await canEducatorReadClassroom(principal.actor, quiz.classroomSessionId))
+  );
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   // Narrow unknown JSON input to a plain object before reading any fields.
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -55,7 +71,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function parseNumber(value: unknown, field: string): number {
   // Enforce numeric fields early so invalid payloads fail with a clear 400 message.
   if (typeof value !== "number" || Number.isNaN(value)) {
-    throw new Error(`${field} must be a number`);
+    throw new ApiInputError(`${field} must be a number`);
   }
   return value;
 }
@@ -63,7 +79,7 @@ function parseNumber(value: unknown, field: string): number {
 function parseBoolean(value: unknown, field: string): boolean {
   // Keep boolean flags strict to avoid accepting string/number lookalikes.
   if (typeof value !== "boolean") {
-    throw new Error(`${field} must be a boolean`);
+    throw new ApiInputError(`${field} must be a boolean`);
   }
   return value;
 }
@@ -71,7 +87,7 @@ function parseBoolean(value: unknown, field: string): boolean {
 function parseString(value: unknown, field: string): string {
   // Require non-empty strings for identity fields like quizId/clerkId.
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`${field} must be a non-empty string`);
+    throw new ApiInputError(`${field} must be a non-empty string`);
   }
   return value.trim();
 }
@@ -82,7 +98,7 @@ function extractAnswerOptions(rawOptions: unknown, fallbackOptions: QuizOption[]
   }
 
   if (!Array.isArray(rawOptions)) {
-    throw new Error(`answerOptions/options must be an array for questionId=${questionId}`);
+    throw new ApiInputError(`answerOptions/options must be an array for questionId=${questionId}`);
   }
 
   const normalizedOptions = rawOptions.map((option) => {
@@ -94,7 +110,7 @@ function extractAnswerOptions(rawOptions: unknown, fallbackOptions: QuizOption[]
       return option.text.trim();
     }
 
-    throw new Error(`Invalid option format for questionId=${questionId}`);
+    throw new ApiInputError(`Invalid option format for questionId=${questionId}`);
   });
 
   return normalizedOptions;
@@ -115,12 +131,12 @@ function normalizeQuestionResults(
   fieldName: string,
 ) {
   if (!Array.isArray(rawResults)) {
-    throw new Error(`${fieldName} must be an array`);
+    throw new ApiInputError(`${fieldName} must be an array`);
   }
 
   return rawResults.map((rawResult) => {
     if (!isObject(rawResult)) {
-      throw new Error(`${fieldName} contains an invalid question result`);
+      throw new ApiInputError(`${fieldName} contains an invalid question result`);
     }
 
     const incoming = rawResult as IncomingQuestionResult;
@@ -128,7 +144,7 @@ function normalizeQuestionResults(
     const questionDefinition = questionMap.get(questionId);
 
     if (!questionDefinition) {
-      throw new Error(`Unknown questionId=${questionId} in ${fieldName}`);
+      throw new ApiInputError(`Unknown questionId=${questionId} in ${fieldName}`);
     }
 
     const questionText =
@@ -150,7 +166,7 @@ function normalizeQuestionResults(
         : optionIdToText(incoming.selectedOptionId, questionDefinition);
 
     if (!selectedAnswer) {
-      throw new Error(`selectedAnswer or selectedOptionId is required for questionId=${questionId}`);
+      throw new ApiInputError(`selectedAnswer or selectedOptionId is required for questionId=${questionId}`);
     }
 
     const correctAnswer =
@@ -180,13 +196,16 @@ function scoreFromResults(results: { isCorrect: boolean }[]) {
 
 // GET /api/quiz/:id
 // Finds a quiz by ObjectId or quizId
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     await connectDB();
 
-    const quiz = await Quiz.findOne(getQuizLookupFilter(id)).lean();
-    if (!quiz) {
+    const principal = await resolveDataPrincipal(request, await getRequestActor());
+    if (!principal.ok) return principal.response;
+
+    const quiz = await Quiz.findOne(getQuizLookupFilter(id)).lean<QuizRecord | null>();
+    if (!quiz || !(await canReadQuiz(principal.value, quiz))) {
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
@@ -194,7 +213,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err: any) {
     // Unexpected lookup failures are treated as server errors.
     console.error("GET /api/quiz/:id error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load quiz" }, { status: 500 });
   }
 }
 
@@ -203,7 +222,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const rawBody: unknown = await req.json();
+    const rawBody: unknown = await req.json().catch(() => null);
     // Reject non-object payloads before any field-level parsing.
     if (!isObject(rawBody)) {
       return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
@@ -211,8 +230,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const changes: Record<string, unknown> = {};
 
-    if (rawBody.quizId !== undefined) changes.quizId = parseString(rawBody.quizId, "quizId");
-    if (rawBody.clerkId !== undefined) changes.clerkId = parseString(rawBody.clerkId, "clerkId");
     if (rawBody.statesOfMatterScoreBefore !== undefined) {
       changes.statesOfMatterScoreBefore = parseNumber(rawBody.statesOfMatterScoreBefore, "statesOfMatterScoreBefore");
     }
@@ -258,8 +275,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     await connectDB();
 
+    const principal = await resolveDataPrincipal(req, await getRequestActor());
+    if (!principal.ok) return principal.response;
+
+    const existingQuiz = await Quiz.findOne(getQuizLookupFilter(id)).lean<QuizRecord | null>();
+    if (!existingQuiz || (existingQuiz.clerkId !== principal.value.ownerId && principal.value.actor.role !== "admin")) {
+      return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+    }
+
     const updatedQuiz = await Quiz.findOneAndUpdate(
-      getQuizLookupFilter(id),
+      { ...getQuizLookupFilter(id), clerkId: existingQuiz.clerkId },
       { $set: changes },
       { new: true, runValidators: true },
     ).lean();
@@ -270,9 +295,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     return NextResponse.json(updatedQuiz, { status: 200 });
-  } catch (err: any) {
-    // Validation/parsing and DB update errors are surfaced as bad requests for the caller.
+  } catch (err) {
+    if (err instanceof ApiInputError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     console.error("PUT /api/quiz/:id error:", err);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: "Failed to update quiz" }, { status: 500 });
   }
 }

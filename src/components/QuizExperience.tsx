@@ -6,7 +6,7 @@ import QuizIntroView from "@/components/quiz/QuizIntroView";
 import QuizQuestionView from "@/components/quiz/QuizQuestionView";
 import QuizResultsView from "@/components/quiz/QuizResultsView";
 import { QuizQuestion } from "@/components/quiz/types";
-import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
+import { clearClassroomSessionSnapshot, readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 export type { QuizOption, QuizQuestion } from "@/components/quiz/types";
 
@@ -132,13 +132,14 @@ export default function QuizExperience({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...payload,
-            classroomSessionId: classroomSession?.sessionId,
             classroomParticipantId: classroomSession?.participantId,
-            studentDisplayName: classroomSession?.displayName,
           }),
         });
 
         if (!response.ok) {
+          if (classroomSession && (response.status === 401 || response.status === 403)) {
+            clearClassroomSessionSnapshot();
+          }
           throw new Error("Failed to save quiz results");
         }
 

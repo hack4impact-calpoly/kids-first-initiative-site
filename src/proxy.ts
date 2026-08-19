@@ -1,7 +1,14 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isPublicRoute = createRouteMatcher(["/login(.*)", "/api/quiz(.*)", "/sign-up(.*)"]);
+const isPublicPage = createRouteMatcher(["/login(.*)", "/sign-up(.*)"]);
+const isGuestCapableApi = createRouteMatcher([
+  "/api/classroom-sessions/join",
+  "/api/events(.*)",
+  "/api/gameData(.*)",
+  "/api/quiz(.*)",
+]);
+const isApiRoute = createRouteMatcher(["/api(.*)"]);
 const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 
 // !IMPORTANT, add this to your env:
@@ -12,8 +19,13 @@ const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 // https://clerk.com/docs/guides/sessions/customize-session-tokens
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return NextResponse.next();
-  const { sessionClaims } = await auth();
+  if (isPublicPage(req) || isGuestCapableApi(req)) return NextResponse.next();
+
+  const { userId, sessionClaims } = await auth();
+  if (isApiRoute(req) && !userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const role = sessionClaims?.role;
 
   // Protect admin routes (can pass an error instead)

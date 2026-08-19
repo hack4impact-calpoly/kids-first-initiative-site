@@ -1,5 +1,6 @@
 import connectDB from "@/database/db";
 import Session from "@/database/sessionSchema";
+import { getRequestActor, isPlainObject, requireAdmin, requireSignedIn } from "@/lib/server/apiAuthorization";
 import { NextRequest, NextResponse } from "next/server";
 
 const VALID_GAME_IDS = new Set(["penguinRunGame", "statesOfMatterGame"]);
@@ -10,26 +11,18 @@ function getPeriodStart(period: string | null): Date | null {
   const now = Date.now();
   if (period === "7d") return new Date(now - 7 * 24 * 60 * 60 * 1000);
   if (period === "30d") return new Date(now - 30 * 24 * 60 * 60 * 1000);
-
   return null;
 }
 
-/**
- * GET /api/sessions
- * Fetch all sessions
- * Query params:
- * - gameId?: penguinRunGame | statesOfMatterGame
- * - period?: 7d | 30d | all
- */
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
+    const admin = requireAdmin(await getRequestActor());
+    if (!admin.ok) return admin.response;
 
     const { searchParams } = new URL(request.url);
     const gameId = searchParams.get("gameId");
     const period = searchParams.get("period");
     const startedAfter = getPeriodStart(period);
-
     const filter: Record<string, unknown> = {};
 
     if (gameId) {
@@ -41,70 +34,45 @@ export async function GET(request: NextRequest) {
       }
       filter.gameId = gameId;
     }
-
     if (period && !["7d", "30d", "all"].includes(period)) {
       return NextResponse.json({ error: "period must be one of: 7d, 30d, all" }, { status: 400 });
     }
+    if (startedAfter) filter.startedAt = { $gte: startedAfter };
 
-    if (startedAfter) {
-      filter.startedAt = { $gte: startedAfter };
-    }
-
+    await connectDB();
     const sessions = await Session.find(filter).sort({ startedAt: -1 });
-
-    const serialized = sessions.map((session) => ({
-      _id: session._id,
-      anonUserId: session.anonUserId,
-      gameId: session.gameId ?? null,
-      startedAt: session.startedAt,
-      endedAt: session.endedAt,
-      durationMs: session.durationMs,
-    }));
-
-    return NextResponse.json(serialized);
+    return NextResponse.json(sessions);
   } catch (error) {
     console.error("GET /api/sessions error:", error);
     return NextResponse.json({ error: "Failed to fetch sessions" }, { status: 500 });
   }
 }
 
-/**
- * POST /api/sessions
- * Create a new session
- * Body: { anonUserId: string, gameId?: "penguinRunGame" | "statesOfMatterGame" }
- */
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
+    const signedIn = requireSignedIn(await getRequestActor());
+    if (!signedIn.ok) return signedIn.response;
 
-    const body = await request.json();
-    const { anonUserId, gameId } = body;
-
-    if (!anonUserId || typeof anonUserId !== "string") {
-      return NextResponse.json({ error: "anonUserId is required and must be a string" }, { status: 400 });
+    const rawBody: unknown = await request.json();
+    if (!isPlainObject(rawBody)) {
+      return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
     }
 
+    const gameId = rawBody.gameId;
     if (gameId !== undefined && (typeof gameId !== "string" || !VALID_GAME_IDS.has(gameId))) {
       return NextResponse.json({ error: "gameId must be one of: penguinRunGame, statesOfMatterGame" }, { status: 400 });
     }
 
-    const startedAt = new Date();
+    await connectDB();
     const session = await Session.create({
-      anonUserId,
+      anonUserId: signedIn.value.userId,
       gameId: gameId ?? null,
-      startedAt,
+      startedAt: new Date(),
       endedAt: null,
       durationMs: 0,
     });
 
-    return NextResponse.json({
-      _id: session._id,
-      anonUserId: session.anonUserId,
-      gameId: session.gameId ?? null,
-      startedAt: session.startedAt,
-      endedAt: session.endedAt,
-      durationMs: session.durationMs,
-    });
+    return NextResponse.json(session, { status: 201 });
   } catch (error) {
     console.error("POST /api/sessions error:", error);
     return NextResponse.json({ error: "Failed to create session" }, { status: 500 });

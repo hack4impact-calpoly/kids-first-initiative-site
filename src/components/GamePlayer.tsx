@@ -4,7 +4,7 @@ import UnityIFrame from "@/components/UnityIFrame";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
+import { clearClassroomSessionSnapshot, readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 type Props = {
   game: string;
@@ -67,14 +67,14 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const { userId: authUserId } = useAuth();
   const router = useRouter();
   const resolvedUserId = userId ?? authUserId ?? undefined;
-  const [clientSaveId, setClientSaveId] = useState<string | undefined>(saveId);
+  const [personalSaveId, setPersonalSaveId] = useState<string | undefined>(saveId);
+  const [classroomSaveId, setClassroomSaveId] = useState<string | undefined>();
+  const [activeClassroomSession, setActiveClassroomSession] = useState(() => readClassroomSessionSnapshot());
   const completionStarted = useRef(false);
 
-  const activeClassroomSession = readClassroomSessionSnapshot();
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
-  const studentDisplayName = activeClassroomSession?.displayName;
-  const effectiveSaveId = saveId ?? clientSaveId;
+  const effectiveSaveId = classroomParticipantId ? classroomSaveId : (saveId ?? personalSaveId);
 
   const handleProgress = async (payload: unknown) => {
     const progressPayload = payload as ProgressPayload;
@@ -103,13 +103,25 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
         const payload = {
           ...(completedLevels ? { completedLevels } : {}),
           ...(completedStageIds ? { completedStageIds } : {}),
-          lastUpdated: new Date().toISOString(),
-          classroomSessionId: classroomSessionId ?? null,
           classroomParticipantId: classroomParticipantId ?? null,
-          studentDisplayName: studentDisplayName ?? null,
         };
 
-        const response = effectiveSaveId
+        const createSave = () =>
+          fetch("/api/gameData", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              saveId: crypto.randomUUID(),
+              saveVersion: 1,
+              gameVersion: "1.0.0",
+              gameId: game,
+              ...payload,
+            }),
+          });
+
+        let response = effectiveSaveId
           ? await fetch(`/api/gameData/${effectiveSaveId}`, {
               method: "PATCH",
               headers: {
@@ -117,29 +129,28 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
               },
               body: JSON.stringify(payload),
             })
-          : await fetch("/api/gameData", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                saveId: crypto.randomUUID(),
-                saveVersion: 1,
-                gameVersion: "1.0.0",
-                gameId: game,
-                userId:
-                  resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : "guest-player"),
-                ...payload,
-              }),
-            });
+          : await createSave();
+
+        if (response.status === 404 && classroomParticipantId && effectiveSaveId) {
+          response = await createSave();
+        }
 
         if (!response.ok) {
+          if (classroomParticipantId && (response.status === 401 || response.status === 403)) {
+            clearClassroomSessionSnapshot();
+            setActiveClassroomSession(null);
+            setClassroomSaveId(undefined);
+          }
           console.error("Failed to save game data:", response.statusText);
         } else {
           const updatedData = await response.json();
-          if (!effectiveSaveId && typeof updatedData?.saveId === "string") {
+          if (typeof updatedData?.saveId === "string") {
             completionSaveId = updatedData.saveId;
-            setClientSaveId(updatedData.saveId);
+            if (classroomParticipantId) {
+              setClassroomSaveId(updatedData.saveId);
+            } else {
+              setPersonalSaveId(updatedData.saveId);
+            }
           }
           console.log("Game data saved successfully:", updatedData);
         }
@@ -158,10 +169,9 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           },
           body: JSON.stringify({
             eventId,
-            anonUserId: eventUserId,
             sessionId: resolvedSessionId,
             event: "level_completed",
-            ts: new Date().toISOString(),
+            classroomParticipantId: classroomParticipantId ?? null,
             props: {
               gameId: game,
               ...(levelCompleted !== undefined ? { levelCompleted } : {}),
