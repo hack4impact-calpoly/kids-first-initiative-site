@@ -122,6 +122,28 @@ jobs:
           mkdir -p "$artifact_dir"
           cp -R "$output_dir"/. "$artifact_dir"/
 
+          INDEX_PATH="$artifact_dir/index.html" BUILD_ID="$SOURCE_SHORT_SHA" node <<'NODE'
+          const fs = require("node:fs");
+
+          const indexPath = process.env.INDEX_PATH;
+          const buildId = process.env.BUILD_ID;
+          const assetReference =
+            /(buildUrl\s*\+\s*["'][^"'?]+\.(?:loader\.js|data(?:\.(?:br|gz))?|framework\.js(?:\.(?:br|gz))?|wasm(?:\.(?:br|gz))?|symbols\.json(?:\.(?:br|gz))?))(?:\?v=[^"']*)?(["'])/g;
+
+          let html = fs.readFileSync(indexPath, "utf8");
+          let stampedAssetCount = 0;
+          html = html.replace(assetReference, (_, assetPath, quote) => {
+            stampedAssetCount += 1;
+            return `${assetPath}?v=${encodeURIComponent(buildId)}${quote}`;
+          });
+
+          if (stampedAssetCount < 4) {
+            throw new Error(`Expected at least four Unity build asset references, found ${stampedAssetCount}.`);
+          }
+
+          fs.writeFileSync(indexPath, html);
+          NODE
+
           printf '%s\n' "$SOURCE_SHORT_SHA" > "$artifact_dir/_build_id.txt"
           printf '%s\n' "$SOURCE_SHA" > "$artifact_dir/_source_sha.txt"
           printf '%s\n' "$SOURCE_REPOSITORY" > "$artifact_dir/_source_repository.txt"
