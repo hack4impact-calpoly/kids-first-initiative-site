@@ -183,6 +183,58 @@ test("reuses a new save ID when a completion POST response is lost", async ({ pa
   expect(recoveryBodies[0]).toMatchObject({ completedStageIds, classroomParticipantId: null });
 });
 
+test("retries with fresh classroom context after an expired session", async ({ page }) => {
+  const classroomSessionKey = "kfi_current_classroom_session";
+  const classroomSnapshot = (participantId: string) => ({
+    sessionId: "class-session",
+    participantId,
+    displayName: "Student",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+  });
+  const saveBodies: Array<Record<string, unknown>> = [];
+
+  await page.addInitScript(({ key, snapshot }) => window.localStorage.setItem(key, JSON.stringify(snapshot)), {
+    key: classroomSessionKey,
+    snapshot: classroomSnapshot("expired-participant"),
+  });
+  await page.route("**/api/gameData", async (route) => {
+    saveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (saveBodies.length === 1) {
+      await route.fulfill({ status: 403, body: "Class session expired" });
+      return;
+    }
+
+    await jsonResponse(route, { saveId: saveBodies[1].saveId });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect(page.getByRole("button", { name: "Rejoin Class" })).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), classroomSessionKey)).toBeNull();
+
+  await page.evaluate(({ key, snapshot }) => window.localStorage.setItem(key, JSON.stringify(snapshot)), {
+    key: classroomSessionKey,
+    snapshot: classroomSnapshot("new-participant"),
+  });
+  await page.getByRole("button", { name: "Try Again" }).click();
+
+  const stableSaveId = String(saveBodies[0].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}$`));
+  expect(saveBodies).toHaveLength(2);
+  expect(saveBodies[0]).toMatchObject({
+    saveId: stableSaveId,
+    completedStageIds,
+    classroomParticipantId: "expired-participant",
+  });
+  expect(saveBodies[1]).toMatchObject({
+    saveId: stableSaveId,
+    completedStageIds,
+    classroomParticipantId: "new-participant",
+  });
+});
+
 test("keeps End Game as a manual post-game quiz fallback", async ({ page }) => {
   await page.goto("/statesOfMatterGame?saveId=manual-save");
   await page.getByRole("link", { name: "End Game" }).click();

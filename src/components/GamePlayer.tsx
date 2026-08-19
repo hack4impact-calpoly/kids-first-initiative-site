@@ -2,10 +2,10 @@
 
 import UnityIFrame from "@/components/UnityIFrame";
 import { useAuth } from "@clerk/nextjs";
-import { Box, Button, HStack, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { FiRefreshCw } from "react-icons/fi";
+import { FiLogIn, FiRefreshCw } from "react-icons/fi";
 import { clearClassroomSessionSnapshot, readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 type Props = {
@@ -36,7 +36,9 @@ interface StageCompletion {
   completedAt?: string;
 }
 
-type ProgressSaveResult = { ok: true; saveId?: string } | { ok: false };
+type ProgressSaveResult =
+  | { ok: true; saveId?: string }
+  | { ok: false; reason: "save-failed" | "classroom-session-expired" };
 
 type PendingCompletionSave = {
   href: string;
@@ -81,8 +83,11 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const [activeClassroomSession, setActiveClassroomSession] = useState(() => readClassroomSessionSnapshot());
   const [completionSaveFailed, setCompletionSaveFailed] = useState(false);
   const [completionRetrying, setCompletionRetrying] = useState(false);
+  const [completionNeedsRejoin, setCompletionNeedsRejoin] = useState(false);
   const completionStarted = useRef(false);
   const pendingCompletionSave = useRef<PendingCompletionSave>();
+  const personalSaveIdRef = useRef(saveId);
+  const classroomSaveIdRef = useRef<string>();
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
@@ -106,6 +111,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       completionStarted.current = true;
       setCompletionSaveFailed(false);
       setCompletionRetrying(true);
+      setCompletionNeedsRejoin(false);
     }
 
     const completedLevels = readNumberArray(progressPayload.completedLevels);
@@ -120,25 +126,24 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : undefined);
     let completionSaveId = effectiveSaveId;
     let progressSaveSucceeded = !completedLevels && !completedStageIds;
+    let progressSaveFailureReason: "save-failed" | "classroom-session-expired" | undefined;
     let retryProgressSave: (() => Promise<ProgressSaveResult>) | undefined;
     console.log("Unity progress received: ", progressPayload);
 
     try {
       // Save player progress to gameData endpoint
       if (completedLevels || completedStageIds) {
-        const progressData = {
-          ...(completedLevels ? { completedLevels } : {}),
-          ...(completedStageIds ? { completedStageIds } : {}),
-          classroomParticipantId: classroomParticipantId ?? null,
+        const createdSaveIds = {
+          classroom: crypto.randomUUID(),
+          personal: crypto.randomUUID(),
         };
-        const createdSaveId = crypto.randomUUID();
-        const patchSave = (targetSaveId: string) =>
+        const patchSave = (targetSaveId: string, progressData: Record<string, unknown>) =>
           fetch(`/api/gameData/${targetSaveId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(progressData),
           });
-        const createSave = () =>
+        const createSave = (createdSaveId: string, progressData: Record<string, unknown>) =>
           fetch("/api/gameData", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -153,31 +158,48 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
         retryProgressSave = async () => {
           try {
+            const currentClassroomSession = readClassroomSessionSnapshot();
+            const currentParticipantId = currentClassroomSession?.participantId;
+            const currentSaveId = currentParticipantId ? classroomSaveIdRef.current : personalSaveIdRef.current;
+            const createdSaveId = currentParticipantId ? createdSaveIds.classroom : createdSaveIds.personal;
+            const progressData = {
+              ...(completedLevels ? { completedLevels } : {}),
+              ...(completedStageIds ? { completedStageIds } : {}),
+              classroomParticipantId: currentParticipantId ?? null,
+            };
             let attemptedCreate = false;
             const attemptCreate = () => {
               attemptedCreate = true;
-              return createSave();
+              return createSave(createdSaveId, progressData);
             };
 
-            let response = effectiveSaveId ? await patchSave(effectiveSaveId) : await attemptCreate();
+            let response = currentSaveId ? await patchSave(currentSaveId, progressData) : await attemptCreate();
 
-            if (response.status === 404 && classroomParticipantId && effectiveSaveId) {
+            if (response.status === 404 && currentParticipantId && currentSaveId) {
               response = await attemptCreate();
             }
 
             // A lost POST response means the stable save ID may already exist. Finish with an idempotent PATCH.
             if (response.status === 409 && attemptedCreate) {
-              response = await patchSave(createdSaveId);
+              response = await patchSave(createdSaveId, progressData);
             }
 
             if (!response.ok) {
-              if (classroomParticipantId && (response.status === 401 || response.status === 403)) {
+              if (currentParticipantId && (response.status === 401 || response.status === 403)) {
                 clearClassroomSessionSnapshot();
                 setActiveClassroomSession(null);
                 setClassroomSaveId(undefined);
+                classroomSaveIdRef.current = undefined;
+                return {
+                  ok: false,
+                  reason: resolvedUserId ? "save-failed" : "classroom-session-expired",
+                };
               }
               console.error("Failed to save game data:", response.statusText);
-              return { ok: false };
+              return {
+                ok: false,
+                reason: !resolvedUserId && classroomParticipantId ? "classroom-session-expired" : "save-failed",
+              };
             }
 
             const updatedData = await response.json();
@@ -186,11 +208,14 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
                 ? updatedData.saveId
                 : attemptedCreate
                   ? createdSaveId
-                  : effectiveSaveId;
+                  : currentSaveId;
             if (updatedSaveId) {
-              if (classroomParticipantId) {
+              if (currentParticipantId) {
+                classroomSaveIdRef.current = updatedSaveId;
                 setClassroomSaveId(updatedSaveId);
+                setActiveClassroomSession(currentClassroomSession);
               } else {
+                personalSaveIdRef.current = updatedSaveId;
                 setPersonalSaveId(updatedSaveId);
               }
             }
@@ -198,7 +223,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
             return { ok: true, saveId: updatedSaveId };
           } catch (error) {
             console.error("Error saving game data:", error);
-            return { ok: false };
+            return { ok: false, reason: "save-failed" };
           }
         };
 
@@ -206,6 +231,8 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
         progressSaveSucceeded = saveResult.ok;
         if (saveResult.ok) {
           completionSaveId = saveResult.saveId;
+        } else {
+          progressSaveFailureReason = saveResult.reason;
         }
       }
 
@@ -251,6 +278,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
         }
         setCompletionRetrying(false);
         setCompletionSaveFailed(true);
+        setCompletionNeedsRejoin(progressSaveFailureReason === "classroom-session-expired");
         return;
       }
 
@@ -268,12 +296,14 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     const saveResult = await pending.save();
     if (!saveResult.ok) {
       setCompletionRetrying(false);
+      setCompletionNeedsRejoin(saveResult.reason === "classroom-session-expired");
       return;
     }
 
     pendingCompletionSave.current = undefined;
     setCompletionSaveFailed(false);
     setCompletionRetrying(false);
+    setCompletionNeedsRejoin(false);
     navigateToCompletion(pending.href, saveResult.saveId);
   };
 
@@ -309,24 +339,46 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           boxShadow="0 8px 24px rgba(0, 0, 0, 0.2)"
         >
           <Text color="#7A271A" fontWeight="700" fontSize={{ base: "14px", md: "16px" }}>
-            We could not save your game. Check your connection and try again.
+            {completionNeedsRejoin
+              ? "Your class session ended. Ask your teacher to help you rejoin, then try again."
+              : "We could not save your game. Check your connection and try again."}
           </Text>
-          <Button
-            onClick={() => void retryCompletionSave()}
-            disabled={completionRetrying}
-            flexShrink={0}
-            w={{ base: "full", sm: "auto" }}
-            minH="44px"
-            px={4}
-            bg="#4476BB"
-            color="white"
-            borderRadius="8px"
-            fontWeight="700"
-            _hover={{ bg: "#365F99" }}
-          >
-            <FiRefreshCw aria-hidden="true" />
-            {completionRetrying ? "Saving..." : "Try Again"}
-          </Button>
+          <Flex gap={2} flexWrap="wrap" flexShrink={0} w={{ base: "full", sm: "auto" }}>
+            {completionNeedsRejoin ? (
+              <Button
+                onClick={() => window.open("/login/player", "_blank", "noopener,noreferrer")}
+                disabled={completionRetrying}
+                flex="1"
+                minH="44px"
+                px={4}
+                bg="white"
+                color="#4476BB"
+                border="2px solid #4476BB"
+                borderRadius="8px"
+                fontWeight="700"
+                _hover={{ bg: "#EEF4FC" }}
+              >
+                <FiLogIn aria-hidden="true" />
+                Rejoin Class
+              </Button>
+            ) : null}
+            <Button
+              onClick={() => void retryCompletionSave()}
+              disabled={completionRetrying}
+              flex="1"
+              minW="116px"
+              minH="44px"
+              px={4}
+              bg="#4476BB"
+              color="white"
+              borderRadius="8px"
+              fontWeight="700"
+              _hover={{ bg: "#365F99" }}
+            >
+              <FiRefreshCw aria-hidden="true" />
+              {completionRetrying ? "Saving..." : "Try Again"}
+            </Button>
+          </Flex>
         </HStack>
       ) : null}
     </Box>
