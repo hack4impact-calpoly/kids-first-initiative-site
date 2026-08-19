@@ -67,7 +67,7 @@ export default async function StatesOfMatterGamePage({ searchParams }: StatesOfM
 
           <Box flex="1" minH={0} w="full" display="flex" alignItems="center" justifyContent="center" overflow="hidden">
             <Box w="80vw" h="80vh" borderRadius="8px" overflow="hidden">
-              <GamePlayer game="StatesOfMatter" saveId={saveId} height="100%" />
+              <GamePlayer game="StatesOfMatter" saveId={saveId} completionHref={finishHref} height="100%" />
             </Box>
           </Box>
         </VStack>
