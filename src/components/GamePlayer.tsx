@@ -36,9 +36,9 @@ interface StageCompletion {
   completedAt?: string;
 }
 
-type ProgressSaveResult =
-  | { ok: true; saveId?: string }
-  | { ok: false; reason: "save-failed" | "classroom-session-expired" };
+type ProgressSaveFailureReason = "save-failed" | "classroom-session-expired" | "personal-session-expired";
+
+type ProgressSaveResult = { ok: true; saveId?: string } | { ok: false; reason: ProgressSaveFailureReason };
 
 type PendingCompletionSave = {
   href: string;
@@ -84,6 +84,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const [completionSaveFailed, setCompletionSaveFailed] = useState(false);
   const [completionRetrying, setCompletionRetrying] = useState(false);
   const [completionNeedsRejoin, setCompletionNeedsRejoin] = useState(false);
+  const [completionNeedsSignIn, setCompletionNeedsSignIn] = useState(false);
   const completionStarted = useRef(false);
   const pendingCompletionSave = useRef<PendingCompletionSave>();
   const personalSaveIdRef = useRef(saveId);
@@ -113,6 +114,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       setCompletionSaveFailed(false);
       setCompletionRetrying(true);
       setCompletionNeedsRejoin(false);
+      setCompletionNeedsSignIn(false);
     }
 
     const completedLevels = readNumberArray(progressPayload.completedLevels);
@@ -127,7 +129,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : undefined);
     let completionSaveId = effectiveSaveId;
     let progressSaveSucceeded = !completedLevels && !completedStageIds;
-    let progressSaveFailureReason: "save-failed" | "classroom-session-expired" | undefined;
+    let progressSaveFailureReason: ProgressSaveFailureReason | undefined;
     let retryProgressSave: (() => Promise<ProgressSaveResult>) | undefined;
     console.log("Unity progress received: ", progressPayload);
 
@@ -209,8 +211,8 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
                   reason: "classroom-session-expired",
                 };
               }
-              if (!resolvedUserId && isAuthenticationFailure) {
-                return { ok: false, reason: "classroom-session-expired" };
+              if (isAuthenticationFailure) {
+                return { ok: false, reason: "personal-session-expired" };
               }
               console.error("Failed to save game data:", response.statusText);
               return { ok: false, reason: "save-failed" };
@@ -293,6 +295,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
         setCompletionRetrying(false);
         setCompletionSaveFailed(true);
         setCompletionNeedsRejoin(progressSaveFailureReason === "classroom-session-expired");
+        setCompletionNeedsSignIn(progressSaveFailureReason === "personal-session-expired");
         return;
       }
 
@@ -311,6 +314,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     if (!saveResult.ok) {
       setCompletionRetrying(false);
       setCompletionNeedsRejoin(saveResult.reason === "classroom-session-expired");
+      setCompletionNeedsSignIn(saveResult.reason === "personal-session-expired");
       return;
     }
 
@@ -318,6 +322,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     setCompletionSaveFailed(false);
     setCompletionRetrying(false);
     setCompletionNeedsRejoin(false);
+    setCompletionNeedsSignIn(false);
     navigateToCompletion(pending.href, saveResult.saveId);
   };
 
@@ -355,12 +360,20 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           <Text color="#7A271A" fontWeight="700" fontSize={{ base: "14px", md: "16px" }}>
             {completionNeedsRejoin
               ? "Your class session ended. Ask your teacher to help you rejoin, then try again."
-              : "We could not save your game. Check your connection and try again."}
+              : completionNeedsSignIn
+                ? "Your sign-in ended. Sign in again, then try again."
+                : "We could not save your game. Check your connection and try again."}
           </Text>
           <Flex gap={2} flexWrap="wrap" flexShrink={0} w={{ base: "full", sm: "auto" }}>
-            {completionNeedsRejoin ? (
+            {completionNeedsRejoin || completionNeedsSignIn ? (
               <Button
-                onClick={() => window.open("/login/player", "_blank", "noopener,noreferrer")}
+                onClick={() =>
+                  window.open(
+                    completionNeedsSignIn ? "/login/player/sign-in" : "/login/player",
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
                 disabled={completionRetrying}
                 flex="1"
                 minH="44px"
@@ -373,7 +386,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
                 _hover={{ bg: "#EEF4FC" }}
               >
                 <FiLogIn aria-hidden="true" />
-                Rejoin Class
+                {completionNeedsSignIn ? "Sign In" : "Rejoin Class"}
               </Button>
             ) : null}
             <Button

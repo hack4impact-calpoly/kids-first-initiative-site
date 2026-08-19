@@ -411,6 +411,23 @@ test("requires rejoin instead of falling back to a personal save after classroom
   expect(saveBodies).not.toContainEqual(expect.objectContaining({ classroomParticipantId: null }));
 });
 
+test("offers sign-in recovery when a personal session expires", async ({ page }) => {
+  await page.route("**/api/gameData", (route) => route.fulfill({ status: 401, body: "Sign-in required" }));
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect(page.getByText("Your sign-in ended. Sign in again, then try again.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rejoin Class" })).toHaveCount(0);
+
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Sign In" }).click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(/\/login\/player\/sign-in$/);
+  await popup.close();
+});
+
 test("keeps End Game as a manual post-game quiz fallback", async ({ page }) => {
   await page.goto("/statesOfMatterGame?saveId=manual-save");
   await page.getByRole("link", { name: "End Game" }).click();
