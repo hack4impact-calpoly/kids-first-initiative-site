@@ -4,9 +4,10 @@ import UnityIFrame from "@/components/UnityIFrame";
 import { useAuth } from "@clerk/nextjs";
 import { Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiLogIn, FiRefreshCw } from "react-icons/fi";
 import {
+  clearClassroomParticipantProvenance,
   clearClassroomSessionSnapshot,
   readClassroomParticipantProvenance,
   readClassroomSessionSnapshot,
@@ -98,6 +99,10 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   );
   const personalUserIdRef = useRef(resolvedUserId);
   personalUserIdRef.current = resolvedUserId;
+
+  useEffect(() => {
+    clearClassroomParticipantProvenance();
+  }, []);
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
