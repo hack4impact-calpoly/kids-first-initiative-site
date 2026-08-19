@@ -133,9 +133,15 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     try {
       // Save player progress to gameData endpoint
       if (completedLevels || completedStageIds) {
-        const createdSaveIds = {
-          classroom: crypto.randomUUID(),
-          personal: crypto.randomUUID(),
+        const createdSaveIds = new Map<string, string>();
+        const getCreatedSaveId = (participantId?: string) => {
+          const principalKey = participantId ? `classroom:${participantId}` : "personal";
+          const existingSaveId = createdSaveIds.get(principalKey);
+          if (existingSaveId) return existingSaveId;
+
+          const createdSaveId = crypto.randomUUID();
+          createdSaveIds.set(principalKey, createdSaveId);
+          return createdSaveId;
         };
         const patchSave = (targetSaveId: string, progressData: Record<string, unknown>) =>
           fetch(`/api/gameData/${targetSaveId}`, {
@@ -160,8 +166,12 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           try {
             const currentClassroomSession = readClassroomSessionSnapshot();
             const currentParticipantId = currentClassroomSession?.participantId;
+            if (!resolvedUserId && classroomParticipantId && !currentParticipantId) {
+              return { ok: false, reason: "classroom-session-expired" };
+            }
+
             const currentSaveId = currentParticipantId ? classroomSaveIdRef.current : personalSaveIdRef.current;
-            const createdSaveId = currentParticipantId ? createdSaveIds.classroom : createdSaveIds.personal;
+            const createdSaveId = getCreatedSaveId(currentParticipantId);
             const progressData = {
               ...(completedLevels ? { completedLevels } : {}),
               ...(completedStageIds ? { completedStageIds } : {}),
@@ -196,10 +206,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
                 };
               }
               console.error("Failed to save game data:", response.statusText);
-              return {
-                ok: false,
-                reason: !resolvedUserId && classroomParticipantId ? "classroom-session-expired" : "save-failed",
-              };
+              return { ok: false, reason: "save-failed" };
             }
 
             const updatedData = await response.json();

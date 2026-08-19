@@ -255,18 +255,105 @@ test("retries with fresh classroom context after an expired session", async ({ p
   });
   await page.getByRole("button", { name: "Try Again" }).click();
 
-  const stableSaveId = String(saveBodies[0].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}$`));
+  const expiredParticipantSaveId = String(saveBodies[0].saveId);
+  const replacementSaveId = String(saveBodies[1].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
   expect(saveBodies).toHaveLength(2);
   expect(saveBodies[0]).toMatchObject({
-    saveId: stableSaveId,
+    saveId: expiredParticipantSaveId,
     completedStageIds,
     classroomParticipantId: "expired-participant",
   });
   expect(saveBodies[1]).toMatchObject({
-    saveId: stableSaveId,
+    saveId: replacementSaveId,
     completedStageIds,
     classroomParticipantId: "new-participant",
+  });
+  expect(replacementSaveId).not.toBe(expiredParticipantSaveId);
+});
+
+test("uses a new stable save ID when the classroom participant changes", async ({ page }) => {
+  const classroomSessionKey = "kfi_current_classroom_session";
+  const classroomSnapshot = (participantId: string) => ({
+    sessionId: "class-session",
+    participantId,
+    displayName: "Student",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+  });
+  const saveBodies: Array<Record<string, unknown>> = [];
+
+  await page.addInitScript(({ key, snapshot }) => window.localStorage.setItem(key, JSON.stringify(snapshot)), {
+    key: classroomSessionKey,
+    snapshot: classroomSnapshot("first-participant"),
+  });
+  await page.route("**/api/gameData", async (route) => {
+    saveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (saveBodies.length === 1) {
+      await route.abort("failed");
+      return;
+    }
+
+    await jsonResponse(route, { saveId: saveBodies[1].saveId });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+  await page.evaluate(({ key, snapshot }) => window.localStorage.setItem(key, JSON.stringify(snapshot)), {
+    key: classroomSessionKey,
+    snapshot: classroomSnapshot("second-participant"),
+  });
+  await page.getByRole("button", { name: "Try Again" }).click();
+
+  const replacementSaveId = String(saveBodies[1].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  expect(saveBodies).toHaveLength(2);
+  expect(saveBodies[0]).toMatchObject({ classroomParticipantId: "first-participant" });
+  expect(saveBodies[1]).toMatchObject({ classroomParticipantId: "second-participant" });
+  expect(saveBodies[1].saveId).not.toBe(saveBodies[0].saveId);
+});
+
+test("keeps transient classroom save failures separate from expired sessions", async ({ page }) => {
+  const classroomSessionKey = "kfi_current_classroom_session";
+  const saveBodies: Array<Record<string, unknown>> = [];
+
+  await page.addInitScript((key) => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        sessionId: "class-session",
+        participantId: "current-participant",
+        displayName: "Student",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      }),
+    );
+  }, classroomSessionKey);
+  await page.route("**/api/gameData", async (route) => {
+    saveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (saveBodies.length === 1) {
+      await route.fulfill({ status: 503, body: "Save unavailable" });
+      return;
+    }
+
+    await jsonResponse(route, { saveId: saveBodies[1].saveId });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect(page.getByText("We could not save your game. Check your connection and try again.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rejoin Class" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Try Again" }).click();
+
+  const stableSaveId = String(saveBodies[0].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}$`));
+  expect(saveBodies).toHaveLength(2);
+  expect(saveBodies[1]).toMatchObject({
+    saveId: stableSaveId,
+    classroomParticipantId: "current-participant",
   });
 });
 
