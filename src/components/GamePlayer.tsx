@@ -6,7 +6,11 @@ import { Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { FiLogIn, FiRefreshCw } from "react-icons/fi";
-import { clearClassroomSessionSnapshot, readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
+import {
+  clearClassroomSessionSnapshot,
+  readClassroomParticipantProvenance,
+  readClassroomSessionSnapshot,
+} from "@/lib/classroomSessionClient";
 
 type Props = {
   game: string;
@@ -89,7 +93,11 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const pendingCompletionSave = useRef<PendingCompletionSave>();
   const personalSaveIdRef = useRef(saveId);
   const classroomSaveIdRef = useRef<string>();
-  const classroomParticipantIdRef = useRef(activeClassroomSession?.participantId);
+  const classroomParticipantIdRef = useRef(
+    activeClassroomSession?.participantId ?? readClassroomParticipantProvenance(),
+  );
+  const personalUserIdRef = useRef(resolvedUserId);
+  personalUserIdRef.current = resolvedUserId;
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
@@ -137,13 +145,20 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
       // Save player progress to gameData endpoint
       if (completedLevels || completedStageIds) {
         const createdSaveIds = new Map<string, string>();
+        const getSavePrincipalKey = (participantId?: string) =>
+          participantId ? `classroom:${participantId}` : `personal:${personalUserIdRef.current ?? "signed-out"}`;
         const getCreatedSaveId = (participantId?: string) => {
-          const principalKey = participantId ? `classroom:${participantId}` : "personal";
+          const principalKey = getSavePrincipalKey(participantId);
           const existingSaveId = createdSaveIds.get(principalKey);
           if (existingSaveId) return existingSaveId;
 
           const createdSaveId = crypto.randomUUID();
           createdSaveIds.set(principalKey, createdSaveId);
+          return createdSaveId;
+        };
+        const replaceCreatedSaveId = (participantId?: string) => {
+          const createdSaveId = crypto.randomUUID();
+          createdSaveIds.set(getSavePrincipalKey(participantId), createdSaveId);
           return createdSaveId;
         };
         const patchSave = (targetSaveId: string, progressData: Record<string, unknown>) =>
@@ -176,7 +191,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
             }
 
             const currentSaveId = currentParticipantId ? classroomSaveIdRef.current : personalSaveIdRef.current;
-            const createdSaveId = getCreatedSaveId(currentParticipantId);
+            let createdSaveId = getCreatedSaveId(currentParticipantId);
             const progressData = {
               ...(completedLevels ? { completedLevels } : {}),
               ...(completedStageIds ? { completedStageIds } : {}),
@@ -197,6 +212,10 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
             // A lost POST response means the stable save ID may already exist. Finish with an idempotent PATCH.
             if (response.status === 409 && attemptedCreate) {
               response = await patchSave(createdSaveId, progressData);
+              if (response.status === 404) {
+                createdSaveId = replaceCreatedSaveId(currentParticipantId);
+                response = await createSave(createdSaveId, progressData);
+              }
             }
 
             if (!response.ok) {

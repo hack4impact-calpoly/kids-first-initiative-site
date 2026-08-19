@@ -222,6 +222,44 @@ test("reuses a new save ID when a completion POST response is lost", async ({ pa
   expect(recoveryBodies[0]).toMatchObject({ completedStageIds, classroomParticipantId: null });
 });
 
+test("rotates a lost personal save ID when account ownership changes", async ({ page }) => {
+  const createBodies: Array<Record<string, unknown>> = [];
+  const recoveryBodies: unknown[] = [];
+
+  await page.route("**/api/gameData", async (route) => {
+    const createBody = route.request().postDataJSON() as Record<string, unknown>;
+    createBodies.push(createBody);
+    if (createBodies.length === 1) {
+      await route.abort("failed");
+      return;
+    }
+    if (createBodies.length === 2) {
+      await route.fulfill({ status: 409, body: "Save already exists" });
+      return;
+    }
+
+    await jsonResponse(route, { saveId: createBody.saveId });
+  });
+  await page.route("**/api/gameData/*", async (route) => {
+    recoveryBodies.push(route.request().postDataJSON());
+    await route.fulfill({ status: 404, body: "Save not found" });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+  await page.getByRole("button", { name: "Try Again" }).click();
+
+  await expect.poll(() => createBodies.length).toBe(3);
+  const originalSaveId = String(createBodies[0].saveId);
+  const replacementSaveId = String(createBodies[2].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  expect(createBodies).toHaveLength(3);
+  expect(createBodies[1].saveId).toBe(originalSaveId);
+  expect(replacementSaveId).not.toBe(originalSaveId);
+  expect(recoveryBodies).toHaveLength(1);
+});
+
 test("retries with fresh classroom context after an expired session", async ({ page }) => {
   const classroomSessionKey = "kfi_current_classroom_session";
   const classroomSnapshot = (participantId: string) => ({
@@ -409,6 +447,39 @@ test("requires rejoin instead of falling back to a personal save after classroom
     classroomParticipantId: "new-participant",
   });
   expect(saveBodies).not.toContainEqual(expect.objectContaining({ classroomParticipantId: null }));
+});
+
+test("keeps rejoin recovery when the classroom snapshot expired before the game mounted", async ({ page }) => {
+  const classroomSessionKey = "kfi_current_classroom_session";
+  let saveAttempts = 0;
+
+  await page.addInitScript((key) => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        sessionId: "expired-class-session",
+        participantId: "expired-participant",
+        displayName: "Student",
+        expiresAt: "2000-01-01T00:00:00.000Z",
+      }),
+    );
+  }, classroomSessionKey);
+  await page.route("**/api/gameData", async (route) => {
+    saveAttempts += 1;
+    await route.fulfill({ status: 401, body: "Class session expired" });
+  });
+
+  await page.goto("/statesOfMatterGame");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect(
+    page.getByText("Your class session ended. Ask your teacher to help you rejoin, then try again."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rejoin Class" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign In" })).toHaveCount(0);
+  expect(saveAttempts).toBe(0);
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), classroomSessionKey)).toBeNull();
 });
 
 test("offers sign-in recovery when a personal session expires", async ({ page }) => {
