@@ -29,8 +29,12 @@ async function prepareGamePage(page: Page) {
 }
 
 async function sendCompletion(page: Page) {
+  await expect
+    .poll(() => page.frames().some((frame) => frame.url().includes("/game/StatesOfMatter/index.html")), {
+      message: "States of Matter iframe should be loaded",
+    })
+    .toBe(true);
   const unityFrame = page.frames().find((frame) => frame.url().includes("/game/StatesOfMatter/index.html"));
-  expect(unityFrame, "States of Matter iframe should be loaded").toBeDefined();
 
   await unityFrame!.evaluate((stageIds) => {
     window.parent.postMessage(
@@ -149,6 +153,37 @@ test("adds a newly created save ID to the post-game quiz destination", async ({ 
     completedStageIds,
     classroomParticipantId: null,
   });
+});
+
+test("replaces a missing personal save before routing to the post-game quiz", async ({ page }) => {
+  const patchBodies: unknown[] = [];
+  const createBodies: Array<Record<string, unknown>> = [];
+
+  await page.route("**/api/gameData/stale-save", async (route) => {
+    patchBodies.push(route.request().postDataJSON());
+    await route.fulfill({ status: 404, body: "Save not found" });
+  });
+  await page.route("**/api/gameData", async (route) => {
+    const createBody = route.request().postDataJSON() as Record<string, unknown>;
+    createBodies.push(createBody);
+    await jsonResponse(route, { saveId: createBody.saveId });
+  });
+
+  await page.goto("/statesOfMatterGame?saveId=stale-save");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect.poll(() => createBodies.length).toBe(1);
+  const replacementSaveId = String(createBodies[0].saveId);
+  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?saveId=${replacementSaveId}&phase=after$`));
+  expect(patchBodies).toHaveLength(1);
+  expect(createBodies).toHaveLength(1);
+  expect(createBodies[0]).toMatchObject({
+    gameId: "StatesOfMatter",
+    completedStageIds,
+    classroomParticipantId: null,
+  });
+  expect(replacementSaveId).not.toBe("stale-save");
 });
 
 test("reuses a new save ID when a completion POST response is lost", async ({ page }) => {

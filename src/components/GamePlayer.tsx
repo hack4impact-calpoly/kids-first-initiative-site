@@ -91,11 +91,11 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
-  const effectiveSaveId = classroomParticipantId ? classroomSaveId : (saveId ?? personalSaveId);
+  const effectiveSaveId = classroomParticipantId ? classroomSaveId : personalSaveId;
 
   const navigateToCompletion = (href: string, completedSaveId?: string) => {
     const destination = new URL(href, window.location.origin);
-    if (completedSaveId && !destination.searchParams.has("saveId")) {
+    if (completedSaveId) {
       destination.searchParams.set("saveId", completedSaveId);
     }
     router.push(`${destination.pathname}${destination.search}${destination.hash}`);
@@ -175,7 +175,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
             let response = currentSaveId ? await patchSave(currentSaveId, progressData) : await attemptCreate();
 
-            if (response.status === 404 && currentParticipantId && currentSaveId) {
+            if (response.status === 404 && currentSaveId) {
               response = await attemptCreate();
             }
 
