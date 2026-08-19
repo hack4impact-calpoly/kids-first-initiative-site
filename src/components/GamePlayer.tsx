@@ -2,8 +2,10 @@
 
 import UnityIFrame from "@/components/UnityIFrame";
 import { useAuth } from "@clerk/nextjs";
+import { Box, Button, HStack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { FiRefreshCw } from "react-icons/fi";
 import { clearClassroomSessionSnapshot, readClassroomSessionSnapshot } from "@/lib/classroomSessionClient";
 
 type Props = {
@@ -70,7 +72,10 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const [personalSaveId, setPersonalSaveId] = useState<string | undefined>(saveId);
   const [classroomSaveId, setClassroomSaveId] = useState<string | undefined>();
   const [activeClassroomSession, setActiveClassroomSession] = useState(() => readClassroomSessionSnapshot());
+  const [completionSaveFailed, setCompletionSaveFailed] = useState(false);
+  const [completionRetrying, setCompletionRetrying] = useState(false);
   const completionStarted = useRef(false);
+  const pendingCompletion = useRef<ProgressPayload>();
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
@@ -78,10 +83,14 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
 
   const handleProgress = async (payload: unknown) => {
     const progressPayload = payload as ProgressPayload;
-    const shouldCompleteGame =
-      progressPayload.gameCompleted === true && Boolean(completionHref) && !completionStarted.current;
+    const isCompletionSignal = progressPayload.gameCompleted === true && Boolean(completionHref);
+    if (isCompletionSignal && completionStarted.current) return;
+
+    const shouldCompleteGame = isCompletionSignal && !completionStarted.current;
     if (shouldCompleteGame) {
       completionStarted.current = true;
+      setCompletionSaveFailed(false);
+      setCompletionRetrying(true);
     }
 
     const completedLevels = readNumberArray(progressPayload.completedLevels);
@@ -95,6 +104,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     const eventUserId =
       resolvedUserId ?? (classroomParticipantId ? `participant:${classroomParticipantId}` : undefined);
     let completionSaveId = effectiveSaveId;
+    let progressSaveSucceeded = !completedLevels && !completedStageIds;
     console.log("Unity progress received: ", progressPayload);
 
     try {
@@ -144,6 +154,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           console.error("Failed to save game data:", response.statusText);
         } else {
           const updatedData = await response.json();
+          progressSaveSucceeded = true;
           if (typeof updatedData?.saveId === "string") {
             completionSaveId = updatedData.saveId;
             if (classroomParticipantId) {
@@ -192,6 +203,16 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     }
 
     if (shouldCompleteGame && completionHref) {
+      if (!progressSaveSucceeded) {
+        pendingCompletion.current = progressPayload;
+        completionStarted.current = false;
+        setCompletionRetrying(false);
+        setCompletionSaveFailed(true);
+        return;
+      }
+
+      pendingCompletion.current = undefined;
+      setCompletionRetrying(false);
       const destination = new URL(completionHref, window.location.origin);
       if (completionSaveId && !destination.searchParams.has("saveId")) {
         destination.searchParams.set("saveId", completionSaveId);
@@ -200,15 +221,61 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     }
   };
 
+  const retryCompletionSave = () => {
+    if (pendingCompletion.current) {
+      void handleProgress(pendingCompletion.current);
+    }
+  };
+
   return (
-    <UnityIFrame
-      game={game}
-      saveId={effectiveSaveId}
-      userId={resolvedUserId}
-      sessionId={sessionId ?? classroomSessionId}
-      classroomId={classroomId ?? classroomSessionId}
-      onProgress={handleProgress}
-      height={height}
-    />
+    <Box position="relative" w="full" h={height}>
+      <UnityIFrame
+        game={game}
+        saveId={effectiveSaveId}
+        userId={resolvedUserId}
+        sessionId={sessionId ?? classroomSessionId}
+        classroomId={classroomId ?? classroomSessionId}
+        onProgress={handleProgress}
+        height="100%"
+      />
+
+      {completionSaveFailed ? (
+        <HStack
+          role="alert"
+          position="absolute"
+          left="50%"
+          bottom={{ base: 3, md: 5 }}
+          transform="translateX(-50%)"
+          w="calc(100% - 24px)"
+          maxW="620px"
+          p={3}
+          gap={3}
+          justify="space-between"
+          bg="white"
+          border="2px solid #B42318"
+          borderRadius="8px"
+          boxShadow="0 8px 24px rgba(0, 0, 0, 0.2)"
+        >
+          <Text color="#7A271A" fontWeight="700" fontSize={{ base: "14px", md: "16px" }}>
+            We could not save your game. Check your connection and try again.
+          </Text>
+          <Button
+            onClick={retryCompletionSave}
+            disabled={completionRetrying}
+            flexShrink={0}
+            minH="44px"
+            px={4}
+            bg="#4476BB"
+            color="white"
+            borderRadius="8px"
+            fontWeight="700"
+            _hover={{ bg: "#365F99" }}
+          >
+            <FiRefreshCw aria-hidden="true" />
+            {completionRetrying ? "Saving..." : "Try Again"}
+          </Button>
+        </HStack>
+      ) : null}
+    </Box>
   );
 }

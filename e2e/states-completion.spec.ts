@@ -80,7 +80,7 @@ test("saves final States progress before routing once to the post-game quiz", as
 
   await sendCompletion(page);
   await sendCompletion(page);
-  await expect.poll(() => saveBodies.length).toBe(2);
+  await expect.poll(() => saveBodies.length).toBe(1);
 
   await expect(page).toHaveURL(/\/statesOfMatterGame\?saveId=existing-save$/);
   expect(saveBodies[0]).toMatchObject({ completedStageIds, classroomParticipantId: null });
@@ -89,6 +89,34 @@ test("saves final States progress before routing once to the post-game quiz", as
 
   await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after$/);
   await expect.poll(() => quizNavigations).toBe(1);
+});
+
+test("keeps the game open and retries when the final States save fails", async ({ page }) => {
+  const saveBodies: unknown[] = [];
+
+  await page.route("**/api/gameData/existing-save", async (route) => {
+    saveBodies.push(route.request().postDataJSON());
+    if (saveBodies.length === 1) {
+      await route.fulfill({ status: 503, body: "Save unavailable" });
+      return;
+    }
+
+    await jsonResponse(route, { saveId: "existing-save" });
+  });
+
+  await page.goto("/statesOfMatterGame?saveId=existing-save");
+  await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
+  await sendCompletion(page);
+
+  await expect(page).toHaveURL(/\/statesOfMatterGame\?saveId=existing-save$/);
+  const retryButton = page.getByRole("button", { name: "Try Again" });
+  await expect(retryButton).toBeVisible();
+
+  await retryButton.click();
+
+  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after$/);
+  expect(saveBodies).toHaveLength(2);
+  expect(saveBodies[1]).toMatchObject({ completedStageIds, classroomParticipantId: null });
 });
 
 test("adds a newly created save ID to the post-game quiz destination", async ({ page }) => {
