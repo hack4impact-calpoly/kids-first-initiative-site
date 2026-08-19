@@ -361,7 +361,7 @@ test("keeps transient classroom save failures separate from expired sessions", a
   });
 });
 
-test("offers rejoin recovery when earlier progress already cleared the classroom session", async ({ page }) => {
+test("requires rejoin instead of falling back to a personal save after classroom context is lost", async ({ page }) => {
   const classroomSessionKey = "kfi_current_classroom_session";
   const classroomSnapshot = (participantId: string) => ({
     sessionId: "class-session",
@@ -376,13 +376,14 @@ test("offers rejoin recovery when earlier progress already cleared the classroom
     snapshot: classroomSnapshot("expired-participant"),
   });
   await page.route("**/api/gameData", async (route) => {
-    saveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
-    if (saveBodies.length <= 2) {
+    const saveBody = route.request().postDataJSON() as Record<string, unknown>;
+    saveBodies.push(saveBody);
+    if (saveBodies.length === 1) {
       await route.fulfill({ status: 401, body: "Class session expired" });
       return;
     }
 
-    await jsonResponse(route, { saveId: saveBodies[2].saveId });
+    await jsonResponse(route, { saveId: saveBody.saveId });
   });
 
   await page.goto("/statesOfMatterGame");
@@ -399,15 +400,15 @@ test("offers rejoin recovery when earlier progress already cleared the classroom
   });
   await page.getByRole("button", { name: "Try Again" }).click();
 
-  const replacementSaveId = String(saveBodies[2].saveId);
+  const replacementSaveId = String(saveBodies[1].saveId);
   await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
-  expect(saveBodies).toHaveLength(3);
+  expect(saveBodies).toHaveLength(2);
   expect(saveBodies[0]).toMatchObject({ classroomParticipantId: "expired-participant" });
-  expect(saveBodies[1]).toMatchObject({ classroomParticipantId: null });
-  expect(saveBodies[2]).toMatchObject({
+  expect(saveBodies[1]).toMatchObject({
     saveId: replacementSaveId,
     classroomParticipantId: "new-participant",
   });
+  expect(saveBodies).not.toContainEqual(expect.objectContaining({ classroomParticipantId: null }));
 });
 
 test("keeps End Game as a manual post-game quiz fallback", async ({ page }) => {

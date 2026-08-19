@@ -88,6 +88,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
   const pendingCompletionSave = useRef<PendingCompletionSave>();
   const personalSaveIdRef = useRef(saveId);
   const classroomSaveIdRef = useRef<string>();
+  const classroomParticipantIdRef = useRef(activeClassroomSession?.participantId);
 
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
@@ -166,7 +167,9 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
           try {
             const currentClassroomSession = readClassroomSessionSnapshot();
             const currentParticipantId = currentClassroomSession?.participantId;
-            if (!resolvedUserId && classroomParticipantId && !currentParticipantId) {
+            if (currentParticipantId) {
+              classroomParticipantIdRef.current = currentParticipantId;
+            } else if (classroomParticipantIdRef.current) {
               return { ok: false, reason: "classroom-session-expired" };
             }
 
@@ -203,7 +206,7 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
                 classroomSaveIdRef.current = undefined;
                 return {
                   ok: false,
-                  reason: resolvedUserId ? "save-failed" : "classroom-session-expired",
+                  reason: "classroom-session-expired",
                 };
               }
               if (!resolvedUserId && isAuthenticationFailure) {
