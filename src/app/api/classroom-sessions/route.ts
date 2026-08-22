@@ -5,19 +5,13 @@ import connectDB from "@/database/db";
 import ClassroomSession from "@/database/classroomSessionSchema";
 import StudentAccessCode from "@/database/studentAccessCodeSchema";
 import ClassroomParticipant from "@/database/classroomParticipantSchema";
-import Teacher from "@/database/teacherSchema";
-import User from "@/database/userSchema";
-
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
-
-function generateAccessCode() {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const pick = (source: string, count: number) =>
-    Array.from({ length: count }, () => source[Math.floor(Math.random() * source.length)]).join("");
-
-  return `${pick(letters, 6)}-${pick(alphanumeric, 3)}`;
-}
+import { getClassId } from "@/lib/server/classroomHistory";
+import {
+  SESSION_DURATION_MS,
+  closeActiveClassroomSessions,
+  getTeacherForCurrentUser,
+  issueAccessCode,
+} from "@/lib/server/educatorClassroom";
 
 async function buildSessionPayload(sessionId: mongoose.Types.ObjectId | string) {
   const [session, accessCode, participants] = await Promise.all([
@@ -28,6 +22,7 @@ async function buildSessionPayload(sessionId: mongoose.Types.ObjectId | string) 
       createdAt: Date;
       expiresAt: Date;
       closedAt: Date | null;
+      rootSessionId?: mongoose.Types.ObjectId | null;
     } | null>(),
     StudentAccessCode.findOne({ sessionId, isActive: true }).lean<{
       _id: mongoose.Types.ObjectId;
@@ -48,6 +43,7 @@ async function buildSessionPayload(sessionId: mongoose.Types.ObjectId | string) 
 
   return {
     sessionId: String(session._id),
+    classId: getClassId(session),
     title: session.title,
     status: session.status,
     accessCode: accessCode.code,
@@ -61,35 +57,6 @@ async function buildSessionPayload(sessionId: mongoose.Types.ObjectId | string) 
       lastSeenAt: participant.lastSeenAt,
     })),
   };
-}
-
-async function getTeacherForCurrentUser(userId: string) {
-  const dbUser = await User.findOne({ clerkId: userId }).lean<{
-    name?: string;
-    email?: string;
-    role?: string;
-  } | null>();
-
-  if (dbUser?.role !== "educator") {
-    return { error: NextResponse.json({ error: "Educator access required." }, { status: 403 }) };
-  }
-
-  const teacher = await Teacher.findOneAndUpdate(
-    { clerkId: userId },
-    {
-      $set: {
-        name: dbUser.name ?? "Educator",
-        email: dbUser.email ?? `${userId}@example.invalid`,
-      },
-    },
-    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
-  ).lean<{ _id: mongoose.Types.ObjectId } | null>();
-
-  if (!teacher) {
-    return { error: NextResponse.json({ error: "Unable to create educator profile." }, { status: 500 }) };
-  }
-
-  return { teacherId: teacher._id };
 }
 
 export async function GET() {
@@ -142,24 +109,7 @@ export async function POST(request: NextRequest) {
     const requestedTitle = typeof body.title === "string" ? body.title.trim() : "";
     const title = requestedTitle || "Untitled Class";
 
-    const existingActiveSessions = await ClassroomSession.find({
-      teacherId: teacherResult.teacherId,
-      status: "active",
-    }).lean<Array<{ _id: mongoose.Types.ObjectId }>>();
-
-    if (existingActiveSessions.length > 0) {
-      const existingIds = existingActiveSessions.map((session) => session._id);
-      await Promise.all([
-        ClassroomSession.updateMany(
-          { _id: { $in: existingIds } },
-          { $set: { status: "closed", closedAt: new Date() } },
-        ),
-        StudentAccessCode.updateMany(
-          { sessionId: { $in: existingIds }, isActive: true },
-          { $set: { isActive: false } },
-        ),
-      ]);
-    }
+    await closeActiveClassroomSessions(teacherResult.teacherId);
 
     const session = await ClassroomSession.create({
       teacherId: teacherResult.teacherId,
@@ -167,19 +117,7 @@ export async function POST(request: NextRequest) {
       expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
     });
 
-    let accessCode = "";
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      try {
-        accessCode = generateAccessCode();
-        await StudentAccessCode.create({
-          sessionId: session._id,
-          code: accessCode,
-        });
-        break;
-      } catch (error: any) {
-        if (error?.code !== 11000 || attempt === 4) throw error;
-      }
-    }
+    await issueAccessCode(session._id);
 
     const payload = await buildSessionPayload(session._id);
     return NextResponse.json({ session: payload }, { status: 201 });

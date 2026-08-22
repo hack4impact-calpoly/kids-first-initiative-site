@@ -1,0 +1,502 @@
+.shell {
+  min-height: 100vh;
+  background: #ffffff;
+  width: 100%;
+}
+
+.main {
+  width: 100%;
+  min-height: calc(100vh - 64px);
+  margin: 0;
+  padding: 28px clamp(24px, 4.2vw, 56px) 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  background: radial-gradient(circle at top right, rgba(193, 221, 255, 0.45), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.headerRow {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.headerCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backLink {
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4476bb;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 48px;
+  color: #1b1b1b;
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 860px;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 28px;
+  color: #747474;
+}
+
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 14px;
+  background: #2a256f;
+  color: #ffffff;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 14px 28px rgba(42, 37, 111, 0.16);
+}
+
+.primaryLink:hover {
+  background: #231f60;
+}
+
+.card {
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  background: #ffffff;
+  border: 1px solid #dbe6f6;
+  border-radius: 16px;
+  box-shadow: 0 18px 36px rgba(45, 73, 133, 0.06);
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 30px;
+  color: #1b1b1b;
+}
+
+.mutedText {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.classList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.classCard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid #dbe6f6;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 16px 34px rgba(45, 73, 133, 0.06);
+}
+
+.classCardHeader {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.classHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.classTitle {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 28px;
+  color: #1b1b1b;
+}
+
+.classMeta {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.classActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badgeActive {
+  background: #e7f6ec;
+  border-color: #b7e0c4;
+  color: #1f7a44;
+}
+
+.badgeExpired {
+  background: #fdf3e2;
+  border-color: #f0d5a4;
+  color: #8a5b12;
+}
+
+.badgeClosed {
+  background: #f1f3f7;
+  border-color: #dbe0ea;
+  color: #5a6376;
+}
+
+.statGrid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fbff;
+  border: 1px solid #e3ebf8;
+}
+
+.statLabel {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a74ba;
+}
+
+.statValue {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.2;
+  color: #1b1b1b;
+}
+
+.detailLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid #c9d9f2;
+  background: #ffffff;
+  color: #2a256f;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.detailLink:hover {
+  background: #eef4ff;
+}
+
+.accessCodeInline {
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #243f95;
+}
+
+.timeline {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timelineItem {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fbff;
+  border: 1px solid #e3ebf8;
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.timelineLabel {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1b1b1b;
+}
+
+.codeList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.codeItem {
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.codeValue {
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 700;
+  color: #243f95;
+}
+
+.codeRetired {
+  color: #98a2b3;
+  text-decoration: line-through;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  color: #23262f;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e3ebf8;
+  white-space: nowrap;
+}
+
+.table th {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a74ba;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.activityList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.activityItem {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fbff;
+  border: 1px solid #e3ebf8;
+}
+
+.activityDot {
+  width: 12px;
+  height: 12px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #4476bb;
+  flex-shrink: 0;
+}
+
+.activityContent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activityDescription {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.45;
+  color: #23262f;
+}
+
+.reopenPanel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.reopenButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 14px;
+  background: #2a256f;
+  color: #ffffff;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(42, 37, 111, 0.16);
+}
+
+.reopenButton:hover:not(:disabled) {
+  background: #231f60;
+}
+
+.reopenButton:disabled {
+  background: #9aa2c4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.reopenError {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  color: #b42318;
+}
+
+.reopenSuccess {
+  margin: 0;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  color: #1f7a44;
+}
+
+@media (max-width: 900px) {
+  .main {
+    padding: 24px 20px 40px;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryLink {
+    width: 100%;
+  }
+
+  .title {
+    font-size: 30px;
+    line-height: 40px;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Timestamps need to fit the same tile as a two-digit count without wrapping the card. */
+.statValueSmall {
+  margin: 0;
+  font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #1b1b1b;
+}

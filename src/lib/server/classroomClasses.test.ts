@@ -1,0 +1,211 @@
+import mongoose from "mongoose";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  sessionFindOne: vi.fn(),
+  sessionFind: vi.fn(),
+  sessionUpdateOne: vi.fn(),
+  sessionCreate: vi.fn(),
+  codeFindOne: vi.fn(),
+  codeUpdateMany: vi.fn(),
+  closeActiveClassroomSessions: vi.fn(),
+  issueAccessCode: vi.fn(),
+}));
+
+vi.mock("@/database/classroomSessionSchema", () => ({
+  default: {
+    findOne: mocks.sessionFindOne,
+    find: mocks.sessionFind,
+    updateOne: mocks.sessionUpdateOne,
+    create: mocks.sessionCreate,
+  },
+}));
+vi.mock("@/database/studentAccessCodeSchema", () => ({
+  default: { findOne: mocks.codeFindOne, updateMany: mocks.codeUpdateMany, find: vi.fn() },
+}));
+vi.mock("@/database/classroomParticipantSchema", () => ({ default: { find: vi.fn() } }));
+vi.mock("@/database/gameDataSchema", () => ({ default: { find: vi.fn() } }));
+vi.mock("@/database/quizSchema", () => ({ default: { find: vi.fn() } }));
+vi.mock("@/lib/server/educatorClassroom", () => ({
+  SESSION_DURATION_MS: 8 * 60 * 60 * 1000,
+  closeActiveClassroomSessions: mocks.closeActiveClassroomSessions,
+  issueAccessCode: mocks.issueAccessCode,
+}));
+
+import { reopenClassroomClass } from "@/lib/server/classroomClasses";
+
+const NOW = new Date("2026-08-22T18:00:00.000Z");
+const TEACHER_ID = new mongoose.Types.ObjectId();
+const ROOT_ID = new mongoose.Types.ObjectId();
+const CONTINUATION_ID = new mongoose.Types.ObjectId();
+const NEW_SESSION_ID = new mongoose.Types.ObjectId();
+
+const EXPIRED_ROOT = {
+  _id: ROOT_ID,
+  title: "4th Grade Science",
+  status: "active" as const,
+  createdAt: new Date("2026-08-20T09:00:00.000Z"),
+  expiresAt: new Date("2026-08-20T17:00:00.000Z"),
+  closedAt: null,
+  rootSessionId: null,
+};
+
+function leanOf(value: unknown) {
+  return { lean: () => Promise.resolve(value) };
+}
+
+function sortLeanOf(value: unknown) {
+  return { sort: () => ({ lean: () => Promise.resolve(value) }) };
+}
+
+/** Answers the root lookup with `rootRecord` and the chain query with `chain`. */
+function stubChain(rootRecord: unknown, chain: unknown[]) {
+  mocks.sessionFindOne.mockReturnValue(leanOf(rootRecord));
+  mocks.sessionFind.mockReturnValue(sortLeanOf(chain));
+}
+
+describe("reopenClassroomClass", () => {
+  beforeEach(() => {
+    mocks.sessionUpdateOne.mockResolvedValue({});
+    mocks.codeUpdateMany.mockResolvedValue({});
+    mocks.closeActiveClassroomSessions.mockResolvedValue([]);
+    mocks.issueAccessCode.mockResolvedValue("NEWCODE-9Z8");
+    mocks.sessionCreate.mockResolvedValue({ _id: NEW_SESSION_ID });
+  });
+
+  it("rejects an id that is not a classroom session id", async () => {
+    const result = await reopenClassroomClass({ classId: "not-an-object-id", teacherId: TEACHER_ID, now: NOW });
+
+    expect(result).toEqual({ ok: false, reason: "invalid" });
+    expect(mocks.sessionCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses to reopen a class that does not belong to the educator", async () => {
+    // The teacher-scoped lookup finds nothing, which is how another educator's class presents.
+    stubChain(null, []);
+
+    const result = await reopenClassroomClass({
+      classId: String(ROOT_ID),
+      teacherId: TEACHER_ID,
+      now: NOW,
+    });
+
+    expect(result).toEqual({ ok: false, reason: "not_found" });
+    expect(mocks.sessionFindOne).toHaveBeenCalledWith(expect.objectContaining({ teacherId: TEACHER_ID }));
+    expect(mocks.sessionCreate).not.toHaveBeenCalled();
+    expect(mocks.closeActiveClassroomSessions).not.toHaveBeenCalled();
+  });
+
+  it("appends a linked continuation and issues a fresh code when reopening an expired class", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+
+    const result = await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
+
+    expect(result).toMatchObject({
+      ok: true,
+      reopened: true,
+      classId: String(ROOT_ID),
+      sessionId: String(NEW_SESSION_ID),
+      accessCode: "NEWCODE-9Z8",
+    });
+
+    // The continuation points back at the session it continues and at the class root.
+    expect(mocks.sessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teacherId: TEACHER_ID,
+        title: "4th Grade Science",
+        status: "active",
+        continuedFromId: ROOT_ID,
+        rootSessionId: ROOT_ID,
+        closedAt: null,
+      }),
+    );
+    expect(mocks.sessionCreate.mock.calls[0][0].expiresAt).toEqual(new Date("2026-08-23T02:00:00.000Z"));
+    expect(mocks.issueAccessCode).toHaveBeenCalledWith(NEW_SESSION_ID);
+  });
+
+  it("retires every code the class ever issued so a stale code cannot rejoin", async () => {
+    const continuation = { ...EXPIRED_ROOT, _id: CONTINUATION_ID, rootSessionId: ROOT_ID };
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT, continuation]);
+
+    await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
+
+    expect(mocks.codeUpdateMany).toHaveBeenCalledWith(
+      { sessionId: { $in: [ROOT_ID, CONTINUATION_ID] }, isActive: true },
+      { $set: { isActive: false } },
+    );
+  });
+
+  it("closes any other class the educator still has open, sparing this one", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+
+    await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
+
+    expect(mocks.closeActiveClassroomSessions).toHaveBeenCalledWith(TEACHER_ID, {
+      exceptSessionIds: [ROOT_ID],
+      now: NOW,
+    });
+  });
+
+  it("closes an expired session against its own expiry rather than the reopen time", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+
+    await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
+
+    expect(mocks.sessionUpdateOne).toHaveBeenCalledWith(
+      { _id: ROOT_ID },
+      { $set: { status: "closed", closedAt: EXPIRED_ROOT.expiresAt } },
+    );
+  });
+
+  it("leaves a live class untouched and hands back the code it already has", async () => {
+    const liveSession = {
+      ...EXPIRED_ROOT,
+      expiresAt: new Date(NOW.getTime() + 60_000),
+    };
+    stubChain(liveSession, [liveSession]);
+    mocks.codeFindOne.mockReturnValue(leanOf({ code: "LIVECODE-1A2" }));
+
+    const result = await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
+
+    expect(result).toMatchObject({ ok: true, reopened: false, accessCode: "LIVECODE-1A2" });
+    expect(mocks.sessionCreate).not.toHaveBeenCalled();
+    expect(mocks.codeUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.closeActiveClassroomSessions).not.toHaveBeenCalled();
+  });
+
+  it("rolls the continuation back when no access code can be issued", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+    mocks.issueAccessCode.mockRejectedValue(new Error("no code available"));
+
+    await expect(reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW })).rejects.toThrow(
+      "no code available",
+    );
+
+    // Otherwise the class would sit active-but-unjoinable, and reopening it again would no-op.
+    expect(mocks.sessionUpdateOne).toHaveBeenCalledWith(
+      { _id: NEW_SESSION_ID },
+      { $set: { status: "closed", closedAt: NOW } },
+    );
+  });
+
+  it("normalizes a continuation id to the class root before reopening", async () => {
+    const continuation = { ...EXPIRED_ROOT, _id: CONTINUATION_ID, rootSessionId: ROOT_ID };
+    stubChain(continuation, [EXPIRED_ROOT, continuation]);
+
+    const result = await reopenClassroomClass({
+      classId: String(CONTINUATION_ID),
+      teacherId: TEACHER_ID,
+      now: NOW,
+    });
+
+    expect(result).toMatchObject({ ok: true, reopened: true, classId: String(ROOT_ID) });
+    // The chain is re-queried from the root, not from the id the caller happened to hold.
+    expect(mocks.sessionFind).toHaveBeenCalledWith(
+      expect.objectContaining({ $or: [{ _id: ROOT_ID }, { rootSessionId: ROOT_ID }] }),
+    );
+    expect(mocks.sessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ continuedFromId: CONTINUATION_ID, rootSessionId: ROOT_ID }),
+    );
+  });
+});
