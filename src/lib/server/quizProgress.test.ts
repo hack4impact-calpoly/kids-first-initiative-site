@@ -6,14 +6,12 @@ const mocks = vi.hoisted(() => ({
   connectDB: vi.fn(),
   findOne: vi.fn(),
   resolveDataPrincipalFromCredential: vi.fn(),
-  findActiveClassroomParticipantForUser: vi.fn(),
 }));
 
 vi.mock("@/database/db", () => ({ default: mocks.connectDB }));
 vi.mock("@/database/quizSchema", () => ({ default: { findOne: mocks.findOne } }));
 vi.mock("@/lib/server/classroomAuthorization", () => ({
   resolveDataPrincipalFromCredential: mocks.resolveDataPrincipalFromCredential,
-  findActiveClassroomParticipantForUser: mocks.findActiveClassroomParticipantForUser,
 }));
 
 import { getPreviousQuizScore } from "@/lib/server/quizProgress";
@@ -34,7 +32,6 @@ describe("getPreviousQuizScore", () => {
       ok: true,
       value: { ownerId: "clerk-student", actor, classroom: null },
     });
-    mocks.findActiveClassroomParticipantForUser.mockResolvedValue(null);
     stubQuizzesByOwner({ "clerk-student": { penguinRunScoreBefore: 1, statesOfMatterScoreBefore: 2 } });
   });
 
@@ -91,51 +88,18 @@ describe("getPreviousQuizScore", () => {
     expect(mocks.findOne).not.toHaveBeenCalled();
   });
 
-  it("recovers the classroom baseline when the cookie lapsed but the participant is still active", async () => {
-    stubQuizzesByOwner({
-      "clerk-student": { statesOfMatterScoreBefore: -1 },
-      "participant:participant-9": { statesOfMatterScoreBefore: 2 },
-    });
-    mocks.findActiveClassroomParticipantForUser.mockResolvedValue({
-      participantId: "participant-9",
-      sessionId: "session-1",
-      displayName: "Student",
-      clerkId: "clerk-student",
-    });
-
-    await expect(getPreviousQuizScore("statesOfMatterQuiz", actor)).resolves.toBe(2);
-    expect(mocks.findActiveClassroomParticipantForUser).toHaveBeenCalledWith("clerk-student");
-  });
-
-  it("never lets a classroom baseline override a real personal score", async () => {
-    stubQuizzesByOwner({
-      "clerk-student": { statesOfMatterScoreBefore: 3 },
-      "participant:participant-9": { statesOfMatterScoreBefore: 0 },
-    });
-    mocks.findActiveClassroomParticipantForUser.mockResolvedValue({
-      participantId: "participant-9",
-      sessionId: "session-1",
-      displayName: "Student",
-      clerkId: "clerk-student",
-    });
-
-    await expect(getPreviousQuizScore("statesOfMatterQuiz", actor)).resolves.toBe(3);
-    expect(mocks.findActiveClassroomParticipantForUser).not.toHaveBeenCalled();
-  });
-
-  it("does not look for a classroom fallback for an anonymous caller", async () => {
-    mocks.resolveDataPrincipalFromCredential.mockResolvedValue({
-      ok: true,
-      value: { ownerId: "participant:participant-1", actor: { userId: null, role: null }, classroom: null },
-    });
-    stubQuizzesByOwner({});
-
-    await expect(getPreviousQuizScore("penguinRunQuiz", { userId: null, role: null })).resolves.toBe(-1);
-    expect(mocks.findActiveClassroomParticipantForUser).not.toHaveBeenCalled();
-  });
-
-  it("degrades to no previous score instead of failing the page when the database errors", async () => {
+  it("degrades to no previous score instead of failing the page when the principal cannot be resolved", async () => {
     mocks.resolveDataPrincipalFromCredential.mockRejectedValue(new Error("connection lost"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(getPreviousQuizScore("penguinRunQuiz", actor)).resolves.toBe(-1);
+
+    consoleError.mockRestore();
+  });
+
+  it("degrades to no previous score when the quiz lookup itself fails", async () => {
+    // Covers the second await inside the try block, not just the first.
+    mocks.findOne.mockReturnValue({ lean: vi.fn().mockRejectedValue(new Error("read timeout")) });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(getPreviousQuizScore("penguinRunQuiz", actor)).resolves.toBe(-1);

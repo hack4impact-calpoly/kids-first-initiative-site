@@ -215,36 +215,3 @@ export async function canEducatorReadClassroom(actor: RequestActor, classroomSes
 
   return Boolean(await ClassroomSession.exists({ _id: classroomSessionId, teacherId: teacher._id }));
 }
-
-/**
- * Finds the classroom participant a signed-in student is currently active in, without requiring the
- * classroom cookie. Scoped to the caller's own `clerkId`, so it cannot widen access — it only
- * recovers a read principal when the cookie has lapsed but the participant row is still live.
- * Read-only callers should prefer the cookie-backed principal and fall back to this.
- */
-export async function findActiveClassroomParticipantForUser(
-  userId: string,
-): Promise<AuthorizedClassroomParticipant | null> {
-  const participants = await ClassroomParticipant.find({ clerkId: userId })
-    .sort({ lastSeenAt: -1 })
-    .lean<ClassroomParticipantRecord[]>();
-
-  for (const participant of participants) {
-    const isActive = await ClassroomSession.exists({
-      _id: participant.sessionId,
-      status: "active",
-      expiresAt: { $gt: new Date() },
-    });
-
-    if (isActive) {
-      return {
-        participantId: String(participant._id),
-        sessionId: String(participant.sessionId),
-        displayName: participant.displayName,
-        clerkId: participant.clerkId ?? null,
-      };
-    }
-  }
-
-  return null;
-}
