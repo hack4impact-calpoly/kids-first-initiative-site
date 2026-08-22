@@ -9,6 +9,7 @@ import {
   hashClassroomSecret,
   parseClassroomCredential,
   resolveDataPrincipal,
+  resolveDataPrincipalFromCredential,
   setClassroomCredentialCookie,
 } from "@/lib/server/classroomAuthorization";
 
@@ -142,5 +143,41 @@ describe("classroom participant credentials", () => {
       clerkId: "clerk-student",
       authTokenHash: credential.tokenHash,
     });
+  });
+
+  it("resolves a server-rendered read from the classroom cookie without a client claim", async () => {
+    const participantId = new mongoose.Types.ObjectId().toString();
+    const sessionId = new mongoose.Types.ObjectId();
+    const credential = createClassroomCredential(participantId);
+    const lean = vi.fn().mockResolvedValue({
+      _id: new mongoose.Types.ObjectId(participantId),
+      sessionId,
+      clerkId: null,
+      displayName: "Guest Student",
+    });
+    const findOne = vi.spyOn(ClassroomParticipant, "findOne").mockReturnValue({ lean } as never);
+    vi.spyOn(ClassroomSession, "exists").mockResolvedValue({ _id: sessionId } as never);
+
+    const result = await resolveDataPrincipalFromCredential(credential.cookieValue, { userId: null, role: null });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        ownerId: `participant:${participantId}`,
+        classroom: { participantId, sessionId: String(sessionId) },
+      },
+    });
+    expect(findOne).toHaveBeenCalledWith({
+      _id: participantId,
+      authTokenHash: credential.tokenHash,
+      clerkId: null,
+    });
+  });
+
+  it("does not resolve an expired or invalid server classroom credential", async () => {
+    const result = await resolveDataPrincipalFromCredential("invalid", { userId: null, role: null });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.response.status).toBe(401);
   });
 });
