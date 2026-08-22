@@ -51,3 +51,15 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
+
+      - name: Install Playwright browser
+        if: ${{ matrix.node-version == '20.x' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        if: ${{ matrix.node-version == '20.x' }}
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}

@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextMiddleware } from "next/server";
 
 const isPublicPage = createRouteMatcher(["/login(.*)", "/sign-up(.*)"]);
 const isGuestCapableApi = createRouteMatcher([
@@ -18,7 +18,7 @@ const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 // Keep in mind when you change roles, it won't appear until Clerk's session token refreshes.
 // https://clerk.com/docs/guides/sessions/customize-session-tokens
 
-export default clerkMiddleware(async (auth, req) => {
+const authenticatedProxy = clerkMiddleware(async (auth, req) => {
   if (isPublicPage(req) || isGuestCapableApi(req)) return NextResponse.next();
 
   const { userId, sessionClaims } = await auth();
@@ -35,6 +35,16 @@ export default clerkMiddleware(async (auth, req) => {
 
   return NextResponse.next();
 });
+
+const proxy: NextMiddleware = (request, event) => {
+  if (process.env.NODE_ENV !== "production" && process.env.KFI_E2E_BYPASS_CLERK === "1") {
+    return NextResponse.next();
+  }
+
+  return authenticatedProxy(request, event);
+};
+
+export default proxy;
 
 export const config = {
   matcher: [
