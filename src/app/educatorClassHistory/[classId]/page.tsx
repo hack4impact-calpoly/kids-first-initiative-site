@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
+import { getRequestActor } from "@/lib/server/apiAuthorization";
+import { canEducatorReadClassroom } from "@/lib/server/classroomAuthorization";
 import { loadClassDetail } from "@/lib/server/classroomClasses";
-import { getGameLabel } from "@/lib/server/classroomHistory";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 import { PENGUIN_RUN_QUESTION_COUNT, STATES_OF_MATTER_QUESTION_COUNT, normalizeQuizScore } from "@/lib/quizScoring";
 import ReopenClassButton from "../ReopenClassButton";
@@ -15,16 +15,25 @@ export const dynamic = "force-dynamic";
 const ACTIVITY_LIMIT = 12;
 
 export default async function EducatorClassDetailPage({ params }: { params: Promise<{ classId: string }> }) {
-  const { userId } = await auth();
-  if (!userId) return null;
+  const actor = await getRequestActor();
+  if (!actor.userId) return null;
 
   await connectDB();
 
-  const educator = await findEducatorTeacher(userId);
-  if (!educator) return null;
-
   const { classId } = await params;
-  const detail = await loadClassDetail(classId, educator.teacherId);
+  if (!(await canEducatorReadClassroom(actor, classId))) notFound();
+
+  // Mirrors the API route: admins read across educators, everyone else stays scoped to their own
+  // classes. Without the admin branch this page would render blank for the very admins the
+  // corresponding endpoint grants access to.
+  let teacherScope: string | null = null;
+  if (actor.role !== "admin") {
+    const educator = await findEducatorTeacher(actor.userId);
+    if (!educator?.teacherId) notFound();
+    teacherScope = String(educator.teacherId);
+  }
+
+  const detail = await loadClassDetail(classId, teacherScope);
   if (!detail) notFound();
 
   const { summary, roster, sessionStates, gameData, quizzes, activity } = detail;
@@ -135,11 +144,11 @@ export default async function EducatorClassDetailPage({ params }: { params: Prom
                 </thead>
                 <tbody>
                   {roster.map((entry) => (
-                    <tr key={entry.participantKey}>
+                    <tr key={entry.id}>
                       <td>{entry.displayName}</td>
                       <td>{formatDateTime(entry.joinedAt)}</td>
                       <td>{formatDateTime(entry.lastSeenAt)}</td>
-                      <td>{entry.sessionIds.length}</td>
+                      <td>{entry.sessionCount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -167,7 +176,7 @@ export default async function EducatorClassDetailPage({ params }: { params: Prom
                 </thead>
                 <tbody>
                   {quizzes.map((quiz) => (
-                    <tr key={String(quiz._id)}>
+                    <tr key={quiz.id}>
                       <td>{quiz.studentDisplayName || "A student"}</td>
                       <td>
                         {formatScore(
@@ -206,11 +215,11 @@ export default async function EducatorClassDetailPage({ params }: { params: Prom
                 </thead>
                 <tbody>
                   {gameData.map((game) => (
-                    <tr key={String(game._id)}>
+                    <tr key={game.id}>
                       <td>{game.studentDisplayName || "A student"}</td>
-                      <td>{getGameLabel(game.gameId)}</td>
-                      <td>{game.completedLevels?.length ?? 0}</td>
-                      <td>{game.completedStageIds?.length ?? 0}</td>
+                      <td>{game.gameLabel}</td>
+                      <td>{game.completedLevelCount}</td>
+                      <td>{game.completedStageCount}</td>
                       <td>{formatDateTime(game.lastUpdated)}</td>
                     </tr>
                   ))}

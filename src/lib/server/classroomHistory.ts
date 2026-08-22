@@ -341,3 +341,72 @@ export function buildClassIdBySessionId(sessions: ClassroomSessionRecord[]) {
 
   return classIdBySessionId;
 }
+
+/**
+ * Serializable projections of classroom records.
+ *
+ * The stored documents carry identity and answer detail that history views never need — Clerk ids
+ * (directly on a quiz, and embedded in a participant's `participantKey`), quiz/save ids, and every
+ * per-question answer. These views are the only shape that should cross an API boundary.
+ */
+export type ClassroomRosterView = {
+  id: string;
+  displayName: string;
+  joinedAt: Date;
+  lastSeenAt: Date;
+  sessionCount: number;
+};
+
+export type ClassroomGameView = {
+  id: string;
+  gameId: string;
+  gameLabel: string;
+  studentDisplayName: string | null;
+  completedLevelCount: number;
+  completedStageCount: number;
+  lastUpdated: Date;
+};
+
+export type ClassroomQuizView = QuizScoreRecord & {
+  id: string;
+  studentDisplayName: string | null;
+  completed: boolean;
+  updatedAt: Date | null;
+};
+
+export function toClassroomRosterView(entry: ClassroomRosterEntry): ClassroomRosterView {
+  return {
+    // The participant id is stable within the class and carries no external identity, unlike the
+    // participantKey it replaces.
+    id: entry.participantIds[0] ?? entry.participantKey,
+    displayName: entry.displayName,
+    joinedAt: entry.joinedAt,
+    lastSeenAt: entry.lastSeenAt,
+    sessionCount: entry.sessionIds.length,
+  };
+}
+
+export function toClassroomGameView(game: ClassroomGameRecord): ClassroomGameView {
+  return {
+    id: toIdString(game._id) as string,
+    gameId: game.gameId,
+    gameLabel: getGameLabel(game.gameId),
+    studentDisplayName: game.studentDisplayName ?? null,
+    completedLevelCount: game.completedLevels?.length ?? 0,
+    completedStageCount: game.completedStageIds?.length ?? 0,
+    lastUpdated: game.lastUpdated,
+  };
+}
+
+export function toClassroomQuizView(quiz: ClassroomQuizRecord): ClassroomQuizView {
+  return {
+    id: toIdString(quiz._id) as string,
+    studentDisplayName: quiz.studentDisplayName ?? null,
+    completed: Boolean(quiz.completed),
+    updatedAt: quiz.updatedAt ?? null,
+    statesOfMatterScoreBefore: quiz.statesOfMatterScoreBefore,
+    stateOfMatterScoreAfter: quiz.stateOfMatterScoreAfter,
+    penguinRunScoreBefore: quiz.penguinRunScoreBefore,
+    penguinRunScoreAfter: quiz.penguinRunScoreAfter,
+  };
+}

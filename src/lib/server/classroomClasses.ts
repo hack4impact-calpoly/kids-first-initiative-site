@@ -10,7 +10,9 @@ import {
   ClassroomGameRecord,
   ClassroomParticipantRecord,
   ClassroomQuizRecord,
-  ClassroomRosterEntry,
+  ClassroomGameView,
+  ClassroomQuizView,
+  ClassroomRosterView,
   ClassroomSessionRecord,
   ClassroomSessionState,
   buildClassIdBySessionId,
@@ -22,13 +24,16 @@ import {
   groupSessionsIntoClasses,
   resolveClassroomSessionState,
   summarizeClassroomClass,
+  toClassroomGameView,
+  toClassroomQuizView,
+  toClassroomRosterView,
   toIdString,
 } from "@/lib/server/classroomHistory";
 import { SESSION_DURATION_MS, closeActiveClassroomSessions, issueAccessCode } from "@/lib/server/educatorClassroom";
 
 export type ClassroomClassDetail = {
   summary: ClassroomClassSummary;
-  roster: ClassroomRosterEntry[];
+  roster: ClassroomRosterView[];
   sessionStates: Array<{
     sessionId: string;
     title: string;
@@ -38,8 +43,8 @@ export type ClassroomClassDetail = {
     closedAt: Date | null;
     accessCodes: Array<{ code: string; isActive: boolean; createdAt: Date; lastSeenAt: Date | null }>;
   }>;
-  gameData: ClassroomGameRecord[];
-  quizzes: ClassroomQuizRecord[];
+  gameData: ClassroomGameView[];
+  quizzes: ClassroomQuizView[];
   activity: ReturnType<typeof buildClassroomActivity>;
 };
 
@@ -55,31 +60,60 @@ async function loadClassroomRecords(sessions: Array<{ _id: mongoose.Types.Object
   const objectIds = sessions.map((session) => session._id);
   const sessionIds = toSessionIdStrings(sessions);
 
+  // Every projection below is a whitelist. Quiz documents carry `clerkId`, `quizId`, and full
+  // per-question answers, and GameData carries `userId`/`saveId`; none of that belongs in a history
+  // view, so it is never read rather than being stripped later.
   return Promise.all([
     ClassroomParticipant.find({ sessionId: { $in: objectIds } })
+      .select("sessionId participantKey displayName joinedAt lastSeenAt")
       .sort({ joinedAt: 1 })
       .lean<ClassroomParticipantRecord[]>(),
     StudentAccessCode.find({ sessionId: { $in: objectIds } })
+      .select("sessionId code isActive createdAt lastSeenAt")
       .sort({ createdAt: 1 })
       .lean<ClassroomAccessCodeRecord[]>(),
     GameData.find({ classroomSessionId: { $in: sessionIds } })
+      .select(
+        "classroomSessionId classroomParticipantId gameId lastUpdated studentDisplayName completedLevels completedStageIds",
+      )
       .sort({ lastUpdated: -1 })
       .lean<ClassroomGameRecord[]>(),
     Quiz.find({ classroomSessionId: { $in: sessionIds } })
+      .select(
+        "classroomSessionId classroomParticipantId studentDisplayName completed updatedAt statesOfMatterScoreBefore stateOfMatterScoreAfter penguinRunScoreBefore penguinRunScoreAfter",
+      )
       .sort({ updatedAt: -1 })
       .lean<ClassroomQuizRecord[]>(),
   ]);
 }
 
+export const DEFAULT_CLASS_PAGE_SIZE = 25;
+
+/**
+ * Summaries for an educator's most recent classes.
+ *
+ * Metrics are computed in JS, so the record fan-out is bounded by trimming to a page of classes
+ * *before* their participants, codes, saves, and quizzes are read. Without that, an educator with a
+ * term of history would pull every row they have ever produced on each page view.
+ */
 export async function loadTeacherClassSummaries(
   teacherId: mongoose.Types.ObjectId | string,
   now: Date = new Date(),
+  limit: number = DEFAULT_CLASS_PAGE_SIZE,
 ): Promise<ClassroomClassSummary[]> {
-  const sessions = await ClassroomSession.find({ teacherId })
+  const allSessions = await ClassroomSession.find({ teacherId })
+    .select("title status createdAt expiresAt closedAt continuedFromId rootSessionId")
     .sort({ createdAt: 1 })
     .lean<Array<ClassroomSessionRecord & { _id: mongoose.Types.ObjectId }>>();
 
-  if (sessions.length === 0) return [];
+  if (allSessions.length === 0) return [];
+
+  const pagedClassIds = new Set(
+    groupSessionsIntoClasses(allSessions, now)
+      .slice(0, limit)
+      .map((classroomClass) => classroomClass.classId),
+  );
+  const sessions = allSessions.filter((session) => pagedClassIds.has(getClassId(session)));
 
   const [participants, accessCodes, gameData, quizzes] = await loadClassroomRecords(sessions);
   const classIdBySessionId = buildClassIdBySessionId(sessions);
@@ -147,7 +181,7 @@ export async function loadClassDetail(
 
   return {
     summary,
-    roster: buildClassroomRoster(participants),
+    roster: buildClassroomRoster(participants).map(toClassroomRosterView),
     sessionStates: classroomClass.sessions.map((session) => {
       const sessionId = toIdString(session._id) as string;
       return {
@@ -167,14 +201,50 @@ export async function loadClassDetail(
           })),
       };
     }),
-    gameData,
-    quizzes,
+    gameData: gameData.map(toClassroomGameView),
+    quizzes: quizzes.map(toClassroomQuizView),
     activity: buildClassroomActivity({
       classTitle: classroomClass.title,
       participants,
       gameData,
       quizzes,
     }),
+  };
+}
+
+/**
+ * Describes a chain that is already live, for callers that must not reopen it again — the caller
+ * that found it active, and the loser of a concurrent reopen race.
+ */
+async function describeActiveChain(
+  rootId: string,
+  teacherId: mongoose.Types.ObjectId | string,
+  now: Date,
+  knownSession?: ClassroomSessionRecord & { _id: mongoose.Types.ObjectId },
+): Promise<ReopenClassroomResult> {
+  const activeSession =
+    knownSession ??
+    (await ClassroomSession.findOne({
+      rootSessionId: new mongoose.Types.ObjectId(rootId),
+      teacherId,
+      status: "active",
+    })
+      .sort({ createdAt: -1 })
+      .lean<(ClassroomSessionRecord & { _id: mongoose.Types.ObjectId }) | null>());
+
+  if (!activeSession) return { ok: false, reason: "not_found" };
+
+  const activeCode = await StudentAccessCode.findOne({ sessionId: activeSession._id, isActive: true }).lean<{
+    code: string;
+  } | null>();
+
+  return {
+    ok: true,
+    reopened: false,
+    classId: rootId,
+    sessionId: String(activeSession._id),
+    accessCode: activeCode?.code ?? null,
+    expiresAt: activeSession.expiresAt,
   };
 }
 
@@ -202,18 +272,7 @@ export async function reopenClassroomClass(input: {
   const latestSession = sessions[sessions.length - 1];
 
   if (resolveClassroomSessionState(latestSession, now) === "active") {
-    const activeCode = await StudentAccessCode.findOne({ sessionId: latestSession._id, isActive: true }).lean<{
-      code: string;
-    } | null>();
-
-    return {
-      ok: true,
-      reopened: false,
-      classId: rootId,
-      sessionId: String(latestSession._id),
-      accessCode: activeCode?.code ?? null,
-      expiresAt: latestSession.expiresAt,
-    };
+    return describeActiveChain(rootId, input.teacherId, now, latestSession);
   }
 
   const chainIds = sessions.map((session) => session._id);
@@ -238,24 +297,35 @@ export async function reopenClassroomClass(input: {
   await StudentAccessCode.updateMany({ sessionId: { $in: chainIds }, isActive: true }, { $set: { isActive: false } });
 
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
-  const continuation = await ClassroomSession.create({
-    teacherId: input.teacherId,
-    title: latestSession.title,
-    status: "active",
-    createdAt: now,
-    expiresAt,
-    closedAt: null,
-    continuedFromId: latestSession._id,
-    rootSessionId: new mongoose.Types.ObjectId(rootId),
-  });
+
+  let continuation: { _id: mongoose.Types.ObjectId };
+  try {
+    continuation = await ClassroomSession.create({
+      teacherId: input.teacherId,
+      title: latestSession.title,
+      status: "active",
+      createdAt: now,
+      expiresAt,
+      closedAt: null,
+      continuedFromId: latestSession._id,
+      rootSessionId: new mongoose.Types.ObjectId(rootId),
+    });
+  } catch (error: any) {
+    // A unique partial index allows only one active continuation per chain. Losing that race means
+    // a concurrent reopen already succeeded, so report its result instead of creating a second live
+    // session with a second working code.
+    if (error?.code !== 11000) throw error;
+    return describeActiveChain(rootId, input.teacherId, now);
+  }
 
   let accessCode: string;
   try {
     accessCode = await issueAccessCode(continuation._id);
   } catch (error) {
-    // An active session with no code cannot be joined and cannot be reopened again, so roll the
-    // continuation back and let the caller retry rather than stranding the class.
-    await ClassroomSession.updateOne({ _id: continuation._id }, { $set: { status: "closed", closedAt: now } });
+    // Delete rather than close. A closed phantom would stay in the chain as its newest session,
+    // taking over the class's title, expiry, and reopen count, and showing up in the timeline as a
+    // continuation that never existed for anyone. Nothing references it yet.
+    await ClassroomSession.deleteOne({ _id: continuation._id });
     throw error;
   }
 

@@ -98,13 +98,16 @@ export async function closeActiveClassroomSessions(
 /**
  * Read-only educator lookup for server-rendered pages. Unlike `getTeacherForCurrentUser` it never
  * creates a Teacher record, so simply viewing a page cannot mutate data.
+ *
+ * Returns null only when the user is not an educator. The Teacher record is created lazily on first
+ * class creation, so `teacherId` is null for an educator who has signed up but never run a class —
+ * that is someone with no classes, not someone without access.
  */
 export async function findEducatorTeacher(userId: string) {
   const dbUser = await User.findOne({ clerkId: userId }).lean<{ name?: string; role?: string } | null>();
   if (dbUser?.role !== "educator") return null;
 
   const teacher = await Teacher.findOne({ clerkId: userId }).lean<{ _id: mongoose.Types.ObjectId } | null>();
-  if (!teacher) return null;
 
-  return { name: dbUser.name ?? "Educator", teacherId: teacher._id };
+  return { name: dbUser.name ?? "Educator", teacherId: teacher?._id ?? null };
 }

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   sessionFindOne: vi.fn(),
   sessionFind: vi.fn(),
   sessionUpdateOne: vi.fn(),
+  sessionDeleteOne: vi.fn(),
   sessionCreate: vi.fn(),
   codeFindOne: vi.fn(),
   codeUpdateMany: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("@/database/classroomSessionSchema", () => ({
     findOne: mocks.sessionFindOne,
     find: mocks.sessionFind,
     updateOne: mocks.sessionUpdateOne,
+    deleteOne: mocks.sessionDeleteOne,
     create: mocks.sessionCreate,
   },
 }));
@@ -67,6 +69,7 @@ function stubChain(rootRecord: unknown, chain: unknown[]) {
 describe("reopenClassroomClass", () => {
   beforeEach(() => {
     mocks.sessionUpdateOne.mockResolvedValue({});
+    mocks.sessionDeleteOne.mockResolvedValue({});
     mocks.codeUpdateMany.mockResolvedValue({});
     mocks.closeActiveClassroomSessions.mockResolvedValue([]);
     mocks.issueAccessCode.mockResolvedValue("NEWCODE-9Z8");
@@ -174,7 +177,7 @@ describe("reopenClassroomClass", () => {
     expect(mocks.closeActiveClassroomSessions).not.toHaveBeenCalled();
   });
 
-  it("rolls the continuation back when no access code can be issued", async () => {
+  it("deletes the continuation when no access code can be issued", async () => {
     stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
     mocks.issueAccessCode.mockRejectedValue(new Error("no code available"));
 
@@ -182,10 +185,38 @@ describe("reopenClassroomClass", () => {
       "no code available",
     );
 
-    // Otherwise the class would sit active-but-unjoinable, and reopening it again would no-op.
-    expect(mocks.sessionUpdateOne).toHaveBeenCalledWith(
-      { _id: NEW_SESSION_ID },
-      { $set: { status: "closed", closedAt: NOW } },
+    // Closing it instead would leave a phantom newest session that hijacks the class's title,
+    // expiry, and reopen count, and renders in the timeline as a continuation nobody ever joined.
+    expect(mocks.sessionDeleteOne).toHaveBeenCalledWith({ _id: NEW_SESSION_ID });
+    expect(mocks.sessionUpdateOne).not.toHaveBeenCalledWith({ _id: NEW_SESSION_ID }, expect.anything());
+  });
+
+  it("yields to a concurrent reopen instead of creating a second live session", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+    // The unique partial index rejects the second continuation of the same chain.
+    mocks.sessionCreate.mockRejectedValue(Object.assign(new Error("E11000 duplicate key"), { code: 11000 }));
+    mocks.sessionFindOne.mockReturnValueOnce(leanOf(EXPIRED_ROOT)).mockReturnValueOnce({
+      sort: () => leanOf({ ...EXPIRED_ROOT, _id: CONTINUATION_ID, expiresAt: new Date(NOW.getTime() + 60_000) }),
+    });
+    mocks.codeFindOne.mockReturnValue(leanOf({ code: "WINNER-1A2" }));
+
+    const result = await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
+
+    expect(result).toMatchObject({
+      ok: true,
+      reopened: false,
+      sessionId: String(CONTINUATION_ID),
+      accessCode: "WINNER-1A2",
+    });
+    expect(mocks.issueAccessCode).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a create failure that is not a uniqueness collision", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+    mocks.sessionCreate.mockRejectedValue(new Error("connection lost"));
+
+    await expect(reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW })).rejects.toThrow(
+      "connection lost",
     );
   });
 

@@ -17,7 +17,9 @@ export default async function EducatorClassHistoryPage() {
   const educator = await findEducatorTeacher(userId);
   if (!educator) return null;
 
-  const classes = await loadTeacherClassSummaries(educator.teacherId);
+  // An educator with no Teacher record yet has simply never run a class, so fall through to the
+  // empty state rather than rendering a blank document.
+  const classes = educator.teacherId ? await loadTeacherClassSummaries(educator.teacherId) : [];
 
   return (
     <main className={styles.shell}>

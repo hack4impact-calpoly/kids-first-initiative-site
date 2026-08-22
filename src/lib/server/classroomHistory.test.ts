@@ -10,6 +10,9 @@ import {
   groupSessionsIntoClasses,
   resolveClassroomSessionState,
   summarizeClassroomClass,
+  toClassroomGameView,
+  toClassroomQuizView,
+  toClassroomRosterView,
 } from "@/lib/server/classroomHistory";
 
 const NOW = new Date("2026-08-22T18:00:00.000Z");
@@ -290,5 +293,78 @@ describe("buildClassroomActivity", () => {
     });
 
     expect(activity).toEqual([]);
+  });
+});
+
+describe("serializable views", () => {
+  it("strips identity and answer detail that must not leave the server", () => {
+    const rosterView = toClassroomRosterView({
+      // participantKey embeds the student's Clerk id verbatim.
+      participantKey: "clerk:user_2abcXYZ",
+      participantIds: ["p1", "p2"],
+      displayName: "Ada",
+      joinedAt: new Date("2026-08-20T09:05:00.000Z"),
+      lastSeenAt: new Date("2026-08-22T15:00:00.000Z"),
+      sessionIds: ["root", "continuation"],
+    });
+
+    expect(rosterView).toEqual({
+      id: "p1",
+      displayName: "Ada",
+      joinedAt: new Date("2026-08-20T09:05:00.000Z"),
+      lastSeenAt: new Date("2026-08-22T15:00:00.000Z"),
+      sessionCount: 2,
+    });
+    expect(JSON.stringify(rosterView)).not.toContain("user_2abcXYZ");
+
+    const quizView = toClassroomQuizView({
+      _id: "q1",
+      studentDisplayName: "Ada",
+      completed: true,
+      updatedAt: new Date("2026-08-20T11:00:00.000Z"),
+      statesOfMatterScoreBefore: 1,
+      stateOfMatterScoreAfter: 3,
+      penguinRunScoreBefore: -1,
+      penguinRunScoreAfter: -1,
+      ...({
+        clerkId: "user_2abcXYZ",
+        quizId: "quiz-user_2abcXYZ",
+        statesOfMatterQuestionResults: [{ selectedAnswer: "Solid" }],
+      } as object),
+    });
+
+    expect(Object.keys(quizView).sort()).toEqual([
+      "completed",
+      "id",
+      "penguinRunScoreAfter",
+      "penguinRunScoreBefore",
+      "stateOfMatterScoreAfter",
+      "statesOfMatterScoreBefore",
+      "studentDisplayName",
+      "updatedAt",
+    ]);
+    expect(JSON.stringify(quizView)).not.toContain("user_2abcXYZ");
+    expect(JSON.stringify(quizView)).not.toContain("Solid");
+
+    const gameView = toClassroomGameView({
+      _id: "g1",
+      gameId: "statesOfMatterGame",
+      lastUpdated: new Date("2026-08-20T10:00:00.000Z"),
+      studentDisplayName: "Ada",
+      completedLevels: [1, 2],
+      completedStageIds: ["a"],
+      ...({ userId: "user_2abcXYZ", saveId: "save-1" } as object),
+    });
+
+    expect(gameView).toEqual({
+      id: "g1",
+      gameId: "statesOfMatterGame",
+      gameLabel: "States of Matter",
+      studentDisplayName: "Ada",
+      completedLevelCount: 2,
+      completedStageCount: 1,
+      lastUpdated: new Date("2026-08-20T10:00:00.000Z"),
+    });
+    expect(JSON.stringify(gameView)).not.toContain("user_2abcXYZ");
   });
 });
