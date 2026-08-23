@@ -71,6 +71,56 @@
   background: #231f60;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 14px;
+  border: 1px solid #c9d9f2;
+  background: #ffffff;
+  color: #2a256f;
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.secondaryButton:hover {
+  background: #eef4ff;
+}
+
+.activityHeader {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.activityLink {
+  font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4476bb;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.activityLink:hover {
+  text-decoration: underline;
+}
+
 .accessCodeCard {
   width: 100%;
   padding: 22px 24px;
@@ -245,7 +295,14 @@
     align-items: stretch;
   }
 
-  .restartButton {
+  .headerActions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .restartButton,
+  .secondaryButton {
     width: 100%;
   }
 
