@@ -500,3 +500,12 @@
   line-height: 1.35;
   color: #1b1b1b;
 }
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}

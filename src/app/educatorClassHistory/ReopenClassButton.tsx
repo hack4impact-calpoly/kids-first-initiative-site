@@ -19,6 +19,9 @@ export default function ReopenClassButton({ classId, className }: { classId: str
   const handleReopen = async () => {
     setPending(true);
     setError("");
+    // A previous success must not stay on screen next to a new failure — it would show an access
+    // code the failed request never issued.
+    setOutcome(null);
 
     try {
       const response = await fetch(`/api/classroom-sessions/history/${encodeURIComponent(classId)}/reopen`, {

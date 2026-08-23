@@ -69,18 +69,12 @@ export async function issueAccessCode(sessionId: mongoose.Types.ObjectId | strin
 
 /**
  * Closes every active session for a teacher and deactivates its codes, so only one class of theirs
- * can accept joins at a time. Sessions listed in `exceptSessionIds` are left untouched.
+ * can accept joins at a time. A whole continuation chain can be spared via `exceptChainRootId`.
  */
 export async function closeActiveClassroomSessions(
   teacherId: mongoose.Types.ObjectId | string,
-  options: {
-    exceptSessionIds?: Array<mongoose.Types.ObjectId | string>;
-    exceptChainRootId?: mongoose.Types.ObjectId | string;
-    now?: Date;
-  } = {},
+  options: { exceptChainRootId?: mongoose.Types.ObjectId | string; now?: Date } = {},
 ) {
-  const except = (options.exceptSessionIds ?? []).map((id) => String(id));
-
   // Excluding a whole chain has to happen in the query, not against a list of ids read earlier. A
   // concurrent reopen can add a session to the chain in between, and a stale list would treat that
   // brand new continuation as an unrelated class and close it.
@@ -91,7 +85,7 @@ export async function closeActiveClassroomSessions(
     Array<{ _id: mongoose.Types.ObjectId }>
   >();
 
-  const closingIds = activeSessions.map((session) => session._id).filter((id) => !except.includes(String(id)));
+  const closingIds = activeSessions.map((session) => session._id);
 
   if (closingIds.length === 0) return [];
 

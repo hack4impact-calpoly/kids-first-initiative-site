@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
-import { MAX_CLASS_PAGE_SIZE, loadTeacherClassSummaries, parseClassPageLimit } from "@/lib/server/classroomClasses";
+import {
+  DEFAULT_CLASS_PAGE_SIZE,
+  loadTeacherClassSummaries,
+  parseClassPageLimit,
+  parseClassPageOffset,
+} from "@/lib/server/classroomClasses";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 import { STATE_BADGE_CLASS, STATE_LABELS, formatDateTime, formatScore } from "./formatting";
 import styles from "./educatorClassHistory.module.css";
@@ -9,7 +14,7 @@ import styles from "./educatorClassHistory.module.css";
 export const dynamic = "force-dynamic";
 
 type ClassHistoryPageProps = {
-  searchParams?: Promise<{ limit?: string }>;
+  searchParams?: Promise<{ limit?: string; offset?: string }>;
 };
 
 export default async function EducatorClassHistoryPage({ searchParams }: ClassHistoryPageProps) {
@@ -21,14 +26,24 @@ export default async function EducatorClassHistoryPage({ searchParams }: ClassHi
   const educator = await findEducatorTeacher(userId);
   if (!educator) return null;
 
-  const limit = parseClassPageLimit((await searchParams)?.limit);
+  const params = await searchParams;
+  const limit = parseClassPageLimit(params?.limit);
+  const requestedOffset = parseClassPageOffset(params?.offset);
 
   // An educator with no Teacher record yet has simply never run a class, so fall through to the
   // empty state rather than rendering a blank document.
   const page = educator.teacherId
-    ? await loadTeacherClassSummaries(educator.teacherId, new Date(), limit)
-    : { classes: [], total: 0, hasMore: false };
-  const { classes, total, hasMore } = page;
+    ? await loadTeacherClassSummaries(educator.teacherId, new Date(), limit, requestedOffset)
+    : { classes: [], total: 0, offset: 0, hasMore: false };
+  const { classes, total, offset, hasMore } = page;
+
+  const pageHref = (nextOffset: number) => {
+    const search = new URLSearchParams();
+    if (limit !== DEFAULT_CLASS_PAGE_SIZE) search.set("limit", String(limit));
+    if (nextOffset > 0) search.set("offset", String(nextOffset));
+    const query = search.toString();
+    return query ? `/educatorClassHistory?${query}` : "/educatorClassHistory";
+  };
 
   return (
     <main className={styles.shell}>
@@ -40,8 +55,8 @@ export default async function EducatorClassHistoryPage({ searchParams }: ClassHi
             </Link>
             <h1 className={styles.title}>Class History</h1>
             <p className={styles.subtitle}>
-              {hasMore
-                ? `Showing your ${classes.length} most recent classes of ${total}.`
+              {total > classes.length
+                ? `Showing ${offset + 1}–${offset + classes.length} of ${total} classes, newest first.`
                 : "Every class you have run, including the ones that have closed or expired."}{" "}
               Open a class to review its roster, game activity, and quiz results, or reopen it to keep going.
             </p>
@@ -118,13 +133,19 @@ export default async function EducatorClassHistoryPage({ searchParams }: ClassHi
                 </div>
               </article>
             ))}
-            {hasMore ? (
-              <Link
-                href={`/educatorClassHistory?limit=${Math.min(total, MAX_CLASS_PAGE_SIZE)}`}
-                className={styles.detailLink}
-              >
-                Show all {total} classes
-              </Link>
+            {offset > 0 || hasMore ? (
+              <div className={styles.pager}>
+                {offset > 0 ? (
+                  <Link href={pageHref(Math.max(0, offset - limit))} className={styles.detailLink}>
+                    ← Newer classes
+                  </Link>
+                ) : null}
+                {hasMore ? (
+                  <Link href={pageHref(offset + limit)} className={styles.detailLink}>
+                    Older classes →
+                  </Link>
+                ) : null}
+              </div>
             ) : null}
           </div>
         )}

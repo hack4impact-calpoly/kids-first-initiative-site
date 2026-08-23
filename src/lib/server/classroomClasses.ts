@@ -112,16 +112,24 @@ export function parseClassPageLimit(value: string | null | undefined) {
   return Math.min(parsed, MAX_CLASS_PAGE_SIZE);
 }
 
+export function parseClassPageOffset(value: string | null | undefined) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 /**
  * Summaries for an educator's most recent classes.
  *
- * Metrics are computed in JS, so the record fan-out is bounded by trimming to a page of classes
- * *before* their participants, codes, saves, and quizzes are read. Without that, an educator with a
- * term of history would pull every row they have ever produced on each page view.
+ * Metrics are computed in JS, so the *record* fan-out is bounded by selecting a page of classes
+ * before their participants, codes, saves, and quizzes are read — otherwise an educator with a term
+ * of history would pull every row they have ever produced on each page view. The session rows
+ * themselves are still read in full, since grouping them into chains and counting the classes
+ * requires all of them; they are projected, but this remains one scan per teacher per request.
  */
 export type TeacherClassSummaryPage = {
   classes: ClassroomClassSummary[];
   total: number;
+  offset: number;
   hasMore: boolean;
 };
 
@@ -129,16 +137,18 @@ export async function loadTeacherClassSummaries(
   teacherId: mongoose.Types.ObjectId | string,
   now: Date = new Date(),
   limit: number = DEFAULT_CLASS_PAGE_SIZE,
+  offset: number = 0,
 ): Promise<TeacherClassSummaryPage> {
   const allSessions = await ClassroomSession.find({ teacherId })
     .select("title status createdAt expiresAt closedAt continuedFromId rootSessionId")
     .sort({ createdAt: 1 })
     .lean<Array<ClassroomSessionRecord & { _id: mongoose.Types.ObjectId }>>();
 
-  if (allSessions.length === 0) return { classes: [], total: 0, hasMore: false };
+  if (allSessions.length === 0) return { classes: [], total: 0, offset: 0, hasMore: false };
 
   const allClasses = groupSessionsIntoClasses(allSessions, now);
-  const pagedClasses = allClasses.slice(0, limit);
+  const safeOffset = Math.max(0, Math.min(offset, Math.max(0, allClasses.length - 1)));
+  const pagedClasses = allClasses.slice(safeOffset, safeOffset + limit);
   const pagedClassIds = new Set(pagedClasses.map((classroomClass) => classroomClass.classId));
   const sessions = allSessions.filter((session) => pagedClassIds.has(getClassId(session)));
 
@@ -159,7 +169,8 @@ export async function loadTeacherClassSummaries(
       }),
     ),
     total: allClasses.length,
-    hasMore: allClasses.length > pagedClasses.length,
+    offset: safeOffset,
+    hasMore: allClasses.length > safeOffset + pagedClasses.length,
   };
 }
 
@@ -328,7 +339,14 @@ export async function reopenClassroomClass(input: {
       .map((session) =>
         ClassroomSession.updateOne(
           { _id: session._id },
-          { $set: { status: "closed", closedAt: session.closedAt ?? session.expiresAt } },
+          {
+            $set: {
+              status: "closed",
+              // min(expiresAt, now), matching closeActiveClassroomSessions. Taking expiresAt
+              // unconditionally would stamp a future close date on a session that had not expired.
+              closedAt: session.closedAt ?? (session.expiresAt < now ? session.expiresAt : now),
+            },
+          },
         ),
       ),
   );

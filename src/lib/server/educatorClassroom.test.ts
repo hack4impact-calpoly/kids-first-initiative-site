@@ -64,18 +64,23 @@ describe("closeActiveClassroomSessions", () => {
     );
   });
 
-  it("spares the sessions the caller asked to keep open", async () => {
-    const closed = await closeActiveClassroomSessions(TEACHER_ID, { exceptSessionIds: [SESSION_A], now: NOW });
+  it("excludes a spared chain in the query rather than after the fact", async () => {
+    const ROOT = new mongoose.Types.ObjectId();
+    await closeActiveClassroomSessions(TEACHER_ID, { exceptChainRootId: ROOT, now: NOW });
 
-    expect(closed).toEqual([SESSION_B]);
-    expect(mocks.sessionUpdateMany).toHaveBeenCalledWith({ _id: { $in: [SESSION_B] } }, expect.any(Array));
+    // Filtering in the query is what makes a continuation created mid-flight still count as part of
+    // the spared class.
+    expect(mocks.sessionFind).toHaveBeenCalledWith({
+      teacherId: TEACHER_ID,
+      status: "active",
+      $nor: [{ _id: ROOT }, { rootSessionId: ROOT }],
+    });
   });
 
-  it("does not write anything when every session is already excluded", async () => {
-    const closed = await closeActiveClassroomSessions(TEACHER_ID, {
-      exceptSessionIds: [SESSION_A, SESSION_B],
-      now: NOW,
-    });
+  it("does not write anything when there is no active session to close", async () => {
+    mocks.sessionFind.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const closed = await closeActiveClassroomSessions(TEACHER_ID, { now: NOW });
 
     expect(closed).toEqual([]);
     expect(mocks.sessionUpdateMany).not.toHaveBeenCalled();

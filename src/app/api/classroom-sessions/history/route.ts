@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
-import { DEFAULT_CLASS_PAGE_SIZE, loadTeacherClassSummaries, parseClassPageLimit } from "@/lib/server/classroomClasses";
+import {
+  DEFAULT_CLASS_PAGE_SIZE,
+  loadTeacherClassSummaries,
+  parseClassPageLimit,
+  parseClassPageOffset,
+} from "@/lib/server/classroomClasses";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 
 export async function GET(request: NextRequest) {
@@ -23,13 +28,14 @@ export async function GET(request: NextRequest) {
     // An educator with no Teacher record has simply never run a class.
     if (!educator.teacherId) {
       return NextResponse.json(
-        { classes: [], total: 0, hasMore: false, limit: DEFAULT_CLASS_PAGE_SIZE },
+        { classes: [], total: 0, offset: 0, hasMore: false, limit: DEFAULT_CLASS_PAGE_SIZE },
         { status: 200 },
       );
     }
 
     const limit = parseClassPageLimit(request.nextUrl.searchParams.get("limit"));
-    const page = await loadTeacherClassSummaries(educator.teacherId, new Date(), limit);
+    const offset = parseClassPageOffset(request.nextUrl.searchParams.get("offset"));
+    const page = await loadTeacherClassSummaries(educator.teacherId, new Date(), limit, offset);
 
     return NextResponse.json(
       {
@@ -51,6 +57,7 @@ export async function GET(request: NextRequest) {
           activeAccessCode: summary.activeAccessCode,
         })),
         total: page.total,
+        offset: page.offset,
         hasMore: page.hasMore,
         limit,
       },

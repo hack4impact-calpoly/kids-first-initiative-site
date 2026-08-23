@@ -22,6 +22,10 @@ vi.mock("@/lib/server/classroomClasses", () => ({
     const parsed = Number.parseInt(value ?? "", 10);
     return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 200) : 25;
   },
+  parseClassPageOffset: (value: string | null | undefined) => {
+    const parsed = Number.parseInt(value ?? "", 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  },
   loadTeacherClassSummaries: mocks.loadTeacherClassSummaries,
   loadClassDetail: mocks.loadClassDetail,
   reopenClassroomClass: mocks.reopenClassroomClass,
@@ -65,7 +69,7 @@ function summary(overrides: Record<string, unknown> = {}) {
 describe("GET /api/classroom-sessions/history", () => {
   beforeEach(() => {
     mocks.findEducatorTeacher.mockResolvedValue({ name: "Educator", teacherId: TEACHER_ID });
-    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 1, hasMore: false });
+    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 1, offset: 0, hasMore: false });
   });
 
   it("rejects anonymous callers", async () => {
@@ -88,7 +92,7 @@ describe("GET /api/classroom-sessions/history", () => {
 
     const response = await listClasses(listRequest());
     expect(response.status).toBe(200);
-    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 25);
+    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 25, 0);
 
     const body = await response.json();
     expect(body.classes).toHaveLength(1);
@@ -98,7 +102,7 @@ describe("GET /api/classroom-sessions/history", () => {
 
   it("reports when older classes were left out rather than hiding them", async () => {
     mocks.auth.mockResolvedValue(EDUCATOR);
-    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 40, hasMore: true });
+    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 40, offset: 0, hasMore: true });
 
     const body = await (await listClasses(listRequest())).json();
 
@@ -110,7 +114,17 @@ describe("GET /api/classroom-sessions/history", () => {
 
     await listClasses(listRequest("?limit=5000"));
 
-    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 200);
+    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 200, 0);
+  });
+
+  it("pages deeper into history so older classes stay reachable", async () => {
+    mocks.auth.mockResolvedValue(EDUCATOR);
+    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 350, offset: 200, hasMore: true });
+
+    const body = await (await listClasses(listRequest("?offset=200"))).json();
+
+    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 25, 200);
+    expect(body).toMatchObject({ total: 350, offset: 200, hasMore: true });
   });
 
   it("answers with an empty history for an educator who has never run a class", async () => {
