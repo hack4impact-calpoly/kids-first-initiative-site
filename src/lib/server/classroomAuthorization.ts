@@ -35,6 +35,11 @@ export type DataPrincipal = {
   classroom: AuthorizedClassroomParticipant | null;
 };
 
+type ParsedClassroomCredential = {
+  participantId: string;
+  tokenHash: string;
+};
+
 export function hashClassroomSecret(secret: string) {
   return createHash("sha256").update(secret).digest("hex");
 }
@@ -90,8 +95,19 @@ export async function authorizeClassroomParticipant(
   actor: RequestActor,
   claimedParticipantId?: string,
 ): Promise<AuthorizationResult<AuthorizedClassroomParticipant>> {
+  return authorizeClassroomParticipantWithCredential(
+    parseClassroomCredential(request.cookies.get(CLASSROOM_ACCESS_COOKIE)?.value),
+    actor,
+    claimedParticipantId,
+  );
+}
+
+async function authorizeClassroomParticipantWithCredential(
+  credential: ParsedClassroomCredential | null,
+  actor: RequestActor,
+  claimedParticipantId?: string,
+): Promise<AuthorizationResult<AuthorizedClassroomParticipant>> {
   let participant: ClassroomParticipantRecord | null = null;
-  const credential = parseClassroomCredential(request.cookies.get(CLASSROOM_ACCESS_COOKIE)?.value);
 
   if (actor.userId) {
     const participantId = claimedParticipantId ?? credential?.participantId;
@@ -136,15 +152,16 @@ export async function authorizeClassroomParticipant(
   };
 }
 
-export async function resolveDataPrincipal(
-  request: NextRequest,
+export async function resolveDataPrincipalFromCredential(
+  credentialValue: string | undefined,
   actor: RequestActor,
   claimedParticipantId?: string,
 ): Promise<AuthorizationResult<DataPrincipal>> {
-  const hasClassroomCredential = Boolean(parseClassroomCredential(request.cookies.get(CLASSROOM_ACCESS_COOKIE)?.value));
+  const credential = parseClassroomCredential(credentialValue);
+  const hasClassroomCredential = Boolean(credential);
 
   if (claimedParticipantId || !actor.userId || hasClassroomCredential) {
-    const classroomResult = await authorizeClassroomParticipant(request, actor, claimedParticipantId);
+    const classroomResult = await authorizeClassroomParticipantWithCredential(credential, actor, claimedParticipantId);
     if (!classroomResult.ok) {
       if (claimedParticipantId || !actor.userId) return classroomResult;
     } else {
@@ -167,6 +184,18 @@ export async function resolveDataPrincipal(
       classroom: null,
     },
   };
+}
+
+export async function resolveDataPrincipal(
+  request: NextRequest,
+  actor: RequestActor,
+  claimedParticipantId?: string,
+): Promise<AuthorizationResult<DataPrincipal>> {
+  return resolveDataPrincipalFromCredential(
+    request.cookies.get(CLASSROOM_ACCESS_COOKIE)?.value,
+    actor,
+    claimedParticipantId,
+  );
 }
 
 export async function canEducatorReadClassroom(actor: RequestActor, classroomSessionId: string | null | undefined) {

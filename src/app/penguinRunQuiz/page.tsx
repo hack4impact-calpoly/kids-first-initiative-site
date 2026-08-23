@@ -1,8 +1,9 @@
 import QuizExperience from "@/components/QuizExperience";
 import { getQuizQuestions } from "@/data/quizData";
-import connectDB from "@/database/db";
-import Quiz from "@/database/quizSchema";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { getRequestActor } from "@/lib/server/apiAuthorization";
+import { CLASSROOM_ACCESS_COOKIE } from "@/lib/server/classroomAuthorization";
+import { getPreviousQuizScore } from "@/lib/server/quizProgress";
 
 type QuizPageProps = {
   searchParams?: Promise<{
@@ -19,13 +20,12 @@ export default async function PeguinRunQuizPage({ searchParams }: QuizPageProps)
   let previousCorrectCount = -1;
 
   if (quizPhase === "after") {
-    const { userId } = await auth();
-
-    if (userId) {
-      await connectDB();
-      const quiz = await Quiz.findOne({ clerkId: userId }).lean<{ penguinRunScoreBefore?: number } | null>();
-      previousCorrectCount = typeof quiz?.penguinRunScoreBefore === "number" ? quiz.penguinRunScoreBefore : -1;
-    }
+    const cookieStore = await cookies();
+    previousCorrectCount = await getPreviousQuizScore(
+      "penguinRunQuiz",
+      await getRequestActor(),
+      cookieStore.get(CLASSROOM_ACCESS_COOKIE)?.value,
+    );
   }
 
   const gameHref =
