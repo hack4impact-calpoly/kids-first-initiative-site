@@ -147,7 +147,9 @@ export async function loadTeacherClassSummaries(
   if (allSessions.length === 0) return { classes: [], total: 0, offset: 0, hasMore: false };
 
   const allClasses = groupSessionsIntoClasses(allSessions, now);
-  const safeOffset = Math.max(0, Math.min(offset, Math.max(0, allClasses.length - 1)));
+  // Clamped to the end of the list, not to the last class: an offset past the end must return an
+  // empty page rather than silently re-serving the final class under a different offset.
+  const safeOffset = Math.max(0, Math.min(offset, allClasses.length));
   const pagedClasses = allClasses.slice(safeOffset, safeOffset + limit);
   const pagedClassIds = new Set(pagedClasses.map((classroomClass) => classroomClass.classId));
   const sessions = allSessions.filter((session) => pagedClassIds.has(getClassId(session)));
@@ -390,7 +392,15 @@ export async function reopenClassroomClass(input: {
   // The reopen has succeeded, so it is now safe to make the educator's other class yield, matching
   // how starting a new class behaves. Excluded by chain rather than by the ids read above, so a
   // continuation created by a concurrent reopen is never mistaken for an unrelated class.
-  await closeActiveClassroomSessions(input.teacherId, { exceptChainRootId: rootId, now });
+  //
+  // The continuation and its code are already committed at this point, so a failure here must not
+  // be reported as a failed reopen — that would tell the educator nothing happened while handing
+  // their students a live code. The stale open class is recoverable; a wrong answer is not.
+  try {
+    await closeActiveClassroomSessions(input.teacherId, { exceptChainRootId: rootId, now });
+  } catch (error) {
+    console.error("Reopened class but failed to close the educator's other active class:", error);
+  }
 
   return {
     ok: true,

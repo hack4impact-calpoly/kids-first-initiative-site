@@ -14,31 +14,34 @@ Classroom records are keyed to the authorized participant, including for signed-
 
 ## Route Inventory
 
-| Route                          | Method           | Access                                                         |
-| ------------------------------ | ---------------- | -------------------------------------------------------------- |
-| `/api/admin/:id/role`          | PATCH            | Administrator                                                  |
-| `/api/auth/admin-access`       | GET              | Administrator                                                  |
-| `/api/classroom-sessions`      | GET, POST, PATCH | Signed-in educator; sessions are teacher-scoped                |
-| `/api/classroom-sessions/join` | POST             | Public with an active access code; issues classroom credential |
-| `/api/events`                  | GET              | Administrator                                                  |
-| `/api/events`                  | POST             | Signed-in session owner or credentialed classroom participant  |
-| `/api/example`                 | GET              | Administrator                                                  |
-| `/api/gameData`                | GET              | Administrator                                                  |
-| `/api/gameData`                | POST             | Signed-in owner or credentialed classroom participant          |
-| `/api/gameData/:saveId`        | GET              | Owner, administrator, or educator who owns the classroom       |
-| `/api/gameData/:saveId`        | PATCH            | Owner only                                                     |
-| `/api/quiz`                    | GET              | Administrator                                                  |
-| `/api/quiz`                    | POST             | Signed-in owner or credentialed classroom participant          |
-| `/api/quiz/:id`                | GET              | Owner, administrator, or educator who owns the classroom       |
-| `/api/quiz/:id`                | PUT              | Owner or administrator                                         |
-| `/api/sessions`                | GET              | Administrator                                                  |
-| `/api/sessions`                | POST             | Signed-in user; owner is derived from Clerk                    |
-| `/api/sessions/:sessionId`     | GET, PATCH       | Session owner or administrator                                 |
-| `/api/users`                   | GET              | Administrator                                                  |
-| `/api/users`                   | POST             | Signed-in user creating or refreshing their own record         |
-| `/api/users/:id`               | GET, PUT         | Administrator                                                  |
-| `/api/users/me`                | GET              | Signed-in user                                                 |
-| `/api/users/me/photo`          | PATCH            | Signed-in user                                                 |
+| Route                                             | Method           | Access                                                         |
+| ------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
+| `/api/admin/:id/role`                             | PATCH            | Administrator                                                  |
+| `/api/auth/admin-access`                          | GET              | Administrator                                                  |
+| `/api/classroom-sessions`                         | GET, POST, PATCH | Signed-in educator; sessions are teacher-scoped                |
+| `/api/classroom-sessions/join`                    | POST             | Public with an active access code; issues classroom credential |
+| `/api/classroom-sessions/history`                 | GET              | Signed-in educator; only their own classes                     |
+| `/api/classroom-sessions/history/:classId`        | GET              | Educator who owns the class, or administrator                  |
+| `/api/classroom-sessions/history/:classId/reopen` | POST             | Owning educator only; no administrator bypass                  |
+| `/api/events`                                     | GET              | Administrator                                                  |
+| `/api/events`                                     | POST             | Signed-in session owner or credentialed classroom participant  |
+| `/api/example`                                    | GET              | Administrator                                                  |
+| `/api/gameData`                                   | GET              | Administrator                                                  |
+| `/api/gameData`                                   | POST             | Signed-in owner or credentialed classroom participant          |
+| `/api/gameData/:saveId`                           | GET              | Owner, administrator, or educator who owns the classroom       |
+| `/api/gameData/:saveId`                           | PATCH            | Owner only                                                     |
+| `/api/quiz`                                       | GET              | Administrator                                                  |
+| `/api/quiz`                                       | POST             | Signed-in owner or credentialed classroom participant          |
+| `/api/quiz/:id`                                   | GET              | Owner, administrator, or educator who owns the classroom       |
+| `/api/quiz/:id`                                   | PUT              | Owner or administrator                                         |
+| `/api/sessions`                                   | GET              | Administrator                                                  |
+| `/api/sessions`                                   | POST             | Signed-in user; owner is derived from Clerk                    |
+| `/api/sessions/:sessionId`                        | GET, PATCH       | Session owner or administrator                                 |
+| `/api/users`                                      | GET              | Administrator                                                  |
+| `/api/users`                                      | POST             | Signed-in user creating or refreshing their own record         |
+| `/api/users/:id`                                  | GET, PUT         | Administrator                                                  |
+| `/api/users/me`                                   | GET              | Signed-in user                                                 |
+| `/api/users/me/photo`                             | PATCH            | Signed-in user                                                 |
 
 ## Response Rules
 
@@ -47,3 +50,16 @@ Classroom records are keyed to the authorized participant, including for signed-
 - `404` is used for inaccessible individual resources so ownership cannot be inferred.
 - `400` is limited to malformed or unsupported input.
 - Unexpected errors return a generic `500` response; detailed failures remain in server logs.
+
+## Classroom History
+
+- A class is a chain of classroom sessions linked by `rootSessionId`, and is addressed by the id of
+  the session that started it. Reopening appends a linked continuation rather than reviving a closed
+  session, so historical records are never re-attributed.
+- Reads follow the usual rule: the owning educator, or an administrator. An inaccessible class
+  answers `404` rather than `403`, so one educator cannot probe for another's classes.
+- Reopening is deliberately narrower than reading. It requires educator standing and ownership, with
+  **no administrator bypass** — read access does not extend to changing who can join a class.
+- History responses carry projected views only. Stored records include Clerk ids, quiz ids, and
+  per-question answers, and a participant's `participantKey` embeds the student's Clerk id; none of
+  that crosses an API boundary.

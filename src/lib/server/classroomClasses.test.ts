@@ -34,7 +34,7 @@ vi.mock("@/lib/server/educatorClassroom", () => ({
   issueAccessCode: mocks.issueAccessCode,
 }));
 
-import { reopenClassroomClass } from "@/lib/server/classroomClasses";
+import { parseClassPageLimit, parseClassPageOffset, reopenClassroomClass } from "@/lib/server/classroomClasses";
 
 const NOW = new Date("2026-08-22T18:00:00.000Z");
 const TEACHER_ID = new mongoose.Types.ObjectId();
@@ -253,5 +253,26 @@ describe("reopenClassroomClass", () => {
     expect(mocks.sessionCreate).toHaveBeenCalledWith(
       expect.objectContaining({ continuedFromId: CONTINUATION_ID, rootSessionId: ROOT_ID }),
     );
+  });
+});
+
+describe("class page parameters", () => {
+  it("falls back to the default page size for missing or nonsense limits", () => {
+    expect(parseClassPageLimit(undefined)).toBe(25);
+    expect(parseClassPageLimit("0")).toBe(25);
+    expect(parseClassPageLimit("-5")).toBe(25);
+    expect(parseClassPageLimit("banana")).toBe(25);
+  });
+
+  it("caps the page size rather than honouring an arbitrary one", () => {
+    expect(parseClassPageLimit("50")).toBe(50);
+    expect(parseClassPageLimit("100000")).toBe(200);
+  });
+
+  it("treats a missing or negative offset as the first page", () => {
+    expect(parseClassPageOffset(undefined)).toBe(0);
+    expect(parseClassPageOffset("-3")).toBe(0);
+    expect(parseClassPageOffset("banana")).toBe(0);
+    expect(parseClassPageOffset("40")).toBe(40);
   });
 });

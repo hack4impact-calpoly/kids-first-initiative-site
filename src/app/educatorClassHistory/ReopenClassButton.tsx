@@ -27,7 +27,9 @@ export default function ReopenClassButton({ classId, className }: { classId: str
       const response = await fetch(`/api/classroom-sessions/history/${encodeURIComponent(classId)}/reopen`, {
         method: "POST",
       });
-      const result = (await response.json()) as ReopenResponse;
+      // Parsed defensively: an upstream 502 or auth interstitial returns HTML, and letting
+      // JSON.parse throw would show the educator "Unexpected token '<'".
+      const result = (await response.json().catch(() => ({}))) as ReopenResponse;
 
       if (!response.ok) {
         throw new Error(result.error || "Unable to reopen this class.");
