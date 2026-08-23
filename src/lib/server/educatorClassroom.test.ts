@@ -46,10 +46,18 @@ describe("closeActiveClassroomSessions", () => {
     const closed = await closeActiveClassroomSessions(TEACHER_ID, { now: NOW });
 
     expect(closed).toEqual([SESSION_A, SESSION_B]);
-    expect(mocks.sessionUpdateMany).toHaveBeenCalledWith(
-      { _id: { $in: [SESSION_A, SESSION_B] } },
-      { $set: { status: "closed", closedAt: NOW } },
-    );
+    // A pipeline update, so each session can keep the time it actually ended: an already-expired
+    // session is stamped with its own expiry rather than the moment something else closed it.
+    expect(mocks.sessionUpdateMany).toHaveBeenCalledWith({ _id: { $in: [SESSION_A, SESSION_B] } }, [
+      {
+        $set: {
+          status: "closed",
+          closedAt: {
+            $ifNull: ["$closedAt", { $cond: [{ $lte: ["$expiresAt", NOW] }, "$expiresAt", NOW] }],
+          },
+        },
+      },
+    ]);
     expect(mocks.codeUpdateMany).toHaveBeenCalledWith(
       { sessionId: { $in: [SESSION_A, SESSION_B] }, isActive: true },
       { $set: { isActive: false } },
@@ -60,7 +68,7 @@ describe("closeActiveClassroomSessions", () => {
     const closed = await closeActiveClassroomSessions(TEACHER_ID, { exceptSessionIds: [SESSION_A], now: NOW });
 
     expect(closed).toEqual([SESSION_B]);
-    expect(mocks.sessionUpdateMany).toHaveBeenCalledWith({ _id: { $in: [SESSION_B] } }, expect.anything());
+    expect(mocks.sessionUpdateMany).toHaveBeenCalledWith({ _id: { $in: [SESSION_B] } }, expect.any(Array));
   });
 
   it("does not write anything when every session is already excluded", async () => {

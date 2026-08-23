@@ -1,24 +1,16 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
-import { DEFAULT_CLASS_PAGE_SIZE, loadTeacherClassSummaries } from "@/lib/server/classroomClasses";
+import { MAX_CLASS_PAGE_SIZE, loadTeacherClassSummaries, parseClassPageLimit } from "@/lib/server/classroomClasses";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 import { STATE_BADGE_CLASS, STATE_LABELS, formatDateTime, formatScore } from "./formatting";
 import styles from "./educatorClassHistory.module.css";
 
 export const dynamic = "force-dynamic";
 
-const MAX_CLASS_PAGE_SIZE = 200;
-
 type ClassHistoryPageProps = {
   searchParams?: Promise<{ limit?: string }>;
 };
-
-function parseLimit(value: string | undefined) {
-  const parsed = Number.parseInt(value ?? "", 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CLASS_PAGE_SIZE;
-  return Math.min(parsed, MAX_CLASS_PAGE_SIZE);
-}
 
 export default async function EducatorClassHistoryPage({ searchParams }: ClassHistoryPageProps) {
   const { userId } = await auth();
@@ -29,7 +21,7 @@ export default async function EducatorClassHistoryPage({ searchParams }: ClassHi
   const educator = await findEducatorTeacher(userId);
   if (!educator) return null;
 
-  const limit = parseLimit((await searchParams)?.limit);
+  const limit = parseClassPageLimit((await searchParams)?.limit);
 
   // An educator with no Teacher record yet has simply never run a class, so fall through to the
   // empty state rather than rendering a blank document.

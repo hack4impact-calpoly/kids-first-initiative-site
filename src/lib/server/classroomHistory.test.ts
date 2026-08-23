@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getPreQuizPercentages, normalizeQuizScore } from "@/lib/quizScoring";
 import {
   ClassroomParticipantRecord,
   ClassroomSessionRecord,
@@ -293,6 +294,22 @@ describe("buildClassroomActivity", () => {
     });
 
     expect(activity).toEqual([]);
+  });
+});
+
+describe("quiz score normalization", () => {
+  it("treats a corrupt score as no result rather than rendering NaN", () => {
+    // `NaN < 0` is false, so a bare negative check would let NaN through into the percentage and
+    // into every average computed from it.
+    expect(normalizeQuizScore(Number.NaN, 3)).toBeNull();
+    expect(normalizeQuizScore(Number.POSITIVE_INFINITY, 3)).toBeNull();
+    expect(normalizeQuizScore(-1, 3)).toBeNull();
+    expect(normalizeQuizScore(0, 3)).toBe(0);
+    expect(normalizeQuizScore(3, 3)).toBe(100);
+  });
+
+  it("keeps a corrupt score out of a class average", () => {
+    expect(getPreQuizPercentages({ statesOfMatterScoreBefore: Number.NaN, penguinRunScoreBefore: 3 })).toEqual([100]);
   });
 });
 

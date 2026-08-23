@@ -56,8 +56,9 @@ function leanOf(value: unknown) {
   return { lean: () => Promise.resolve(value) };
 }
 
+/** Mirrors `find().select().sort().lean()` on the chain query. */
 function sortLeanOf(value: unknown) {
-  return { sort: () => ({ lean: () => Promise.resolve(value) }) };
+  return { select: () => ({ sort: () => ({ lean: () => Promise.resolve(value) }) }) };
 }
 
 /** Answers the root lookup with `rootRecord` and the chain query with `chain`. */

@@ -18,6 +18,10 @@ vi.mock("@/lib/server/educatorClassroom", () => ({ findEducatorTeacher: mocks.fi
 vi.mock("@/lib/server/classroomAuthorization", () => ({ canEducatorReadClassroom: mocks.canEducatorReadClassroom }));
 vi.mock("@/lib/server/classroomClasses", () => ({
   DEFAULT_CLASS_PAGE_SIZE: 25,
+  parseClassPageLimit: (value: string | null | undefined) => {
+    const parsed = Number.parseInt(value ?? "", 10);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 200) : 25;
+  },
   loadTeacherClassSummaries: mocks.loadTeacherClassSummaries,
   loadClassDetail: mocks.loadClassDetail,
   reopenClassroomClass: mocks.reopenClassroomClass,
@@ -89,6 +93,35 @@ describe("GET /api/classroom-sessions/history", () => {
     const body = await response.json();
     expect(body.classes).toHaveLength(1);
     expect(body.classes[0]).toMatchObject({ classId: CLASS_ID, sessionCount: 2, reopenCount: 1 });
+    expect(body).toMatchObject({ total: 1, hasMore: false, limit: 25 });
+  });
+
+  it("reports when older classes were left out rather than hiding them", async () => {
+    mocks.auth.mockResolvedValue(EDUCATOR);
+    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 40, hasMore: true });
+
+    const body = await (await listClasses(listRequest())).json();
+
+    expect(body).toMatchObject({ total: 40, hasMore: true });
+  });
+
+  it("honours an explicit limit but caps it", async () => {
+    mocks.auth.mockResolvedValue(EDUCATOR);
+
+    await listClasses(listRequest("?limit=5000"));
+
+    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 200);
+  });
+
+  it("answers with an empty history for an educator who has never run a class", async () => {
+    mocks.auth.mockResolvedValue(EDUCATOR);
+    mocks.findEducatorTeacher.mockResolvedValue({ name: "Educator", teacherId: null });
+
+    const response = await listClasses(listRequest());
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ classes: [], total: 0, hasMore: false });
+    expect(mocks.loadTeacherClassSummaries).not.toHaveBeenCalled();
   });
 });
 

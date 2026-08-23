@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
-import { DEFAULT_CLASS_PAGE_SIZE, loadTeacherClassSummaries } from "@/lib/server/classroomClasses";
+import { DEFAULT_CLASS_PAGE_SIZE, loadTeacherClassSummaries, parseClassPageLimit } from "@/lib/server/classroomClasses";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
-
-const MAX_CLASS_PAGE_SIZE = 200;
-
-function parseLimit(value: string | null) {
-  const parsed = Number.parseInt(value ?? "", 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CLASS_PAGE_SIZE;
-  return Math.min(parsed, MAX_CLASS_PAGE_SIZE);
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +28,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const limit = parseLimit(request.nextUrl.searchParams.get("limit"));
+    const limit = parseClassPageLimit(request.nextUrl.searchParams.get("limit"));
     const page = await loadTeacherClassSummaries(educator.teacherId, new Date(), limit);
 
     return NextResponse.json(

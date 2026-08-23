@@ -95,11 +95,22 @@ export async function closeActiveClassroomSessions(
 
   if (closingIds.length === 0) return [];
 
+  const closedAt = options.now ?? new Date();
+
   await Promise.all([
-    ClassroomSession.updateMany(
-      { _id: { $in: closingIds } },
-      { $set: { status: "closed", closedAt: options.now ?? new Date() } },
-    ),
+    // An expired session is still stored as "active", so stamp it with when it actually ended
+    // rather than when something else happened to close it. Matches how a reopen closes its own
+    // chain, and keeps the history timeline honest.
+    ClassroomSession.updateMany({ _id: { $in: closingIds } }, [
+      {
+        $set: {
+          status: "closed",
+          closedAt: {
+            $ifNull: ["$closedAt", { $cond: [{ $lte: ["$expiresAt", closedAt] }, "$expiresAt", closedAt] }],
+          },
+        },
+      },
+    ]),
     StudentAccessCode.updateMany({ sessionId: { $in: closingIds }, isActive: true }, { $set: { isActive: false } }),
   ]);
 

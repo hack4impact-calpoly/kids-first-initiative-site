@@ -44,5 +44,14 @@ ClassroomSessionSchema.index(
 );
 
 // Kept separate from the existing analytics Session model to avoid breaking current routes.
-export default mongoose.models.ClassroomSession ||
-  mongoose.model("ClassroomSession", ClassroomSessionSchema, "classroomSessions");
+const ClassroomSession =
+  mongoose.models.ClassroomSession || mongoose.model("ClassroomSession", ClassroomSessionSchema, "classroomSessions");
+
+// The "one live continuation per class" guarantee rests entirely on the unique partial index above,
+// and index builds happen in the background. A failure would otherwise remove that guarantee with
+// nothing said, so surface it rather than degrading silently.
+ClassroomSession.on("index", (error: unknown) => {
+  if (error) console.error("ClassroomSession index build failed:", error);
+});
+
+export default ClassroomSession;

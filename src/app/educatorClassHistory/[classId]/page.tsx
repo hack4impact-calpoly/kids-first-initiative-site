@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import connectDB from "@/database/db";
 import { getRequestActor } from "@/lib/server/apiAuthorization";
 import { canEducatorReadClassroom } from "@/lib/server/classroomAuthorization";
-import { loadClassDetail } from "@/lib/server/classroomClasses";
+import { DEFAULT_ACTIVITY_LIMIT, loadClassDetail } from "@/lib/server/classroomClasses";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 import { PENGUIN_RUN_QUESTION_COUNT, STATES_OF_MATTER_QUESTION_COUNT, normalizeQuizScore } from "@/lib/quizScoring";
 import ReopenClassButton from "../ReopenClassButton";
@@ -12,7 +12,7 @@ import styles from "../educatorClassHistory.module.css";
 
 export const dynamic = "force-dynamic";
 
-const ACTIVITY_LIMIT = 12;
+const ACTIVITY_LIMIT = DEFAULT_ACTIVITY_LIMIT;
 
 export default async function EducatorClassDetailPage({ params }: { params: Promise<{ classId: string }> }) {
   const actor = await getRequestActor();
@@ -33,8 +33,12 @@ export default async function EducatorClassDetailPage({ params }: { params: Prom
     teacherScope = String(educator.teacherId);
   }
 
-  const detail = await loadClassDetail(classId, teacherScope);
+  const detail = await loadClassDetail(classId, teacherScope, new Date(), ACTIVITY_LIMIT);
   if (!detail) notFound();
+
+  // Reopening deliberately has no admin bypass, so only the owning educator gets the control.
+  // Rendering it for an admin would offer an action that always fails.
+  const canReopen = teacherScope !== null;
 
   const { summary, roster, sessionStates, gameData, quizzes, activity } = detail;
   const recentActivity = activity.slice(0, ACTIVITY_LIMIT);
@@ -49,8 +53,8 @@ export default async function EducatorClassDetailPage({ params }: { params: Prom
             </Link>
             <h1 className={styles.title}>{summary.title}</h1>
             <p className={styles.subtitle}>
-              Started {formatDateTime(summary.createdAt)} · {summary.sessions.length} session
-              {summary.sessions.length === 1 ? "" : "s"}
+              Started {formatDateTime(summary.createdAt)} · {summary.sessionCount} session
+              {summary.sessionCount === 1 ? "" : "s"}
               {summary.reopenCount > 0
                 ? ` · reopened ${summary.reopenCount} time${summary.reopenCount === 1 ? "" : "s"}`
                 : ""}
@@ -89,8 +93,12 @@ export default async function EducatorClassDetailPage({ params }: { params: Prom
               This class is live until {formatDateTime(summary.expiresAt)}. Students can join with{" "}
               <span className={styles.accessCodeInline}>{summary.activeAccessCode ?? "—"}</span>.
             </p>
-          ) : (
+          ) : canReopen ? (
             <ReopenClassButton classId={summary.classId} className={summary.title} />
+          ) : (
+            <p className={styles.mutedText}>
+              This class is {STATE_LABELS[summary.state].toLowerCase()}. Only the educator who owns it can reopen it.
+            </p>
           )}
         </section>
 

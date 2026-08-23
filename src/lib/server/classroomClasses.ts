@@ -31,8 +31,23 @@ import {
 } from "@/lib/server/classroomHistory";
 import { SESSION_DURATION_MS, closeActiveClassroomSessions, issueAccessCode } from "@/lib/server/educatorClassroom";
 
+/**
+ * The summary as it crosses an API boundary. `ClassroomClassSummary` spreads the class it was built
+ * from, which carries the chain's session documents — including `teacherId`, and on the admin path
+ * that means another educator's. `sessionStates` already describes every session, so the raw rows
+ * are replaced by a count.
+ */
+export type ClassroomClassSummaryView = Omit<ClassroomClassSummary, "sessions" | "latestSession"> & {
+  sessionCount: number;
+};
+
+export function toClassroomClassSummaryView(summary: ClassroomClassSummary): ClassroomClassSummaryView {
+  const { sessions, latestSession: _latestSession, ...rest } = summary;
+  return { ...rest, sessionCount: sessions.length };
+}
+
 export type ClassroomClassDetail = {
-  summary: ClassroomClassSummary;
+  summary: ClassroomClassSummaryView;
   roster: ClassroomRosterView[];
   sessionStates: Array<{
     sessionId: string;
@@ -88,6 +103,14 @@ async function loadClassroomRecords(sessions: Array<{ _id: mongoose.Types.Object
 }
 
 export const DEFAULT_CLASS_PAGE_SIZE = 25;
+export const MAX_CLASS_PAGE_SIZE = 200;
+
+/** Shared by the page and the API route so the two cannot drift apart. */
+export function parseClassPageLimit(value: string | null | undefined) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CLASS_PAGE_SIZE;
+  return Math.min(parsed, MAX_CLASS_PAGE_SIZE);
+}
 
 /**
  * Summaries for an educator's most recent classes.
@@ -169,6 +192,7 @@ async function findChainSessions(classId: string, teacherId: mongoose.Types.Obje
     $or: [{ _id: rootObjectId }, { rootSessionId: rootObjectId }],
     ...(teacherId ? { teacherId } : {}),
   })
+    .select("title status createdAt expiresAt closedAt continuedFromId rootSessionId")
     .sort({ createdAt: 1 })
     .lean<Array<ClassroomSessionRecord & { _id: mongoose.Types.ObjectId }>>();
 
@@ -191,7 +215,7 @@ export async function loadClassDetail(
   const summary = summarizeClassroomClass(classroomClass, { participants, accessCodes, gameData, quizzes });
 
   return {
-    summary,
+    summary: toClassroomClassSummaryView(summary),
     roster: buildClassroomRoster(participants).map(toClassroomRosterView),
     sessionStates: classroomClass.sessions.map((session) => {
       const sessionId = toIdString(session._id) as string;

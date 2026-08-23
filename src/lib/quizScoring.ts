@@ -24,8 +24,10 @@ export type QuizResultBreakdown = {
 };
 
 // Unattempted quizzes are stored as -1 rather than null, so anything negative is "no result yet".
+// NaN has to be rejected explicitly: `NaN < 0` is false, so a bare comparison would let it through
+// and render as "NaN%", and one NaN poisons every average it is included in.
 export function normalizeQuizScore(score: unknown, questionCount: number): number | null {
-  if (typeof score !== "number" || score < 0) return null;
+  if (typeof score !== "number" || !Number.isFinite(score) || score < 0) return null;
   return (score / questionCount) * 100;
 }
 
