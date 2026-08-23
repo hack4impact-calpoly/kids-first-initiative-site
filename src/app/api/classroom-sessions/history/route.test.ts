@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   connectDB: vi.fn(),
-  getTeacherForCurrentUser: vi.fn(),
+  findEducatorTeacher: vi.fn(),
   canEducatorReadClassroom: vi.fn(),
   loadTeacherClassSummaries: vi.fn(),
   loadClassDetail: vi.fn(),
@@ -14,9 +14,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/database/db", () => ({ default: mocks.connectDB }));
-vi.mock("@/lib/server/educatorClassroom", () => ({ getTeacherForCurrentUser: mocks.getTeacherForCurrentUser }));
+vi.mock("@/lib/server/educatorClassroom", () => ({ findEducatorTeacher: mocks.findEducatorTeacher }));
 vi.mock("@/lib/server/classroomAuthorization", () => ({ canEducatorReadClassroom: mocks.canEducatorReadClassroom }));
 vi.mock("@/lib/server/classroomClasses", () => ({
+  DEFAULT_CLASS_PAGE_SIZE: 25,
   loadTeacherClassSummaries: mocks.loadTeacherClassSummaries,
   loadClassDetail: mocks.loadClassDetail,
   reopenClassroomClass: mocks.reopenClassroomClass,
@@ -34,9 +35,7 @@ const EDUCATOR = { userId: "user_educator", sessionClaims: { role: "educator" } 
 const ADMIN = { userId: "user_admin", sessionClaims: { role: "admin" } };
 const ANONYMOUS = { userId: null, sessionClaims: null };
 
-const forbiddenEducator = () => ({
-  error: NextResponse.json({ error: "Educator access required." }, { status: 403 }),
-});
+const listRequest = (search = "") => new NextRequest(`http://localhost/api/classroom-sessions/history${search}`);
 
 function summary(overrides: Record<string, unknown> = {}) {
   return {
@@ -61,31 +60,31 @@ function summary(overrides: Record<string, unknown> = {}) {
 
 describe("GET /api/classroom-sessions/history", () => {
   beforeEach(() => {
-    mocks.getTeacherForCurrentUser.mockResolvedValue({ teacherId: TEACHER_ID });
-    mocks.loadTeacherClassSummaries.mockResolvedValue([summary()]);
+    mocks.findEducatorTeacher.mockResolvedValue({ name: "Educator", teacherId: TEACHER_ID });
+    mocks.loadTeacherClassSummaries.mockResolvedValue({ classes: [summary()], total: 1, hasMore: false });
   });
 
   it("rejects anonymous callers", async () => {
     mocks.auth.mockResolvedValue(ANONYMOUS);
 
-    expect((await listClasses()).status).toBe(401);
+    expect((await listClasses(listRequest())).status).toBe(401);
     expect(mocks.loadTeacherClassSummaries).not.toHaveBeenCalled();
   });
 
   it("rejects signed-in users who are not educators", async () => {
     mocks.auth.mockResolvedValue({ userId: "user_player", sessionClaims: { role: "player" } });
-    mocks.getTeacherForCurrentUser.mockResolvedValue(forbiddenEducator());
+    mocks.findEducatorTeacher.mockResolvedValue(null);
 
-    expect((await listClasses()).status).toBe(403);
+    expect((await listClasses(listRequest())).status).toBe(403);
     expect(mocks.loadTeacherClassSummaries).not.toHaveBeenCalled();
   });
 
   it("lists only the calling educator's classes", async () => {
     mocks.auth.mockResolvedValue(EDUCATOR);
 
-    const response = await listClasses();
+    const response = await listClasses(listRequest());
     expect(response.status).toBe(200);
-    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID);
+    expect(mocks.loadTeacherClassSummaries).toHaveBeenCalledWith(TEACHER_ID, expect.any(Date), 25);
 
     const body = await response.json();
     expect(body.classes).toHaveLength(1);
@@ -95,7 +94,7 @@ describe("GET /api/classroom-sessions/history", () => {
 
 describe("GET /api/classroom-sessions/history/:classId", () => {
   beforeEach(() => {
-    mocks.getTeacherForCurrentUser.mockResolvedValue({ teacherId: TEACHER_ID });
+    mocks.findEducatorTeacher.mockResolvedValue({ name: "Educator", teacherId: TEACHER_ID });
     mocks.canEducatorReadClassroom.mockResolvedValue(true);
     mocks.loadClassDetail.mockResolvedValue({ summary: summary(), roster: [] });
   });
@@ -129,7 +128,7 @@ describe("GET /api/classroom-sessions/history/:classId", () => {
 
     expect((await getClass(new Request("http://localhost"), { params })).status).toBe(200);
     expect(mocks.loadClassDetail).toHaveBeenCalledWith(CLASS_ID, null);
-    expect(mocks.getTeacherForCurrentUser).not.toHaveBeenCalled();
+    expect(mocks.findEducatorTeacher).not.toHaveBeenCalled();
   });
 
   it("answers 404 when the class does not exist", async () => {
@@ -142,7 +141,7 @@ describe("GET /api/classroom-sessions/history/:classId", () => {
 
 describe("POST /api/classroom-sessions/history/:classId/reopen", () => {
   beforeEach(() => {
-    mocks.getTeacherForCurrentUser.mockResolvedValue({ teacherId: TEACHER_ID });
+    mocks.findEducatorTeacher.mockResolvedValue({ name: "Educator", teacherId: TEACHER_ID });
     mocks.reopenClassroomClass.mockResolvedValue({
       ok: true,
       reopened: true,
@@ -162,7 +161,7 @@ describe("POST /api/classroom-sessions/history/:classId/reopen", () => {
 
   it("rejects signed-in users who are not educators", async () => {
     mocks.auth.mockResolvedValue({ userId: "user_player", sessionClaims: { role: "player" } });
-    mocks.getTeacherForCurrentUser.mockResolvedValue(forbiddenEducator());
+    mocks.findEducatorTeacher.mockResolvedValue(null);
 
     expect((await reopenClass(new Request("http://localhost"), { params })).status).toBe(403);
     expect(mocks.reopenClassroomClass).not.toHaveBeenCalled();
@@ -170,7 +169,7 @@ describe("POST /api/classroom-sessions/history/:classId/reopen", () => {
 
   it("offers admins no bypass: reopening still requires educator standing", async () => {
     mocks.auth.mockResolvedValue(ADMIN);
-    mocks.getTeacherForCurrentUser.mockResolvedValue(forbiddenEducator());
+    mocks.findEducatorTeacher.mockResolvedValue(null);
 
     expect((await reopenClass(new Request("http://localhost"), { params })).status).toBe(403);
     expect(mocks.reopenClassroomClass).not.toHaveBeenCalled();

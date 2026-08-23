@@ -73,10 +73,21 @@ export async function issueAccessCode(sessionId: mongoose.Types.ObjectId | strin
  */
 export async function closeActiveClassroomSessions(
   teacherId: mongoose.Types.ObjectId | string,
-  options: { exceptSessionIds?: Array<mongoose.Types.ObjectId | string>; now?: Date } = {},
+  options: {
+    exceptSessionIds?: Array<mongoose.Types.ObjectId | string>;
+    exceptChainRootId?: mongoose.Types.ObjectId | string;
+    now?: Date;
+  } = {},
 ) {
   const except = (options.exceptSessionIds ?? []).map((id) => String(id));
-  const activeSessions = await ClassroomSession.find({ teacherId, status: "active" }).lean<
+
+  // Excluding a whole chain has to happen in the query, not against a list of ids read earlier. A
+  // concurrent reopen can add a session to the chain in between, and a stale list would treat that
+  // brand new continuation as an unrelated class and close it.
+  const rootId = options.exceptChainRootId ? new mongoose.Types.ObjectId(String(options.exceptChainRootId)) : null;
+  const chainFilter = rootId ? { $nor: [{ _id: rootId }, { rootSessionId: rootId }] } : {};
+
+  const activeSessions = await ClassroomSession.find({ teacherId, status: "active", ...chainFilter }).lean<
     Array<{ _id: mongoose.Types.ObjectId }>
   >();
 

@@ -96,23 +96,27 @@ export const DEFAULT_CLASS_PAGE_SIZE = 25;
  * *before* their participants, codes, saves, and quizzes are read. Without that, an educator with a
  * term of history would pull every row they have ever produced on each page view.
  */
+export type TeacherClassSummaryPage = {
+  classes: ClassroomClassSummary[];
+  total: number;
+  hasMore: boolean;
+};
+
 export async function loadTeacherClassSummaries(
   teacherId: mongoose.Types.ObjectId | string,
   now: Date = new Date(),
   limit: number = DEFAULT_CLASS_PAGE_SIZE,
-): Promise<ClassroomClassSummary[]> {
+): Promise<TeacherClassSummaryPage> {
   const allSessions = await ClassroomSession.find({ teacherId })
     .select("title status createdAt expiresAt closedAt continuedFromId rootSessionId")
     .sort({ createdAt: 1 })
     .lean<Array<ClassroomSessionRecord & { _id: mongoose.Types.ObjectId }>>();
 
-  if (allSessions.length === 0) return [];
+  if (allSessions.length === 0) return { classes: [], total: 0, hasMore: false };
 
-  const pagedClassIds = new Set(
-    groupSessionsIntoClasses(allSessions, now)
-      .slice(0, limit)
-      .map((classroomClass) => classroomClass.classId),
-  );
+  const allClasses = groupSessionsIntoClasses(allSessions, now);
+  const pagedClasses = allClasses.slice(0, limit);
+  const pagedClassIds = new Set(pagedClasses.map((classroomClass) => classroomClass.classId));
   const sessions = allSessions.filter((session) => pagedClassIds.has(getClassId(session)));
 
   const [participants, accessCodes, gameData, quizzes] = await loadClassroomRecords(sessions);
@@ -122,14 +126,18 @@ export async function loadTeacherClassSummaries(
   const gameDataByClass = bucketBySessionOwner(gameData, classIdBySessionId);
   const quizzesByClass = bucketBySessionOwner(quizzes, classIdBySessionId);
 
-  return groupSessionsIntoClasses(sessions, now).map((classroomClass) =>
-    summarizeClassroomClass(classroomClass, {
-      participants: participantsByClass.get(classroomClass.classId) ?? [],
-      accessCodes: accessCodesByClass.get(classroomClass.classId) ?? [],
-      gameData: gameDataByClass.get(classroomClass.classId) ?? [],
-      quizzes: quizzesByClass.get(classroomClass.classId) ?? [],
-    }),
-  );
+  return {
+    classes: pagedClasses.map((classroomClass) =>
+      summarizeClassroomClass(classroomClass, {
+        participants: participantsByClass.get(classroomClass.classId) ?? [],
+        accessCodes: accessCodesByClass.get(classroomClass.classId) ?? [],
+        gameData: gameDataByClass.get(classroomClass.classId) ?? [],
+        quizzes: quizzesByClass.get(classroomClass.classId) ?? [],
+      }),
+    ),
+    total: allClasses.length,
+    hasMore: allClasses.length > pagedClasses.length,
+  };
 }
 
 /**
@@ -167,10 +175,13 @@ async function findChainSessions(classId: string, teacherId: mongoose.Types.Obje
   return { rootId, sessions };
 }
 
+export const DEFAULT_ACTIVITY_LIMIT = 12;
+
 export async function loadClassDetail(
   classId: string,
   teacherId: mongoose.Types.ObjectId | string | null,
   now: Date = new Date(),
+  activityLimit: number = DEFAULT_ACTIVITY_LIMIT,
 ): Promise<ClassroomClassDetail | null> {
   const { sessions } = await findChainSessions(classId, teacherId);
   if (sessions.length === 0) return null;
@@ -203,12 +214,14 @@ export async function loadClassDetail(
     }),
     gameData: gameData.map(toClassroomGameView),
     quizzes: quizzes.map(toClassroomQuizView),
+    // The feed is derived from roster, game, and quiz rows that are already in this response, so
+    // serializing all of it would send the same data twice. Only the slice that gets rendered.
     activity: buildClassroomActivity({
       classTitle: classroomClass.title,
       participants,
       gameData,
       quizzes,
-    }),
+    }).slice(0, activityLimit),
   };
 }
 
@@ -277,11 +290,14 @@ export async function reopenClassroomClass(input: {
 
   const chainIds = sessions.map((session) => session._id);
 
-  // Any other class this educator still has open must yield, matching how starting a new class behaves.
-  await closeActiveClassroomSessions(input.teacherId, { exceptSessionIds: chainIds, now });
+  // Order matters. Everything below up to the continuation touches only this class, which is
+  // already closed or expired, so a failure leaves nothing worse off. Closing the educator's *other*
+  // live class is destructive to its students, so it is deferred until this reopen has actually
+  // succeeded.
 
   // An expired session is still stored as "active"; close it against its own expiry so the history
-  // timeline reports when it actually ended rather than when it was reopened.
+  // timeline reports when it actually ended rather than when it was reopened. This also frees the
+  // chain's slot in the unique partial index before the continuation is inserted.
   await Promise.all(
     sessions
       .filter((session) => session.status === "active")
@@ -328,6 +344,11 @@ export async function reopenClassroomClass(input: {
     await ClassroomSession.deleteOne({ _id: continuation._id });
     throw error;
   }
+
+  // The reopen has succeeded, so it is now safe to make the educator's other class yield, matching
+  // how starting a new class behaves. Excluded by chain rather than by the ids read above, so a
+  // continuation created by a concurrent reopen is never mistaken for an unrelated class.
+  await closeActiveClassroomSessions(input.teacherId, { exceptChainRootId: rootId, now });
 
   return {
     ok: true,

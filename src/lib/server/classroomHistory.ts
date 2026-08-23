@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   QuizScoreRecord,
   averagePercent,
@@ -377,8 +378,10 @@ export type ClassroomQuizView = QuizScoreRecord & {
 export function toClassroomRosterView(entry: ClassroomRosterEntry): ClassroomRosterView {
   return {
     // The participant id is stable within the class and carries no external identity, unlike the
-    // participantKey it replaces.
-    id: entry.participantIds[0] ?? entry.participantKey,
+    // participantKey it replaces. When there is no participant id the key is hashed rather than
+    // emitted — a participantKey is `clerk:<userId>`, so passing it through would leak exactly the
+    // identity this projection exists to withhold.
+    id: entry.participantIds[0] ?? createHash("sha256").update(entry.participantKey).digest("hex").slice(0, 24),
     displayName: entry.displayName,
     joinedAt: entry.joinedAt,
     lastSeenAt: entry.lastSeenAt,

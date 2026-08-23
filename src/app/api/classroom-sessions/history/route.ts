@@ -1,10 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
-import { loadTeacherClassSummaries } from "@/lib/server/classroomClasses";
-import { getTeacherForCurrentUser } from "@/lib/server/educatorClassroom";
+import { DEFAULT_CLASS_PAGE_SIZE, loadTeacherClassSummaries } from "@/lib/server/classroomClasses";
+import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 
-export async function GET() {
+const MAX_CLASS_PAGE_SIZE = 200;
+
+function parseLimit(value: string | null) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CLASS_PAGE_SIZE;
+  return Math.min(parsed, MAX_CLASS_PAGE_SIZE);
+}
+
+export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
 
@@ -14,14 +22,26 @@ export async function GET() {
 
     await connectDB();
 
-    const teacherResult = await getTeacherForCurrentUser(userId);
-    if ("error" in teacherResult) return teacherResult.error;
+    // Read-only lookup: listing classes must not create an educator profile as a side effect.
+    const educator = await findEducatorTeacher(userId);
+    if (!educator) {
+      return NextResponse.json({ error: "Educator access required." }, { status: 403 });
+    }
 
-    const summaries = await loadTeacherClassSummaries(teacherResult.teacherId);
+    // An educator with no Teacher record has simply never run a class.
+    if (!educator.teacherId) {
+      return NextResponse.json(
+        { classes: [], total: 0, hasMore: false, limit: DEFAULT_CLASS_PAGE_SIZE },
+        { status: 200 },
+      );
+    }
+
+    const limit = parseLimit(request.nextUrl.searchParams.get("limit"));
+    const page = await loadTeacherClassSummaries(educator.teacherId, new Date(), limit);
 
     return NextResponse.json(
       {
-        classes: summaries.map((summary) => ({
+        classes: page.classes.map((summary) => ({
           classId: summary.classId,
           title: summary.title,
           state: summary.state,
@@ -38,6 +58,9 @@ export async function GET() {
           lastActivityAt: summary.lastActivityAt,
           activeAccessCode: summary.activeAccessCode,
         })),
+        total: page.total,
+        hasMore: page.hasMore,
+        limit,
       },
       { status: 200 },
     );

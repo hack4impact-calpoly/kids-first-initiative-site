@@ -3,7 +3,7 @@ import connectDB from "@/database/db";
 import { getRequestActor, unauthorized } from "@/lib/server/apiAuthorization";
 import { canEducatorReadClassroom } from "@/lib/server/classroomAuthorization";
 import { loadClassDetail } from "@/lib/server/classroomClasses";
-import { getTeacherForCurrentUser } from "@/lib/server/educatorClassroom";
+import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 
 // Unauthorized reads answer 404 rather than 403 so one educator cannot probe for another's classes.
 const notFound = () => NextResponse.json({ error: "Class not found." }, { status: 404 });
@@ -22,9 +22,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cla
     // scoped to the classes they own.
     let teacherScope: string | null = null;
     if (actor.role !== "admin") {
-      const teacherResult = await getTeacherForCurrentUser(actor.userId);
-      if ("error" in teacherResult) return teacherResult.error;
-      teacherScope = String(teacherResult.teacherId);
+      // Read-only: viewing a class must not create an educator profile as a side effect.
+      const educator = await findEducatorTeacher(actor.userId);
+      if (!educator?.teacherId) return notFound();
+      teacherScope = String(educator.teacherId);
     }
 
     const detail = await loadClassDetail(classId, teacherScope);

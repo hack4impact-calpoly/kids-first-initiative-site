@@ -139,15 +139,29 @@ describe("reopenClassroomClass", () => {
     );
   });
 
-  it("closes any other class the educator still has open, sparing this one", async () => {
+  it("closes any other class the educator still has open, sparing this whole chain", async () => {
     stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
 
     await reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW });
 
+    // Excluded by chain root, not by a list of session ids read earlier: a concurrent reopen can
+    // append a continuation in between, and a stale list would close it as an unrelated class.
     expect(mocks.closeActiveClassroomSessions).toHaveBeenCalledWith(TEACHER_ID, {
-      exceptSessionIds: [ROOT_ID],
+      exceptChainRootId: String(ROOT_ID),
       now: NOW,
     });
+  });
+
+  it("closes the educator's other class only after the reopen has succeeded", async () => {
+    stubChain(EXPIRED_ROOT, [EXPIRED_ROOT]);
+    mocks.issueAccessCode.mockRejectedValue(new Error("no code available"));
+
+    await expect(reopenClassroomClass({ classId: String(ROOT_ID), teacherId: TEACHER_ID, now: NOW })).rejects.toThrow(
+      "no code available",
+    );
+
+    // Otherwise a failed reopen would leave another class's students locked out for nothing.
+    expect(mocks.closeActiveClassroomSessions).not.toHaveBeenCalled();
   });
 
   it("closes an expired session against its own expiry rather than the reopen time", async () => {

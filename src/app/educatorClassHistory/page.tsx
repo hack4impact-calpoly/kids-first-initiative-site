@@ -1,14 +1,26 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
-import { loadTeacherClassSummaries } from "@/lib/server/classroomClasses";
+import { DEFAULT_CLASS_PAGE_SIZE, loadTeacherClassSummaries } from "@/lib/server/classroomClasses";
 import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 import { STATE_BADGE_CLASS, STATE_LABELS, formatDateTime, formatScore } from "./formatting";
 import styles from "./educatorClassHistory.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function EducatorClassHistoryPage() {
+const MAX_CLASS_PAGE_SIZE = 200;
+
+type ClassHistoryPageProps = {
+  searchParams?: Promise<{ limit?: string }>;
+};
+
+function parseLimit(value: string | undefined) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CLASS_PAGE_SIZE;
+  return Math.min(parsed, MAX_CLASS_PAGE_SIZE);
+}
+
+export default async function EducatorClassHistoryPage({ searchParams }: ClassHistoryPageProps) {
   const { userId } = await auth();
   if (!userId) return null;
 
@@ -17,9 +29,14 @@ export default async function EducatorClassHistoryPage() {
   const educator = await findEducatorTeacher(userId);
   if (!educator) return null;
 
+  const limit = parseLimit((await searchParams)?.limit);
+
   // An educator with no Teacher record yet has simply never run a class, so fall through to the
   // empty state rather than rendering a blank document.
-  const classes = educator.teacherId ? await loadTeacherClassSummaries(educator.teacherId) : [];
+  const page = educator.teacherId
+    ? await loadTeacherClassSummaries(educator.teacherId, new Date(), limit)
+    : { classes: [], total: 0, hasMore: false };
+  const { classes, total, hasMore } = page;
 
   return (
     <main className={styles.shell}>
@@ -31,8 +48,10 @@ export default async function EducatorClassHistoryPage() {
             </Link>
             <h1 className={styles.title}>Class History</h1>
             <p className={styles.subtitle}>
-              Every class you have run, including the ones that have closed or expired. Open a class to review its
-              roster, game activity, and quiz results, or reopen it to keep going.
+              {hasMore
+                ? `Showing your ${classes.length} most recent classes of ${total}.`
+                : "Every class you have run, including the ones that have closed or expired."}{" "}
+              Open a class to review its roster, game activity, and quiz results, or reopen it to keep going.
             </p>
           </div>
           <Link href="/educatorCreateClass?fresh=1" className={styles.primaryLink}>
@@ -107,6 +126,14 @@ export default async function EducatorClassHistoryPage() {
                 </div>
               </article>
             ))}
+            {hasMore ? (
+              <Link
+                href={`/educatorClassHistory?limit=${Math.min(total, MAX_CLASS_PAGE_SIZE)}`}
+                className={styles.detailLink}
+              >
+                Show all {total} classes
+              </Link>
+            ) : null}
           </div>
         )}
       </section>

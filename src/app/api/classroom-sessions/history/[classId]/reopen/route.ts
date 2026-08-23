@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import connectDB from "@/database/db";
 import { reopenClassroomClass } from "@/lib/server/classroomClasses";
-import { getTeacherForCurrentUser } from "@/lib/server/educatorClassroom";
+import { findEducatorTeacher } from "@/lib/server/educatorClassroom";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ classId: string }> }) {
   try {
@@ -15,12 +15,18 @@ export async function POST(_request: Request, { params }: { params: Promise<{ cl
     await connectDB();
 
     // Reopening changes who can join, so it stays with the owning educator. Admin read access does
-    // not extend to acting on another educator's class.
-    const teacherResult = await getTeacherForCurrentUser(userId);
-    if ("error" in teacherResult) return teacherResult.error;
+    // not extend to acting on another educator's class. The lookup is read-only: an educator with no
+    // Teacher record owns no classes, so there is nothing here to reopen and nothing to create.
+    const educator = await findEducatorTeacher(userId);
+    if (!educator) {
+      return NextResponse.json({ error: "Educator access required." }, { status: 403 });
+    }
+    if (!educator.teacherId) {
+      return NextResponse.json({ error: "Class not found." }, { status: 404 });
+    }
 
     const { classId } = await params;
-    const result = await reopenClassroomClass({ classId, teacherId: teacherResult.teacherId });
+    const result = await reopenClassroomClass({ classId, teacherId: educator.teacherId });
 
     if (!result.ok) {
       return NextResponse.json({ error: "Class not found." }, { status: 404 });
