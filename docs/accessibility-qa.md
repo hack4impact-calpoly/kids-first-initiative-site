@@ -18,6 +18,16 @@ game that will not start are all launch blockers, not polish.
 Automated checks catch roughly a third of real accessibility problems. Everything below is the part
 a machine cannot judge, and it is not optional.
 
+### The known-violations baseline
+
+`KNOWN_VIOLATIONS` in that spec records violations that exist today so CI stays green on them while
+still failing on anything **new**. A permanently red suite trains people to ignore CI, which is worse
+than the violations it reports.
+
+Two rules keep it honest: an entry only suppresses that one rule on that one page, and the suite
+**fails if a listed violation has been fixed** but not removed from the list. The baseline cannot
+quietly drift out of date, and it should only ever shrink.
+
 ## Supported device and browser matrix
 
 | Target                           | Why it is on the list                                            | Input              |

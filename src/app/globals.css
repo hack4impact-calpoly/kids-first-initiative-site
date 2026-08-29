@@ -12,16 +12,28 @@
  * no way to tell where they were. `:focus-visible` shows it for keyboard interaction without
  * putting a ring around every mouse click.
  */
-:focus-visible {
-  outline: 3px solid #1a56b0;
-  outline-offset: 2px;
+:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  /*
+   * !important is deliberate. Chakra injects its styles after this sheet and resets outlines at a
+   * higher specificity, so without it the ring silently disappears. A focus indicator is an
+   * accessibility guarantee rather than a stylistic default, and should not be overridable by a
+   * component library.
+   */
+  outline: 3px solid #1a56b0 !important;
+  outline-offset: 2px !important;
   border-radius: 2px;
 }
 
 /* On dark surfaces the blue ring disappears, so invert it there. */
 [data-dark-surface] :focus-visible,
 .dark :focus-visible {
-  outline-color: #ffffff;
+  outline-color: #ffffff !important;
 }
 
 /*
@@ -30,12 +42,15 @@
  * Chakra's default link blue measures about 3.6:1 on white, below the 4.5:1 required for body text.
  * This shade is approximately 6.4:1.
  */
+a.chakra-link,
 .chakra-link {
-  color: #1a56b0;
+  /* Same reason as above: Chakra's own link colour wins on specificity otherwise. */
+  color: #1a56b0 !important;
 }
 
+a.chakra-link:hover,
 .chakra-link:hover {
-  color: #123c7d;
+  color: #123c7d !important;
 }
 
 /*
