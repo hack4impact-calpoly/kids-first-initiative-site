@@ -37,23 +37,6 @@ textarea:focus-visible,
 }
 
 /*
- * WCAG 1.4.3 Contrast (Minimum).
- *
- * Chakra's default link blue measures about 3.6:1 on white, below the 4.5:1 required for body text.
- * This shade is approximately 6.4:1.
- */
-a.chakra-link,
-.chakra-link {
-  /* Same reason as above: Chakra's own link colour wins on specificity otherwise. */
-  color: #1a56b0 !important;
-}
-
-a.chakra-link:hover,
-.chakra-link:hover {
-  color: #123c7d !important;
-}
-
-/*
  * WCAG 2.3.3 Animation from Interactions.
  *
  * The audience includes children with vestibular sensitivity and motion-triggered discomfort. When
