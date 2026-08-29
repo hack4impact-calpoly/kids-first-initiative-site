@@ -36,9 +36,21 @@ const authenticatedProxy = clerkMiddleware(async (auth, req) => {
   return NextResponse.next();
 });
 
+/**
+ * Browser-test variant: Clerk still runs, but enforces nothing.
+ *
+ * Skipping clerkMiddleware entirely would leave `auth()` throwing inside every route handler, so
+ * unauthenticated requests answered 500 instead of being refused — the e2e environment diverged
+ * from production exactly where authorization lives, and no browser test could observe the real
+ * behaviour. Running the middleware without the protection logic keeps `auth()` working and
+ * resolving to an anonymous caller, so routes make their own authorization decisions as they do in
+ * production.
+ */
+const bypassedProxy = clerkMiddleware(async () => NextResponse.next());
+
 const proxy: NextMiddleware = (request, event) => {
   if (process.env.NODE_ENV !== "production" && process.env.KFI_E2E_BYPASS_CLERK === "1") {
-    return NextResponse.next();
+    return bypassedProxy(request, event);
   }
 
   return authenticatedProxy(request, event);

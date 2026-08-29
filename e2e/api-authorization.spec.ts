@@ -3,11 +3,17 @@ import { expect, test } from "@playwright/test";
 /**
  * API-level negative coverage.
  *
- * The e2e server runs with KFI_E2E_BYPASS_CLERK, so every request here arrives unauthenticated.
- * That makes this suite the anonymous-caller half of the authorization contract: routes that must
- * refuse a caller with no credentials, and routes that must reject malformed input before touching
- * data. Positive role coverage (admin, educator, owner) lives in the unit suites, which can supply
- * a session; asserting it here would only test the bypass.
+ * The e2e server runs with KFI_E2E_BYPASS_CLERK, which keeps Clerk middleware running but enforces
+ * nothing, so every request here arrives as a resolvable anonymous caller — the same shape a signed
+ * out visitor has in production. That makes this suite the anonymous half of the authorization
+ * contract: routes that must refuse a caller with no credentials, and routes that must reject
+ * malformed input before touching data.
+ *
+ * A refusal must be a deliberate 401/403/404, never a 500. A crash is not a refusal: it means the
+ * route failed before deciding, which is how an authorization gap hides.
+ *
+ * Positive role coverage (admin, educator, owner) lives in the unit suites, which can supply a
+ * session; asserting it here would only test the bypass.
  */
 
 const ADMIN_ONLY_READS = [
@@ -27,7 +33,7 @@ test.describe("anonymous callers", () => {
     test(`refuses an unauthenticated read of ${path}`, async ({ request }) => {
       const response = await request.get(path);
 
-      // 401 or 403 are both acceptable; what matters is that data never comes back.
+      // 401 or 403 are both acceptable; what matters is that this is a decision, not a crash.
       expect([401, 403]).toContain(response.status());
     });
   }
