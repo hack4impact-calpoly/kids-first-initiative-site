@@ -7,7 +7,7 @@ An educational web game to teach students about STEM topics like physics and sta
 - [Overview](#overview)
   - [Purpose](#purpose)
   - [Team](#team)
-- [Getting Started And Contributing](#getting-started-and-contributing)
+- [Documentation](#documentation)
 
 ## Overview
 
@@ -37,9 +37,13 @@ The Kids First Initiative team consists of 17 Cal Poly students. Over the course
 - [Trisha Chandwani](https://www.linkedin.com) - Developer
 - [Nathaniel Victorino](https://www.linkedin.com) - Developer
 
+## Documentation
 
-## Getting Started And Contributing
+Start with the **[Project Handbook](docs/handbook.md)** — what the system does, how its parts fit
+together, local setup, contributing, and what remains before launch. There is a
+[rendered version](docs/index.html) for reading and sharing, and the Markdown is the one to search.
 
-Visit [getting-started.md](docs/getting-started.md) on info for how to set up this repo.
-
-Visit [contributing.md](docs/contributing.md) on info for how to contribute to this repo.
+Deeper references live alongside it in [`docs/`](docs/): the
+[operations runbook](docs/operations.md), [release process](docs/releases.md),
+[accessibility QA pass](docs/accessibility-qa.md), [API authorization policy](docs/api-authorization.md),
+and the [game progress bridge](docs/game-progress-bridge.md).
