@@ -38,7 +38,7 @@ describe("getPreviousQuizScore", () => {
   it("loads the personal player's previous score", async () => {
     await expect(getPreviousQuizScore("penguinRunQuiz", actor)).resolves.toBe(1);
 
-    expect(mocks.resolveDataPrincipalFromCredential).toHaveBeenCalledWith(undefined, actor);
+    expect(mocks.resolveDataPrincipalFromCredential).toHaveBeenCalledWith(undefined, actor, undefined);
     expect(mocks.findOne).toHaveBeenCalledWith({ clerkId: "clerk-student" });
   });
 
@@ -72,7 +72,7 @@ describe("getPreviousQuizScore", () => {
 
     await expect(getPreviousQuizScore("statesOfMatterQuiz", classroomActor, "opaque-cookie")).resolves.toBe(2);
 
-    expect(mocks.resolveDataPrincipalFromCredential).toHaveBeenCalledWith("opaque-cookie", classroomActor);
+    expect(mocks.resolveDataPrincipalFromCredential).toHaveBeenCalledWith("opaque-cookie", classroomActor, undefined);
     expect(mocks.findOne).toHaveBeenCalledWith({ clerkId: "participant:participant-1" });
   });
 
@@ -95,6 +95,41 @@ describe("getPreviousQuizScore", () => {
     await expect(getPreviousQuizScore("penguinRunQuiz", actor)).resolves.toBe(-1);
 
     consoleError.mockRestore();
+  });
+
+  it("forwards the carried classroom participant so the read matches the write owner", async () => {
+    mocks.resolveDataPrincipalFromCredential.mockResolvedValue({
+      ok: true,
+      value: {
+        ownerId: "participant:participant-7",
+        actor,
+        classroom: { participantId: "participant-7", sessionId: "s1", displayName: "Ada", clerkId: "clerk-student" },
+      },
+    });
+    stubQuizzesByOwner({ "participant:participant-7": { statesOfMatterScoreBefore: 2 } });
+
+    await expect(getPreviousQuizScore("statesOfMatterQuiz", actor, undefined, "participant-7")).resolves.toBe(2);
+
+    // The claim is validated by the same path the write uses, not trusted on its own.
+    expect(mocks.resolveDataPrincipalFromCredential).toHaveBeenCalledWith(undefined, actor, "participant-7");
+    expect(mocks.findOne).toHaveBeenCalledWith({ clerkId: "participant:participant-7" });
+  });
+
+  it("returns no score when a carried participant fails authorization", async () => {
+    // A forged or stale participantId in the URL must not fall back to another record.
+    mocks.resolveDataPrincipalFromCredential.mockResolvedValue({
+      ok: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    });
+
+    await expect(getPreviousQuizScore("statesOfMatterQuiz", actor, undefined, "someone-elses-id")).resolves.toBe(-1);
+    expect(mocks.findOne).not.toHaveBeenCalled();
+  });
+
+  it("still resolves from the cookie alone when no participant is carried", async () => {
+    await expect(getPreviousQuizScore("penguinRunQuiz", actor, "opaque-cookie")).resolves.toBe(1);
+
+    expect(mocks.resolveDataPrincipalFromCredential).toHaveBeenCalledWith("opaque-cookie", actor, undefined);
   });
 
   it("degrades to no previous score when the quiz lookup itself fails", async () => {

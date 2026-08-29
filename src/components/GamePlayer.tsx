@@ -113,6 +113,17 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     if (completedSaveId) {
       destination.searchParams.set("saveId", completedSaveId);
     }
+
+    // Carry the classroom participant into the post-quiz URL. That page renders on the server and
+    // cannot read the localStorage snapshot the save path uses, so without this it would look the
+    // student's baseline up under a different owner than their results are written to — showing a
+    // growth number against a record that never receives the after-score. Read from the snapshot at
+    // navigation time, with the same provenance fallback the save path uses.
+    const participantId = readClassroomSessionSnapshot()?.participantId ?? classroomParticipantIdRef.current;
+    if (participantId) {
+      destination.searchParams.set("participantId", participantId);
+    }
+
     router.push(`${destination.pathname}${destination.search}${destination.hash}`);
   };
 
