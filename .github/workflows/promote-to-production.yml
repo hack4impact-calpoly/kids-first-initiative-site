@@ -1,0 +1,85 @@
+name: promote-to-production
+
+run-name: Promote ${{ inputs.source_ref }} to production
+
+# Turns a deploy into a deliberate act. `develop` currently deploys straight to production on every
+# merge, which means no one ever decides to release — it just happens. This workflow fast-forwards
+# `main` to a chosen, already-verified commit so `main` records exactly what is live.
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Commit or branch to promote (must already be on develop)
+        required: true
+        default: develop
+        type: string
+
+permissions:
+  contents: write
+
+# Two promotions at once would race on the same ref.
+concurrency:
+  group: promote-to-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Fast-forward main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and verify the candidate
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse "origin/${{ inputs.source_ref }}" 2>/dev/null || git rev-parse "${{ inputs.source_ref }}")"
+
+          # Only promote something that is actually on develop. Promoting an arbitrary ref would put
+          # code into production that never went through review or CI.
+          if ! git merge-base --is-ancestor "$sha" origin/develop; then
+            echo "::error::${{ inputs.source_ref }} ($sha) is not an ancestor of develop."
+            exit 1
+          fi
+
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Promoting $sha" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require a green CI run for that commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="${{ steps.candidate.outputs.sha }}"
+          conclusion="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --workflow ci --limit 1 --json conclusion --jq '.[0].conclusion // "none"')"
+
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI for $sha is '$conclusion', not success. Refusing to promote."
+            exit 1
+          fi
+
+      - name: Fast-forward main
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ steps.candidate.outputs.sha }}"
+
+          git fetch origin main:main 2>/dev/null || git branch main "$sha"
+          # Fast-forward only: main must never diverge from develop's history, so a promotion is
+          # always a subset of what has been reviewed.
+          git checkout main
+          git merge --ff-only "$sha"
+          git push origin main
+
+          {
+            echo "### Promoted to production"
+            echo "- Commit: \`$sha\`"
+            echo "- Verify: \`curl -s https://<site>/api/health | jq .release\`"
+          } >> "$GITHUB_STEP_SUMMARY"
