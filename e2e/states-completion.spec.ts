@@ -95,7 +95,7 @@ test("saves final States progress before routing once to the post-game quiz", as
 
   releaseSaves();
 
-  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after$/);
+  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after(&participantId=[^&]+)?$/);
   await expect.poll(() => quizNavigations).toBe(1);
 });
 
@@ -134,7 +134,7 @@ test("keeps the game open and retries when the final States save fails", async (
 
   releaseRetry();
 
-  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after$/);
+  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=existing-save&phase=after(&participantId=[^&]+)?$/);
   expect(saveBodies).toHaveLength(2);
   expect(saveBodies[1]).toMatchObject({ completedStageIds, classroomParticipantId: null });
 });
@@ -151,7 +151,7 @@ test("adds a newly created save ID to the post-game quiz destination", async ({ 
   await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
   await sendCompletion(page);
 
-  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?phase=after&saveId=created-save$/);
+  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?phase=after&saveId=created-save(&participantId=[^&]+)?$/);
   expect(createBody).toMatchObject({
     gameId: "StatesOfMatter",
     completedStageIds,
@@ -179,7 +179,9 @@ test("replaces a missing personal save before routing to the post-game quiz", as
 
   await expect.poll(() => createBodies.length).toBe(1);
   const replacementSaveId = String(createBodies[0].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?saveId=${replacementSaveId}&phase=after$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?saveId=${replacementSaveId}&phase=after(&participantId=[^&]+)?$`),
+  );
   expect(patchBodies).toHaveLength(1);
   expect(createBodies).toHaveLength(1);
   expect(createBodies[0]).toMatchObject({
@@ -215,7 +217,9 @@ test("reuses a new save ID when a completion POST response is lost", async ({ pa
   await page.getByRole("button", { name: "Try Again" }).click();
 
   const stableSaveId = String(createBodies[0].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}(&participantId=[^&]+)?$`),
+  );
   expect(createBodies).toHaveLength(2);
   expect(createBodies[1].saveId).toBe(stableSaveId);
   expect(recoveryBodies).toHaveLength(1);
@@ -253,7 +257,9 @@ test("rotates a lost personal save ID when account ownership changes", async ({ 
   await expect.poll(() => createBodies.length).toBe(3);
   const originalSaveId = String(createBodies[0].saveId);
   const replacementSaveId = String(createBodies[2].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}(&participantId=[^&]+)?$`),
+  );
   expect(createBodies).toHaveLength(3);
   expect(createBodies[1].saveId).toBe(originalSaveId);
   expect(replacementSaveId).not.toBe(originalSaveId);
@@ -299,7 +305,12 @@ test("retries with fresh classroom context after an expired session", async ({ p
 
   const expiredParticipantSaveId = String(saveBodies[0].saveId);
   const replacementSaveId = String(saveBodies[1].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  // The post-quiz renders on the server and cannot read the classroom snapshot, so the participant
+  // the save was written under is carried in the URL. It must be the participant that actually
+  // received the save, not the expired one, or the quiz would read a baseline from another record.
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}&participantId=new-participant$`),
+  );
   expect(saveBodies).toHaveLength(2);
   expect(saveBodies[0]).toMatchObject({
     saveId: expiredParticipantSaveId,
@@ -350,7 +361,9 @@ test("uses a new stable save ID when the classroom participant changes", async (
   await page.getByRole("button", { name: "Try Again" }).click();
 
   const replacementSaveId = String(saveBodies[1].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}(&participantId=[^&]+)?$`),
+  );
   expect(saveBodies).toHaveLength(2);
   expect(saveBodies[0]).toMatchObject({ classroomParticipantId: "first-participant" });
   expect(saveBodies[1]).toMatchObject({ classroomParticipantId: "second-participant" });
@@ -391,7 +404,9 @@ test("keeps transient classroom save failures separate from expired sessions", a
   await page.getByRole("button", { name: "Try Again" }).click();
 
   const stableSaveId = String(saveBodies[0].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${stableSaveId}(&participantId=[^&]+)?$`),
+  );
   expect(saveBodies).toHaveLength(2);
   expect(saveBodies[1]).toMatchObject({
     saveId: stableSaveId,
@@ -439,7 +454,9 @@ test("requires rejoin instead of falling back to a personal save after classroom
   await page.getByRole("button", { name: "Try Again" }).click();
 
   const replacementSaveId = String(saveBodies[1].saveId);
-  await expect(page).toHaveURL(new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/threeStatesOfMatterQuiz\\?phase=after&saveId=${replacementSaveId}(&participantId=[^&]+)?$`),
+  );
   expect(saveBodies).toHaveLength(2);
   expect(saveBodies[0]).toMatchObject({ classroomParticipantId: "expired-participant" });
   expect(saveBodies[1]).toMatchObject({
@@ -489,7 +506,7 @@ test("keeps expired classroom recovery scoped to its original page load", async 
   await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
   await sendCompletion(page);
 
-  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?phase=after&saveId=.+$/);
+  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?phase=after&saveId=[^&]+(&participantId=[^&]+)?$/);
   expect(saveAttempts).toBe(1);
 });
 
@@ -514,5 +531,5 @@ test("keeps End Game as a manual post-game quiz fallback", async ({ page }) => {
   await page.goto("/statesOfMatterGame?saveId=manual-save");
   await page.getByRole("link", { name: "End Game" }).click();
 
-  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=manual-save&phase=after$/);
+  await expect(page).toHaveURL(/\/threeStatesOfMatterQuiz\?saveId=manual-save&phase=after(&participantId=[^&]+)?$/);
 });

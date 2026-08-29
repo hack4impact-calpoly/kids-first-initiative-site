@@ -9,6 +9,7 @@ type QuizPageProps = {
   searchParams?: Promise<{
     saveId?: string;
     phase?: string;
+    participantId?: string;
   }>;
 };
 
@@ -25,6 +26,7 @@ export default async function ThreeStatesOfMatterQuizPage({ searchParams }: Quiz
       "statesOfMatterQuiz",
       await getRequestActor(),
       cookieStore.get(CLASSROOM_ACCESS_COOKIE)?.value,
+      resolvedSearchParams?.participantId,
     );
   }
 

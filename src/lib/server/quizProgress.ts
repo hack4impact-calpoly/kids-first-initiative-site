@@ -17,26 +17,27 @@ function getBeforeScoreField(quizKey: QuizKey): keyof QuizBeforeScores {
 /**
  * Reads the baseline a student recorded before playing, for the principal that owns it.
  *
- * The owner is resolved from the classroom cookie or the signed-in user, and deliberately nothing
- * else. A student whose classroom cookie has lapsed reads their personal record and sees no
- * baseline, which is correct: `QuizExperience` derives the *write* owner from the localStorage
- * snapshot, so the server cannot tell whether the matching after-score will be written to the
- * participant record or the personal one. Recovering the classroom baseline here without the same
- * signal on the write path would show the student a growth number against a record the result is
- * never saved to, and leave the educator dashboard reporting no gain at all. Closing that gap needs
- * the classroom context carried into the request, not inferred from it.
+ * `claimedParticipantId` is the classroom context carried into the request — the quiz page renders
+ * on the server and cannot read the localStorage snapshot the write path uses, so the participant is
+ * passed explicitly rather than inferred. Inferring it (say, "this signed-in user has an active
+ * participant row") would misroute genuinely personal quizzes for anyone enrolled in a live class.
+ *
+ * The claim carries no extra authority: it is validated by the same
+ * `authorizeClassroomParticipantWithCredential` path the write uses, which requires the participant
+ * row to belong to the signed-in caller, or the claim to match the classroom cookie for a guest.
  */
 export async function getPreviousQuizScore(
   quizKey: QuizKey,
   actor: RequestActor,
   classroomCredential?: string,
+  claimedParticipantId?: string,
 ): Promise<number> {
   try {
     // Resolving the principal reads the participant and session collections, so the connection has
     // to be open before that call, not merely before the quiz lookup.
     await connectDB();
 
-    const principal = await resolveDataPrincipalFromCredential(classroomCredential, actor);
+    const principal = await resolveDataPrincipalFromCredential(classroomCredential, actor, claimedParticipantId);
     if (!principal.ok || !principal.value.ownerId) return -1;
 
     const quiz = await Quiz.findOne({ clerkId: principal.value.ownerId }).lean<QuizBeforeScores | null>();
