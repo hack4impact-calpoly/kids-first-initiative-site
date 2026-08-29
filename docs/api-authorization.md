@@ -19,6 +19,7 @@ Classroom records are keyed to the authorized participant, including for signed-
 | `/api/admin/:id/role`                             | PATCH            | Administrator                                                  |
 | `/api/admin/analytics`                            | GET              | Administrator                                                  |
 | `/api/auth/admin-access`                          | GET              | Administrator                                                  |
+| `/api/health`                                     | GET              | Public; deployment health only, carries no learner data        |
 | `/api/classroom-sessions`                         | GET, POST, PATCH | Signed-in educator; sessions are teacher-scoped                |
 | `/api/classroom-sessions/join`                    | POST             | Public with an active access code; issues classroom credential |
 | `/api/classroom-sessions/history`                 | GET              | Signed-in educator; only their own classes                     |
