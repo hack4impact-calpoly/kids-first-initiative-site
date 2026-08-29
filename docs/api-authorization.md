@@ -17,6 +17,7 @@ Classroom records are keyed to the authorized participant, including for signed-
 | Route                                             | Method           | Access                                                         |
 | ------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
 | `/api/admin/:id/role`                             | PATCH            | Administrator                                                  |
+| `/api/admin/analytics`                            | GET              | Administrator                                                  |
 | `/api/auth/admin-access`                          | GET              | Administrator                                                  |
 | `/api/classroom-sessions`                         | GET, POST, PATCH | Signed-in educator; sessions are teacher-scoped                |
 | `/api/classroom-sessions/join`                    | POST             | Public with an active access code; issues classroom credential |
@@ -30,6 +31,7 @@ Classroom records are keyed to the authorized participant, including for signed-
 | `/api/gameData`                                   | POST             | Signed-in owner or credentialed classroom participant          |
 | `/api/gameData/:saveId`                           | GET              | Owner, administrator, or educator who owns the classroom       |
 | `/api/gameData/:saveId`                           | PATCH            | Owner only                                                     |
+| `/api/gameData/mine`                              | GET              | Signed-in user or classroom participant; own records only      |
 | `/api/quiz`                                       | GET              | Administrator                                                  |
 | `/api/quiz`                                       | POST             | Signed-in owner or credentialed classroom participant          |
 | `/api/quiz/:id`                                   | GET              | Owner, administrator, or educator who owns the classroom       |
