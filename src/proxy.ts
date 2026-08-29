@@ -18,22 +18,7 @@ const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
 // Keep in mind when you change roles, it won't appear until Clerk's session token refreshes.
 // https://clerk.com/docs/guides/sessions/customize-session-tokens
 
-/**
- * A single Clerk middleware instance.
- *
- * The browser-test bypass is a branch *inside* it rather than a second instance. Two
- * `clerkMiddleware()` instances in one module prevent the dev server from starting, and skipping
- * Clerk altogether leaves `auth()` throwing inside every route handler — which made unauthenticated
- * requests answer 500 instead of being refused, so the browser environment diverged from production
- * exactly where authorization lives. Running the middleware and returning early keeps `auth()`
- * resolving to an anonymous caller, so routes make their own authorization decisions as they do in
- * production.
- */
-const proxy: NextMiddleware = clerkMiddleware(async (auth, req) => {
-  if (process.env.NODE_ENV !== "production" && process.env.KFI_E2E_BYPASS_CLERK === "1") {
-    return NextResponse.next();
-  }
-
+const authenticatedProxy = clerkMiddleware(async (auth, req) => {
   if (isPublicPage(req) || isGuestCapableApi(req)) return NextResponse.next();
 
   const { userId, sessionClaims } = await auth();
@@ -49,7 +34,15 @@ const proxy: NextMiddleware = clerkMiddleware(async (auth, req) => {
   }
 
   return NextResponse.next();
-}) as NextMiddleware;
+});
+
+const proxy: NextMiddleware = (request, event) => {
+  if (process.env.NODE_ENV !== "production" && process.env.KFI_E2E_BYPASS_CLERK === "1") {
+    return NextResponse.next();
+  }
+
+  return authenticatedProxy(request, event);
+};
 
 export default proxy;
 
