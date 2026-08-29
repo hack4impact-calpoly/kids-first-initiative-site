@@ -4,20 +4,38 @@
       "questionId": "som_q1",
       "question": "What does heating water turn it into?",
       "options": [
-        { "id": "A", "text": "Ice" },
-        { "id": "B", "text": "Plasma" },
-        { "id": "C", "text": "Steam" }
+        {
+          "id": "A",
+          "text": "Ice"
+        },
+        {
+          "id": "B",
+          "text": "Plasma"
+        },
+        {
+          "id": "C",
+          "text": "Steam"
+        }
       ],
       "correctOptionId": "C",
       "correctAnswer": "Steam"
     },
     {
       "questionId": "som_q2",
-      "question": "When you cool down juice it turns into?",
+      "question": "When you cool down juice, what does it turn into?",
       "options": [
-        { "id": "A", "text": "Popsicle" },
-        { "id": "B", "text": "Chocolate" },
-        { "id": "C", "text": "Cookie" }
+        {
+          "id": "A",
+          "text": "Popsicle"
+        },
+        {
+          "id": "B",
+          "text": "Chocolate"
+        },
+        {
+          "id": "C",
+          "text": "Cookie"
+        }
       ],
       "correctOptionId": "A",
       "correctAnswer": "Popsicle"
@@ -26,9 +44,18 @@
       "questionId": "som_q3",
       "question": "What does gas turn into when heated?",
       "options": [
-        { "id": "A", "text": "Plasma" },
-        { "id": "B", "text": "Solid" },
-        { "id": "C", "text": "Liquid" }
+        {
+          "id": "A",
+          "text": "Plasma"
+        },
+        {
+          "id": "B",
+          "text": "Solid"
+        },
+        {
+          "id": "C",
+          "text": "Liquid"
+        }
       ],
       "correctOptionId": "A",
       "correctAnswer": "Plasma"
@@ -37,32 +64,56 @@
   "penguinRunQuiz": [
     {
       "questionId": "pr_q1",
-      "question": "What force pulls the penguin down the track?",
+      "question": "What force pulls things down?",
       "options": [
-        { "id": "A", "text": "Magnetism" },
-        { "id": "B", "text": "Gravity" },
-        { "id": "C", "text": "Electricity" }
+        {
+          "id": "A",
+          "text": "Magnetism"
+        },
+        {
+          "id": "B",
+          "text": "Gravity"
+        },
+        {
+          "id": "C",
+          "text": "Electricity"
+        }
       ],
       "correctOptionId": "B",
       "correctAnswer": "Gravity"
     },
     {
       "questionId": "pr_q2",
-      "question": "When the penguin is at the top of the coaster, it has the most Potential Energy:",
+      "question": "When something is at the very top, it has the most Potential Energy:",
       "options": [
-        { "id": "A", "text": "True" },
-        { "id": "B", "text": "False" }
+        {
+          "id": "A",
+          "text": "True"
+        },
+        {
+          "id": "B",
+          "text": "False"
+        }
       ],
       "correctOptionId": "A",
       "correctAnswer": "True"
     },
     {
       "questionId": "pr_q3",
-      "question": "What can slow the penguin down on the track?",
+      "question": "What can slow things down when they slide?",
       "options": [
-        { "id": "A", "text": "Friction" },
-        { "id": "B", "text": "Gravity" },
-        { "id": "C", "text": "Speed" }
+        {
+          "id": "A",
+          "text": "Friction"
+        },
+        {
+          "id": "B",
+          "text": "Gravity"
+        },
+        {
+          "id": "C",
+          "text": "Speed"
+        }
       ],
       "correctOptionId": "A",
       "correctAnswer": "Friction"
