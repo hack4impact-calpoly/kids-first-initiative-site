@@ -166,8 +166,9 @@ including a class currently in session.
 
 ## Known operational characteristics
 
-- **`develop` is production.** There is no staging branch or release gate; a merge deploys. Treat
-  every merge to `develop` as a production change.
+- **`develop` is production today.** There is no staging branch or release gate; a merge deploys.
+  Treat every merge to `develop` as a production change. [releases.md](./releases.md) describes the
+  `main`/`develop` split that replaces this, and the single Vercel setting that switches it on.
 - **Classroom sessions expire after 8 hours.** An educator reporting that "the code stopped working"
   is usually an expired session, not an outage. They can reopen the class from Class History, which
   issues a new code.
