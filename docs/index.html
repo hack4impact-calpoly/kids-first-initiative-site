@@ -1,0 +1,1413 @@
+<title>KFI Project Handbook</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Karla:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+/>
+
+<style>
+  /* Palette is lifted from the application's own stylesheets so the handbook and the product it
+     documents read as one system: #2a256f is the educator dashboard's primary, #4476bb its accent. */
+  :root {
+    --ground: #f6f7fb;
+    --surface: #ffffff;
+    --surface-sunk: #eef1f8;
+    --line: #dfe3ef;
+    --line-soft: #eaedf5;
+    --ink: #171633;
+    --ink-muted: #5b5f7a;
+    --ink-faint: #878ba6;
+    --indigo: #2a256f;
+    --blue: #4476bb;
+    --blue-wash: #eaf1fb;
+    --green: #1f7a44;
+    --green-wash: #e7f5ec;
+    --amber: #8a5210;
+    --amber-wash: #fbf1e0;
+    --slate: #55607a;
+    --slate-wash: #eef0f5;
+    --shadow: 0 1px 2px rgba(23, 22, 51, 0.05), 0 12px 28px rgba(23, 22, 51, 0.05);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101020;
+      --surface: #191a2c;
+      --surface-sunk: #14152444;
+      --line: #2b2d44;
+      --line-soft: #23253a;
+      --ink: #eceef7;
+      --ink-muted: #a2a7c0;
+      --ink-faint: #7c819c;
+      --indigo: #b3aeef;
+      --blue: #8fb6ea;
+      --blue-wash: #1b2440;
+      --green: #7bd3a0;
+      --green-wash: #14291d;
+      --amber: #e8b169;
+      --amber-wash: #2c2113;
+      --slate: #a2a7c0;
+      --slate-wash: #21243a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 32px rgba(0, 0, 0, 0.28);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101020;
+    --surface: #191a2c;
+    --surface-sunk: #14152444;
+    --line: #2b2d44;
+    --line-soft: #23253a;
+    --ink: #eceef7;
+    --ink-muted: #a2a7c0;
+    --ink-faint: #7c819c;
+    --indigo: #b3aeef;
+    --blue: #8fb6ea;
+    --blue-wash: #1b2440;
+    --green: #7bd3a0;
+    --green-wash: #14291d;
+    --amber: #e8b169;
+    --amber-wash: #2c2113;
+    --slate: #a2a7c0;
+    --slate-wash: #21243a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 32px rgba(0, 0, 0, 0.28);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Poppins", "Trebuchet MS", "Avenir Next", sans-serif;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  a {
+    color: var(--blue);
+    text-underline-offset: 3px;
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  code,
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.88em;
+  }
+
+  code {
+    background: var(--surface-sunk);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 0.08em 0.36em;
+  }
+
+  /* ---------- shell ---------- */
+
+  .shell {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 4vw, 48px) 96px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 44px;
+  }
+
+  @media (min-width: 1040px) {
+    .shell {
+      grid-template-columns: 232px minmax(0, 1fr);
+      align-items: start;
+      gap: 56px;
+    }
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .masthead-inner {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: clamp(40px, 6vw, 72px) clamp(20px, 4vw, 48px) clamp(32px, 4vw, 48px);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--indigo);
+    margin: 0;
+  }
+
+  .masthead h1 {
+    font-size: clamp(2.1rem, 5.2vw, 3.1rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.08;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 66ch;
+    font-size: clamp(1.02rem, 1.6vw, 1.18rem);
+    color: var(--ink-muted);
+  }
+
+  .masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    padding-top: 8px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- section index ---------- */
+
+  .index {
+    display: none;
+  }
+
+  @media (min-width: 1040px) {
+    .index {
+      display: block;
+      position: sticky;
+      top: 32px;
+      padding-top: 52px;
+    }
+  }
+
+  .index h2 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+
+  .index ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-left: 1px solid var(--line);
+  }
+
+  .index a {
+    display: block;
+    padding: 5px 0 5px 16px;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 14.5px;
+  }
+
+  .index a:hover {
+    color: var(--ink);
+    border-left-color: var(--blue);
+  }
+
+  /* ---------- content ---------- */
+
+  main {
+    display: flex;
+    flex-direction: column;
+    gap: 60px;
+    min-width: 0;
+    padding-top: 52px;
+  }
+
+  section {
+    scroll-margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  section > h2 {
+    font-size: clamp(1.42rem, 2.6vw, 1.78rem);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  section > h2 .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.62em;
+    font-weight: 500;
+    color: var(--ink-faint);
+    margin-right: 12px;
+  }
+
+  h3 {
+    font-size: 1.11rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  p {
+    margin: 0;
+    max-width: 68ch;
+  }
+
+  .prose {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  ul.plain {
+    margin: 0;
+    padding-left: 20px;
+    max-width: 68ch;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  /* ---------- metrics ---------- */
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(214px, 1fr));
+    gap: 14px;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: var(--shadow);
+  }
+
+  .metric .value {
+    font-family: "Poppins", sans-serif;
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric .label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* The caveat is the point: a number without its limitation invites false confidence. */
+  .metric .caveat {
+    font-size: 13.8px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+  }
+
+  /* ---------- pills ---------- */
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .pill-done {
+    background: var(--green-wash);
+    color: var(--green);
+    border-color: color-mix(in srgb, var(--green) 28%, transparent);
+  }
+
+  .pill-human {
+    background: var(--amber-wash);
+    color: var(--amber);
+    border-color: color-mix(in srgb, var(--amber) 32%, transparent);
+  }
+
+  .pill-open {
+    background: var(--slate-wash);
+    color: var(--slate);
+    border-color: color-mix(in srgb, var(--slate) 26%, transparent);
+  }
+
+  /* ---------- tables ---------- */
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.6px;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.8px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-sunk);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  td.mono {
+    white-space: nowrap;
+  }
+
+  /* ---------- component cards ---------- */
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    box-shadow: var(--shadow);
+  }
+
+  .card h3 {
+    font-size: 1.02rem;
+  }
+
+  .card p {
+    font-size: 14.6px;
+    color: var(--ink-muted);
+    max-width: none;
+  }
+
+  .card .where {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    word-break: break-all;
+  }
+
+  /* ---------- callout ---------- */
+
+  .note {
+    border-left: 3px solid var(--blue);
+    background: var(--blue-wash);
+    border-radius: 0 10px 10px 0;
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .note.warn {
+    border-left-color: var(--amber);
+    background: var(--amber-wash);
+  }
+
+  .note strong {
+    font-family: "Poppins", sans-serif;
+    font-weight: 600;
+  }
+
+  .note p {
+    font-size: 15px;
+    max-width: 66ch;
+  }
+
+  /* ---------- checklist ---------- */
+
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    counter-reset: task;
+  }
+
+  .task {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--amber);
+    border-radius: 10px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow);
+  }
+
+  .task.blocker {
+    border-left-color: var(--amber);
+  }
+
+  .task.decision {
+    border-left-color: var(--slate);
+  }
+
+  .task-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .task-head h3 {
+    font-size: 1.06rem;
+    flex: 1 1 auto;
+    min-width: 200px;
+  }
+
+  .task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.6px;
+    color: var(--ink-faint);
+    padding-top: 2px;
+    border-top: 1px dashed var(--line);
+  }
+
+  .task-meta b {
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  .steps {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 14.8px;
+  }
+
+  pre {
+    margin: 0;
+    overflow-x: auto;
+    background: var(--surface-sunk);
+    border: 1px solid var(--line-soft);
+    border-radius: 9px;
+    padding: 13px 16px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.62;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  footer {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 28px clamp(20px, 4vw, 48px) 60px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-size: 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="eyebrow">Kids First Initiative · Project Handbook</p>
+    <h1>How this system works, and what is left before it ships</h1>
+    <p class="lede">
+      A web platform that teaches STEM to children in underserved communities through two Unity games, wrapped in a
+      pre-quiz and post-quiz so a teacher can see what was learned. This page explains the product to whoever needs to
+      understand it — the team maintaining it, and the organisation it belongs to.
+    </p>
+    <div class="masthead-meta">
+      <span>Updated 29 Aug 2026</span>
+      <span>Repo · kids-first-initiative-site</span>
+      <span>Integration branch · develop</span>
+      <span>Stack · Next 16.3.3 · React 18 · MongoDB · Clerk</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="index" aria-label="Sections">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#glance">At a glance</a></li>
+      <li><a href="#product">What it does</a></li>
+      <li><a href="#components">Components</a></li>
+      <li><a href="#classroom">The classroom model</a></li>
+      <li><a href="#api">API surface</a></li>
+      <li><a href="#testing">What is tested</a></li>
+      <li><a href="#operations">Running it</a></li>
+      <li><a href="#releases">Releasing</a></li>
+      <li><a href="#launch">Launch checklist</a></li>
+      <li><a href="#state">Where things stand</a></li>
+      <li><a href="#setup">Local setup</a></li>
+      <li><a href="#deeper">Deeper reading</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- ================= AT A GLANCE ================= -->
+    <section id="glance">
+      <h2><span class="num">01</span>At a glance</h2>
+      <p>
+        Every number here is counted from the repository. Each one carries the caveat that matters, because a metric
+        without its limitation invites more confidence than it has earned.
+      </p>
+
+      <div class="metrics">
+        <div class="metric">
+          <span class="label">Unit tests</span>
+          <span class="value">128</span>
+          <span class="caveat"
+            >Across 15 files. All of them mock MongoDB, so connection ordering, index behaviour, and query shape are
+            <em>not</em> verified here.</span
+          >
+        </div>
+        <div class="metric">
+          <span class="label">Browser tests</span>
+          <span class="value">18</span>
+          <span class="caveat"
+            >The only layer exercising real wiring. Covers both games' completion contracts; cannot yet cover
+            authorization.</span
+          >
+        </div>
+        <div class="metric">
+          <span class="label">Accessibility checks</span>
+          <span class="value">26</span>
+          <span class="caveat"
+            >Reports, does not gate. Real violations remain — read the CI artifact rather than trusting a green
+            build.</span
+          >
+        </div>
+        <div class="metric">
+          <span class="label">API endpoints</span>
+          <span class="value">33</span>
+          <span class="caveat"
+            >Across 22 route files. Each one authorizes on the server; client input never assigns ownership.</span
+          >
+        </div>
+        <div class="metric">
+          <span class="label">Known vulnerabilities</span>
+          <span class="value">0</span>
+          <span class="caveat"
+            >Down from 53, including a Clerk middleware auth bypass this app was directly exposed to.</span
+          >
+        </div>
+        <div class="metric">
+          <span class="label">Blocking on a person</span>
+          <span class="value">6</span>
+          <span class="caveat">Access or hardware, not code. All six are in the launch checklist below.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PRODUCT ================= -->
+    <section id="product">
+      <h2><span class="num">02</span>What it does</h2>
+
+      <div class="prose">
+        <p>
+          The product exists to prove learning happened, not just to entertain. That single goal explains most of its
+          design: every game is bracketed by a quiz, and every result is attributable to a specific child in a specific
+          class.
+        </p>
+        <h3>The learning loop</h3>
+        <p>
+          A learner takes a <strong>pre-quiz</strong>, plays a <strong>game</strong>, then takes a
+          <strong>post-quiz</strong>. The difference between the two is the number the organisation actually cares
+          about. Progress saves continuously during play, so a lost connection or a closed tab does not cost a child
+          their work.
+        </p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h3>States of Matter</h3>
+          <p>
+            Melting, freezing, condensing. Reports progress as completed <em>stage ids</em> — named puzzles rather than
+            numbered levels.
+          </p>
+          <span class="where">public/game/StatesOfMatter/</span>
+        </div>
+        <div class="card">
+          <h3>Penguin Run</h3>
+          <p>
+            Gravity and friction through track building. Reports progress as completed <em>level numbers</em>, which is
+            why its bridge needs separate test coverage.
+          </p>
+          <span class="where">public/game/PenguinRun/</span>
+        </div>
+      </div>
+
+      <h3>Who uses it</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Role</th>
+              <th scope="col">What they do</th>
+              <th scope="col">How they are identified</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Learner (classroom)</strong></td>
+              <td>Joins with a class code, plays, takes both quizzes</td>
+              <td>An HTTP-only cookie tied to a participant record. No account needed.</td>
+            </tr>
+            <tr>
+              <td><strong>Learner (personal)</strong></td>
+              <td>Signs in and plays independently</td>
+              <td>A Clerk account</td>
+            </tr>
+            <tr>
+              <td><strong>Educator</strong></td>
+              <td>Opens a class, shares a code, watches progress, reopens past classes</td>
+              <td>A Clerk account with the educator role, linked to a Teacher record</td>
+            </tr>
+            <tr>
+              <td><strong>Administrator</strong></td>
+              <td>Sees cross-class analytics and learning outcomes</td>
+              <td>A Clerk account with the admin role</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <strong>Why classroom learners have no accounts</strong>
+        <p>
+          The audience is young children on shared school hardware. Requiring each of them to create an account would be
+          a barrier and would collect far more personal data than the product needs. Instead an educator shares a code,
+          and each child becomes a participant identified only by a display name and an opaque cookie.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= COMPONENTS ================= -->
+    <section id="components">
+      <h2><span class="num">03</span>Components</h2>
+      <p>
+        Ten Mongoose models, 23 pages, and 22 API route files. Rather than list all of them, here is what each part of
+        the system is responsible for and the reasoning that is easy to lose.
+      </p>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Authorization layer</h3>
+          <p>
+            API handlers are the security boundary — not page visibility, and never a client-supplied id. Ownership
+            fields are always derived on the server, so a request body cannot claim to be someone else.
+          </p>
+          <span class="where">src/lib/server/apiAuthorization.ts · classroomAuthorization.ts</span>
+        </div>
+        <div class="card">
+          <h3>Classroom history</h3>
+          <p>
+            Pure functions that group sessions into classes, merge rosters across reopens, and compute per-class
+            metrics. Deliberately free of database calls so the logic is testable in isolation.
+          </p>
+          <span class="where">src/lib/server/classroomHistory.ts</span>
+        </div>
+        <div class="card">
+          <h3>Unity bridge</h3>
+          <p>
+            The games post progress to the page over <code>postMessage</code>. The site saves it, then routes the
+            learner to the post-quiz exactly once — a second completion signal must not send a child through twice.
+          </p>
+          <span class="where">src/components/GamePlayer.tsx · UnityIFrame.tsx</span>
+        </div>
+        <div class="card">
+          <h3>Quiz progress</h3>
+          <p>
+            Reads the baseline a learner recorded before playing. The trickiest code in the system, because the read and
+            write paths must agree on <em>which</em> record belongs to the learner.
+          </p>
+          <span class="where">src/lib/server/quizProgress.ts</span>
+        </div>
+        <div class="card">
+          <h3>Admin analytics</h3>
+          <p>
+            Aggregates outcomes across classes and states which sessions each number covers. Counts classroom learners
+            without requiring a personal account, which the earlier per-user table silently dropped.
+          </p>
+          <span class="where">src/lib/server/adminAnalytics.ts</span>
+        </div>
+        <div class="card">
+          <h3>Observability</h3>
+          <p>
+            Structured error reports with a correlation id and release SHA. Context accepts only primitives, so a quiz
+            answer or a child's name cannot be attached by accident.
+          </p>
+          <span class="where">src/lib/server/observability.ts</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CLASSROOM MODEL ================= -->
+    <section id="classroom">
+      <h2><span class="num">04</span>The classroom model</h2>
+
+      <div class="prose">
+        <p>
+          This is the one concept worth understanding before changing anything, because almost every bug in this area
+          has come from misunderstanding it.
+        </p>
+        <p>
+          <strong>A class is not a session — it is a chain of them.</strong> When an educator reopens a closed class,
+          the system does not revive the old session. It appends a new one linked back to the original through
+          <code>rootSessionId</code>. Historical records keep pointing at the sessions that produced them, so nothing is
+          ever rewritten or re-attributed.
+        </p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Concept</th>
+              <th scope="col">Meaning</th>
+              <th scope="col">Consequence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">rootSessionId</td>
+              <td>Head of the continuation chain; null on an original session</td>
+              <td>A class is always addressed by <code>rootSessionId ?? _id</code></td>
+            </tr>
+            <tr>
+              <td class="mono">participantKey</td>
+              <td>Stable per learner per class — <code>clerk:&lt;id&gt;</code> or <code>guest:&lt;hash&gt;</code></td>
+              <td>
+                A returning learner is one roster entry, not two. Never send it to a client: it embeds a Clerk id.
+              </td>
+            </tr>
+            <tr>
+              <td class="mono">status + expiresAt</td>
+              <td>Session state is <em>derived</em>, never stored</td>
+              <td>
+                <code>closed</code> means closed; <code>active</code> with a past expiry means expired. Always use
+                <code>resolveClassroomSessionState</code>.
+              </td>
+            </tr>
+            <tr>
+              <td class="mono">participant:&lt;id&gt;</td>
+              <td>The owner key on a classroom learner's saves and quiz records</td>
+              <td>
+                Changes when they rejoin after a reopen — lineage resolution is what carries their progress across
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <strong>One live class per educator, enforced by the database</strong>
+        <p>
+          A unique partial index guarantees at most one active continuation per class, which is what stops two
+          simultaneous reopens leaving a class with two working access codes. It builds in the background; a failure
+          logs <code>ClassroomSession index build failed</code>. If a class ever shows two live sessions, check that
+          index first.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= API ================= -->
+    <section id="api">
+      <h2><span class="num">05</span>API surface</h2>
+      <p>
+        33 endpoints across 22 route files. Two conventions run through all of them: identity is derived on the server,
+        and an inaccessible resource answers <code>404</code> rather than <code>403</code> so it cannot be probed for.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Route</th>
+              <th scope="col">Methods</th>
+              <th scope="col">Who can reach it</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">/api/health</td>
+              <td class="mono">GET</td>
+              <td>Public — deployment health only, no learner data</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/classroom-sessions</td>
+              <td class="mono">GET POST PATCH</td>
+              <td>Signed-in educator; scoped to their own classes</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/classroom-sessions/join</td>
+              <td class="mono">POST</td>
+              <td>Public with an active code; issues the classroom credential</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/classroom-sessions/history</td>
+              <td class="mono">GET</td>
+              <td>Educator; only their own classes</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/classroom-sessions/history/:classId</td>
+              <td class="mono">GET</td>
+              <td>Owning educator, or administrator</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/classroom-sessions/history/:classId/reopen</td>
+              <td class="mono">POST</td>
+              <td>Owning educator only — <strong>no administrator bypass</strong></td>
+            </tr>
+            <tr>
+              <td class="mono">/api/gameData</td>
+              <td class="mono">GET POST</td>
+              <td>GET is administrator; POST is the owner or a credentialed participant</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/gameData/mine</td>
+              <td class="mono">GET</td>
+              <td>The caller's own saves, including their classroom lineage</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/gameData/:saveId</td>
+              <td class="mono">GET PATCH</td>
+              <td>Owner, administrator, or the educator who owns the classroom</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/quiz · /api/quiz/:id</td>
+              <td class="mono">GET POST PUT</td>
+              <td>Owner or administrator; educators read within their classroom</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/admin/analytics</td>
+              <td class="mono">GET</td>
+              <td>Administrator</td>
+            </tr>
+            <tr>
+              <td class="mono">/api/users · /api/users/me · /api/sessions · /api/events</td>
+              <td class="mono">GET POST PATCH PUT</td>
+              <td>Administrator for aggregate reads; self for own records</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <strong>What never crosses the boundary</strong>
+        <p>
+          Stored records contain Clerk ids, quiz ids, and per-question answers, and a participant's key embeds a Clerk
+          id. History and analytics responses are projected views — those fields are never read, not merely stripped
+          afterwards. Full policy in <a href="./api-authorization.md">api-authorization.md</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= TESTING ================= -->
+    <section id="testing">
+      <h2><span class="num">06</span>What is tested, and what is not</h2>
+      <p>Three layers, each with a real blind spot. Knowing where each one stops is more useful than the totals.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Layer</th>
+              <th scope="col">Command</th>
+              <th scope="col">Covers</th>
+              <th scope="col">Cannot see</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Unit</strong> · 128</td>
+              <td class="mono">npm test</td>
+              <td>Authorization decisions, classroom chain logic, scoring, analytics</td>
+              <td>Anything about the real database — MongoDB is mocked throughout</td>
+            </tr>
+            <tr>
+              <td><strong>Browser</strong> · 18</td>
+              <td class="mono">npm run test:e2e</td>
+              <td>Both games' completion contracts, save creation and retry, classroom attribution</td>
+              <td>Authorization, until a test-only auth stub exists (issue #69)</td>
+            </tr>
+            <tr>
+              <td><strong>Accessibility</strong> · 26</td>
+              <td class="mono">npm run test:a11y</td>
+              <td>WCAG 2.1 AA via axe, layout overflow at real device sizes, reduced motion</td>
+              <td>Audio-only instructions, touch target reach, whether a game is operable</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <strong>The blind spot that has already cost the project</strong>
+        <p>
+          The highest-severity bug found recently — a database call issued before the connection was opened, which hung
+          for ten seconds and then failed — was invisible to all 128 unit tests, because they mock MongoDB. It was found
+          by reading the call graph. Treat unit tests as covering <em>decisions</em>, not <em>wiring</em>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= OPERATIONS ================= -->
+    <section id="operations">
+      <h2><span class="num">07</span>Running it</h2>
+
+      <div class="prose">
+        <p>
+          <code>GET /api/health</code> is the first thing to check when something looks wrong. It separates a database
+          problem from a broken game build in a single request, carries no learner data, and answers <code>503</code> on
+          failure so an uptime monitor can alert without parsing anything.
+        </p>
+      </div>
+
+      <pre><code>curl -s https://&lt;site&gt;/api/health | jq</code></pre>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Database</h3>
+          <p>
+            Reports the connection state. <code>degraded</code> means queries would buffer and eventually time out —
+            which presents to a user as a hang, not an error.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Game builds</h3>
+          <p>
+            Per game: whether the required files are present, plus the exact Unity source SHA that is live. This is what
+            makes a rollback verifiable instead of assumed.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Release</h3>
+          <p>The deploying commit, so an alert identifies which version is broken rather than just "production".</p>
+        </div>
+      </div>
+
+      <div class="prose">
+        <h3>When something breaks</h3>
+        <p>
+          During a live class, <strong>roll back rather than fix forward</strong> — an educator with thirty children
+          waiting cannot absorb a fix-and-deploy cycle. Vercel's instant rollback takes effect immediately and needs no
+          git operation. Full triage steps, alert thresholds, and the backup restore procedure are in
+          <a href="./operations.md">operations.md</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= RELEASES ================= -->
+    <section id="releases">
+      <h2><span class="num">08</span>Releasing</h2>
+
+      <div class="note warn">
+        <strong>Today, <code>develop</code> is production</strong>
+        <p>
+          Vercel deploys production from <code>develop</code>, so every merged pull request goes live immediately. There
+          is no staging and no moment at which anyone decides to release. Until the switch in the checklist below is
+          thrown, treat every merge as a production change.
+        </p>
+      </div>
+
+      <div class="prose">
+        <p>
+          The replacement is already built: <code>main</code> holds what is live, <code>develop</code> stays the
+          integration branch, and the <code>promote-to-production</code> workflow fast-forwards <code>main</code> to a
+          chosen commit. It refuses anything that is not already an ancestor of <code>develop</code> with a green CI run
+          for that exact commit — a green run on a <em>different</em> commit proves nothing.
+        </p>
+        <p>
+          One consequence catches people out: once <code>main</code> is production, reverting on <code>develop</code> no
+          longer changes what is live. You have to promote again.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= LAUNCH CHECKLIST ================= -->
+    <section id="launch">
+      <h2><span class="num">09</span>Launch checklist</h2>
+      <p>
+        Six items. None of them are blocked on code — they need dashboard access, real hardware, or a decision. They are
+        ordered by risk, not by effort.
+      </p>
+
+      <div class="checklist">
+        <article class="task blocker">
+          <div class="task-head">
+            <h3>Run the MongoDB restore drill</h3>
+            <span class="pill pill-human">Highest risk</span>
+          </div>
+          <p>
+            You are storing children's learning records with no verified way to get them back. Atlas is presumably
+            taking backups, but nobody has restored from one — and an untested backup is an assumption, not a backup.
+          </p>
+          <ol class="steps">
+            <li>Atlas → Backup → Restore, targeting a <strong>new</strong> cluster, never production.</li>
+            <li>Point a local checkout at it: <code>MONGO_URI=&lt;restored-uri&gt; npm run dev</code></li>
+            <li>
+              Confirm an educator can open a class and see its roster and quiz results — "the cluster came up" proves
+              nothing.
+            </li>
+            <li>Delete the temporary cluster, and record the date and who ran it.</li>
+          </ol>
+          <div class="task-meta">
+            <span><b>Access</b> MongoDB Atlas</span><span><b>Time</b> ~1 hour</span
+            ><span><b>Detail</b> operations.md</span>
+          </div>
+        </article>
+
+        <article class="task blocker">
+          <div class="task-head">
+            <h3>Point Vercel's production branch at <code>main</code></h3>
+            <span class="pill pill-human">Needs dashboard</span>
+          </div>
+          <p>
+            This is the switch that turns the release gate on. All three steps must happen together — a
+            <code>main</code> branch that exists while Vercel still deploys <code>develop</code> looks authoritative and
+            goes stale immediately, which is why it has not been created ahead of time.
+          </p>
+          <pre><code>git fetch origin
+git branch main origin/develop
+git push origin main</code></pre>
+          <ol class="steps">
+            <li>Protect both branches — Settings → Branches.</li>
+            <li>Vercel → Project → Settings → Git → <strong>Production Branch</strong> → <code>main</code>.</li>
+            <li>Promote once and confirm: <code>curl -s https://&lt;site&gt;/api/health | jq .release</code></li>
+          </ol>
+          <div class="task-meta">
+            <span><b>Access</b> Vercel + repo settings</span><span><b>Time</b> ~15 min</span
+            ><span><b>Detail</b> releases.md</span>
+          </div>
+        </article>
+
+        <article class="task blocker">
+          <div class="task-head">
+            <h3>Run the device QA pass</h3>
+            <span class="pill pill-human">Critical path</span>
+          </div>
+          <p>
+            The largest remaining item, and the only one whose output is <em>more work</em> — it produces a defect list
+            that then needs fixing. Two things it insists on: run the full loop for both games
+            <strong>twice</strong> (once signed in, once as a classroom participant, because those resolve ownership
+            differently and have broken independently), and <strong>play with sound off</strong>. For audio-heavy games
+            aimed at children, audio-only instructions are the most likely failure and the most consequential.
+          </p>
+          <div class="task-meta">
+            <span><b>Access</b> real Chromebook + iPad, with sound</span><span><b>Time</b> ~1 week + fix tail</span
+            ><span><b>Detail</b> accessibility-qa.md</span>
+          </div>
+        </article>
+
+        <article class="task decision">
+          <div class="task-head">
+            <h3>Assign an owner to each alert</h3>
+            <span class="pill pill-open">Decision</span>
+          </div>
+          <p>
+            The runbook defines thresholds and a first response for each alert. Every one needs a named person. An alert
+            with no owner is a notification everyone assumes someone else is handling — which matters more than usual
+            here, because the team that built this is graduating.
+          </p>
+          <div class="task-meta">
+            <span><b>Access</b> none — a decision</span><span><b>Time</b> ~30 min</span
+            ><span><b>Detail</b> operations.md</span>
+          </div>
+        </article>
+
+        <article class="task decision">
+          <div class="task-head">
+            <h3>Choose an error-tracking vendor</h3>
+            <span class="pill pill-open">Decision</span>
+          </div>
+          <p>
+            <code>setErrorSink</code> is the seam — wire it once and every existing call site reports to your tool. Not
+            chosen deliberately: it carries a recurring cost and a data-processing agreement, for a product used by
+            children. When choosing, confirm the vendor does <strong>not</strong> capture request bodies or session
+            replay by default; the reporting layer is careful to keep answers and names out, and session replay would
+            put them straight back in.
+          </p>
+          <div class="task-meta">
+            <span><b>Access</b> budget approval</span><span><b>Time</b> ~2 hours once chosen</span
+            ><span><b>Detail</b> operations.md</span>
+          </div>
+        </article>
+
+        <article class="task decision">
+          <div class="task-head">
+            <h3>Run the first Unity promotion</h3>
+            <span class="pill pill-open">Never executed</span>
+          </div>
+          <p>
+            The automation is built but has never run — it needs Unity licence secrets and a ~90 minute build. Do it in
+            two passes: once with <code>promote</code> disabled to confirm the build half works, then again with it
+            enabled. Low risk by construction: the promotion job can push a branch and open a pull request and nothing
+            else, and a failed build opens no pull request at all.
+          </p>
+          <div class="task-meta">
+            <span><b>Access</b> Unity licence secrets</span><span><b>Time</b> ~90 min, mostly waiting</span
+            ><span><b>Detail</b> Actions → build-unity-webgl</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ================= STATE ================= -->
+    <section id="state">
+      <h2><span class="num">10</span>Where things stand</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Area</th>
+              <th scope="col">Status</th>
+              <th scope="col">What remains</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Learning loop, both games</td>
+              <td><span class="pill pill-done">Shipped</span></td>
+              <td>Verification on real devices</td>
+            </tr>
+            <tr>
+              <td>Classroom sessions, reopening, history</td>
+              <td><span class="pill pill-done">Shipped</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Admin analytics</td>
+              <td><span class="pill pill-done">Shipped</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Dependency security</td>
+              <td><span class="pill pill-done">Clean</span></td>
+              <td>Six pre-existing React hook warnings need a browser to verify</td>
+            </tr>
+            <tr>
+              <td>Observability &amp; health checks (#49)</td>
+              <td><span class="pill pill-human">Needs a person</span></td>
+              <td>Restore drill, alert owners, vendor choice</td>
+            </tr>
+            <tr>
+              <td>Deployment automation (#48)</td>
+              <td><span class="pill pill-human">Needs a person</span></td>
+              <td>First promotion run</td>
+            </tr>
+            <tr>
+              <td>Accessibility &amp; device QA (#50)</td>
+              <td><span class="pill pill-human">Needs a person</span></td>
+              <td>The manual pass; real violations recorded in CI</td>
+            </tr>
+            <tr>
+              <td>End-to-end coverage (#47)</td>
+              <td><span class="pill pill-open">Open</span></td>
+              <td>Deterministic database fixtures and per-test seeding</td>
+            </tr>
+            <tr>
+              <td>Browser authorization tests (#69)</td>
+              <td><span class="pill pill-open">Open</span></td>
+              <td>A test-only auth stub — not a middleware change</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= SETUP ================= -->
+    <section id="setup">
+      <h2><span class="num">11</span>Local setup</h2>
+
+      <ol class="steps">
+        <li>Clone the repository and run <code>npm install</code>.</li>
+        <li>
+          Create <code>.env</code> and get the secrets from a tech lead: <code>MONGO_URI</code>,
+          <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>, <code>CLERK_SECRET_KEY</code>.
+        </li>
+        <li>Install the Prettier and ESLint editor extensions, and enable format on save.</li>
+        <li><code>npm run dev</code>.</li>
+      </ol>
+
+      <div class="prose">
+        <h3>Contributing</h3>
+        <p>
+          Branch from <code>develop</code> — not <code>main</code>. Run <code>npm run lint</code> and
+          <code>npm test</code> before opening a pull request against <code>develop</code>. A Husky hook formats staged
+          files on commit.
+        </p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Command</th>
+              <th scope="col">What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">npm run dev</td>
+              <td>Local development server</td>
+            </tr>
+            <tr>
+              <td class="mono">npm test</td>
+              <td>128 unit tests</td>
+            </tr>
+            <tr>
+              <td class="mono">npm run test:e2e</td>
+              <td>Browser tests (needs MongoDB)</td>
+            </tr>
+            <tr>
+              <td class="mono">npm run test:a11y</td>
+              <td>Accessibility report</td>
+            </tr>
+            <tr>
+              <td class="mono">npm run lint</td>
+              <td>ESLint and Prettier</td>
+            </tr>
+            <tr>
+              <td class="mono">node scripts/validate-webgl-build.mjs</td>
+              <td>Check both embedded game builds are complete</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <strong>Two environment gotchas that look like code bugs</strong>
+        <p>
+          A local <code>next build</code> fails at prerender without Clerk keys — compilation and type-checking still
+          ran, so that failure is environmental. And <code>npx tsc --noEmit</code> reports pre-existing errors in
+          <code>e2e/</code> and <code>.next/</code>; filter with <code>grep -E '^src/'</code> to see whether your change
+          is actually clean.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= DEEPER ================= -->
+    <section id="deeper">
+      <h2><span class="num">12</span>Deeper reading</h2>
+      <p>This page is the map. Each of these goes properly into one area.</p>
+
+      <div class="cards">
+        <div class="card">
+          <h3><a href="./operations.md">operations.md</a></h3>
+          <p>
+            On-call runbook: health checks, alert thresholds, rollback for both the site and a game build, backup
+            restore drill, incident triage.
+          </p>
+        </div>
+        <div class="card">
+          <h3><a href="./releases.md">releases.md</a></h3>
+          <p>Branch topology, the migration to <code>main</code>, and the promotion workflow's guarantees.</p>
+        </div>
+        <div class="card">
+          <h3><a href="./accessibility-qa.md">accessibility-qa.md</a></h3>
+          <p>Device matrix, the manual launch pass, and what automation can and cannot judge.</p>
+        </div>
+        <div class="card">
+          <h3><a href="./api-authorization.md">api-authorization.md</a></h3>
+          <p>Full route inventory, principals, response conventions, and the classroom history rules.</p>
+        </div>
+        <div class="card">
+          <h3><a href="./game-progress-bridge.md">game-progress-bridge.md</a></h3>
+          <p>The contract Unity builds use to report progress to the site.</p>
+        </div>
+        <div class="card">
+          <h3><a href="./handbook.md">handbook.md</a></h3>
+          <p>This page as plain Markdown — the version to search, grep, or hand to an AI assistant.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  Kids First Initiative · Cal Poly Hack4Impact · Handbook generated from the repository on 29 August 2026. Numbers
+  reflect that commit; re-count before quoting them.
+</footer>
