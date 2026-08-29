@@ -36,16 +36,47 @@ type ActivityRow = {
   lastUpdatedMs: number;
 };
 
+type SessionState = "active" | "expired" | "closed";
+
+type AdminClassRow = {
+  classId: string;
+  title: string;
+  educatorName: string;
+  state: SessionState;
+  participantCount: number;
+  gamesPlayed: number;
+  averageGain: number | null;
+  lastActivityAt: string | null;
+};
+
+type AdminAnalytics = {
+  scope: { includedStates: SessionState[] };
+  sessionCounts: { active: number; expired: number; closed: number; total: number };
+  classCount: number;
+  learners: { personal: number; classroom: number; total: number };
+  gamesPlayed: number;
+  averageGain: number | null;
+  classes: AdminClassRow[];
+  classesTruncated: boolean;
+};
+
 type DashboardData = {
   users: AdminUser[];
   quizzes: QuizRecord[];
   gameData: GameDataRecord[];
+  analytics: AdminAnalytics | null;
 };
 
 type StatCard = {
   label: string;
   value: string;
   helper: string;
+};
+
+const STATE_LABELS: Record<SessionState, string> = {
+  active: "Active",
+  expired: "Expired",
+  closed: "Closed",
 };
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -105,35 +136,6 @@ function getAverageScore(quiz?: QuizRecord) {
   return scores.reduce((sum, score) => sum + score, 0) / scores.length;
 }
 
-function getAverageGain(quizzes: QuizRecord[]) {
-  const gains: number[] = [];
-
-  quizzes.forEach((quiz) => {
-    if (
-      typeof quiz.penguinRunScoreBefore === "number" &&
-      quiz.penguinRunScoreBefore >= 0 &&
-      typeof quiz.penguinRunScoreAfter === "number" &&
-      quiz.penguinRunScoreAfter >= 0
-    ) {
-      gains.push(((quiz.penguinRunScoreAfter - quiz.penguinRunScoreBefore) / PENGUIN_RUN_QUESTION_COUNT) * 100);
-    }
-
-    if (
-      typeof quiz.statesOfMatterScoreBefore === "number" &&
-      quiz.statesOfMatterScoreBefore >= 0 &&
-      typeof quiz.stateOfMatterScoreAfter === "number" &&
-      quiz.stateOfMatterScoreAfter >= 0
-    ) {
-      gains.push(
-        ((quiz.stateOfMatterScoreAfter - quiz.statesOfMatterScoreBefore) / STATES_OF_MATTER_QUESTION_COUNT) * 100,
-      );
-    }
-  });
-
-  if (gains.length === 0) return 0;
-  return gains.reduce((sum, gain) => sum + gain, 0) / gains.length;
-}
-
 function getWeeklyChartData(gameData: GameDataRecord[]) {
   const today = new Date();
   const bars = DAY_LABELS.map((label, offset) => {
@@ -161,7 +163,7 @@ function getWeeklyChartData(gameData: GameDataRecord[]) {
 }
 
 export default function AdminDashboardPage() {
-  const [data, setData] = useState<DashboardData>({ users: [], quizzes: [], gameData: [] });
+  const [data, setData] = useState<DashboardData>({ users: [], quizzes: [], gameData: [], analytics: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -173,24 +175,26 @@ export default function AdminDashboardPage() {
         setLoading(true);
         setError("");
 
-        const [usersResponse, quizzesResponse, gameDataResponse] = await Promise.all([
+        const [usersResponse, quizzesResponse, gameDataResponse, analyticsResponse] = await Promise.all([
           fetch("/api/users", { cache: "no-store" }),
           fetch("/api/quiz", { cache: "no-store" }),
           fetch("/api/gameData", { cache: "no-store" }),
+          fetch("/api/admin/analytics", { cache: "no-store" }),
         ]);
 
-        if (!usersResponse.ok || !quizzesResponse.ok || !gameDataResponse.ok) {
+        if (!usersResponse.ok || !quizzesResponse.ok || !gameDataResponse.ok || !analyticsResponse.ok) {
           throw new Error("Failed to load dashboard data.");
         }
 
-        const [users, quizzes, gameData] = await Promise.all([
+        const [users, quizzes, gameData, analytics] = await Promise.all([
           usersResponse.json() as Promise<AdminUser[]>,
           quizzesResponse.json() as Promise<QuizRecord[]>,
           gameDataResponse.json() as Promise<GameDataRecord[]>,
+          analyticsResponse.json() as Promise<AdminAnalytics>,
         ]);
 
         if (!isActive) return;
-        setData({ users, quizzes, gameData });
+        setData({ users, quizzes, gameData, analytics });
       } catch (loadError) {
         console.error("Failed to load admin dashboard:", loadError);
         if (isActive) setError("Could not load admin statistics.");
@@ -225,32 +229,38 @@ export default function AdminDashboardPage() {
   }, [data.gameData]);
 
   const statCards = useMemo<StatCard[]>(() => {
-    const averageGain = getAverageGain(data.quizzes);
-    const gainPrefix = averageGain > 0 ? "+" : "";
+    const analytics = data.analytics;
+    const gain = analytics?.averageGain ?? null;
+    const gainPrefix = gain !== null && gain > 0 ? "+" : "";
 
     return [
       {
-        label: "TOTAL STUDENTS",
-        value: data.users.length.toLocaleString(),
-        helper: "All registered users",
+        label: "TOTAL LEARNERS",
+        value: (analytics ? analytics.learners.total : data.users.length).toLocaleString(),
+        helper: analytics
+          ? `${analytics.learners.personal.toLocaleString()} with accounts, ${analytics.learners.classroom.toLocaleString()} in classrooms`
+          : "All registered users",
       },
       {
         label: "ACTIVE CLASSROOMS",
-        value: "0",
-        helper: "Dummy data for now",
+        value: (analytics?.sessionCounts.active ?? 0).toLocaleString(),
+        helper: analytics
+          ? `${analytics.sessionCounts.expired.toLocaleString()} expired, ${analytics.sessionCounts.closed.toLocaleString()} closed`
+          : "—",
       },
       {
         label: "GAMES PLAYED",
         value: data.gameData.length.toLocaleString(),
-        helper: "From saved game records",
+        helper: "All saved records, personal and classroom",
       },
       {
         label: "AVG PRE→POST GAIN",
-        value: `${gainPrefix}${Math.round(averageGain)}%`,
-        helper: "Across completed post-quizzes",
+        // Distinguishes "no measured gain" from "a gain of zero", which the previous card could not.
+        value: gain === null ? "—" : `${gainPrefix}${Math.round(gain)}%`,
+        helper: gain === null ? "No completed pre and post pairs yet" : "Across classes in scope",
       },
     ];
-  }, [data.gameData.length, data.quizzes, data.users.length]);
+  }, [data.analytics, data.gameData.length, data.users.length]);
 
   const activityRows = useMemo<ActivityRow[]>(() => {
     return data.users
@@ -322,6 +332,53 @@ export default function AdminDashboardPage() {
                 )}
               </div>
             </section>
+
+            {data.analytics ? (
+              <section className={styles.activityCard}>
+                <h2 className={styles.cardTitle}>Classrooms</h2>
+                <p className={styles.scopeNote}>
+                  Showing {data.analytics.classCount.toLocaleString()} class
+                  {data.analytics.classCount === 1 ? "" : "es"} across{" "}
+                  {data.analytics.scope.includedStates.map((state) => STATE_LABELS[state].toLowerCase()).join(", ")}{" "}
+                  sessions.
+                  {data.analytics.classesTruncated ? " Older classes are not listed." : ""}
+                </p>
+
+                <div className={styles.classroomHeader}>
+                  <span>CLASS</span>
+                  <span>EDUCATOR</span>
+                  <span>STATE</span>
+                  <span>STUDENTS</span>
+                  <span>GAMES</span>
+                  <span>GAIN</span>
+                </div>
+
+                <div className={styles.tableBody}>
+                  {data.analytics.classes.length === 0 ? (
+                    <p className={styles.emptyState}>No classrooms in this scope.</p>
+                  ) : (
+                    data.analytics.classes.map((row) => (
+                      <a
+                        key={row.classId}
+                        href={`/educatorClassHistory/${row.classId}`}
+                        className={styles.classroomRow}
+                      >
+                        <span className={styles.userName}>{row.title}</span>
+                        <span className={styles.gameName}>{row.educatorName}</span>
+                        <span className={styles.gameName}>{STATE_LABELS[row.state]}</span>
+                        <span className={styles.scoreValue}>{row.participantCount.toLocaleString()}</span>
+                        <span className={styles.scoreValue}>{row.gamesPlayed.toLocaleString()}</span>
+                        <span className={styles.scoreValue}>
+                          {row.averageGain === null
+                            ? "—"
+                            : `${row.averageGain > 0 ? "+" : ""}${Math.round(row.averageGain)}%`}
+                        </span>
+                      </a>
+                    ))
+                  )}
+                </div>
+              </section>
+            ) : null}
 
             <section className={styles.chartCard}>
               <h2 className={styles.cardTitle}>Games Played — Last 7 Days</h2>
