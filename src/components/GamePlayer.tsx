@@ -104,6 +104,35 @@ export default function GamePlayer({ game, saveId, sessionId, classroomId, userI
     clearClassroomParticipantProvenance();
   }, []);
 
+  // Classroom saves are owned by `participant:<id>`, and that id changes when a student rejoins a
+  // reopened class, so nothing client-side survives to point at the earlier save. Ask the server for
+  // the saves this caller owns — it resolves the participant's lineage within the class — and adopt
+  // the most recent one so progress carries across a reopen instead of restarting.
+  useEffect(() => {
+    if (!activeClassroomSession?.participantId || classroomSaveIdRef.current) return;
+
+    let ignore = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/gameData/mine?gameId=${encodeURIComponent(game)}`, { cache: "no-store" });
+        if (!response.ok) return;
+
+        const result = (await response.json()) as { saves?: Array<{ saveId?: string }> };
+        const latestSaveId = result.saves?.find((save) => typeof save.saveId === "string")?.saveId;
+        if (ignore || !latestSaveId || classroomSaveIdRef.current) return;
+
+        classroomSaveIdRef.current = latestSaveId;
+        setClassroomSaveId(latestSaveId);
+      } catch {
+        // A failed lookup just means starting a fresh save, which is the previous behaviour.
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeClassroomSession?.participantId, game]);
+
   const classroomSessionId = activeClassroomSession?.sessionId ?? classroomId;
   const classroomParticipantId = activeClassroomSession?.participantId;
   const effectiveSaveId = classroomParticipantId ? classroomSaveId : personalSaveId;

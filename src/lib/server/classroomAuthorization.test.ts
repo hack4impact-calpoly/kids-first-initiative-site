@@ -8,6 +8,7 @@ import {
   createClassroomCredential,
   hashClassroomSecret,
   parseClassroomCredential,
+  resolveClassroomOwnerKeys,
   resolveDataPrincipal,
   resolveDataPrincipalFromCredential,
   setClassroomCredentialCookie,
@@ -179,5 +180,94 @@ describe("classroom participant credentials", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.response.status).toBe(401);
+  });
+});
+
+describe("resolveClassroomOwnerKeys", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const ROOT = new mongoose.Types.ObjectId();
+  const CONTINUATION = new mongoose.Types.ObjectId();
+  const OLD_PARTICIPANT = new mongoose.Types.ObjectId();
+  const NEW_PARTICIPANT = new mongoose.Types.ObjectId();
+
+  const participant = (sessionId: string, participantId: string) => ({
+    participantId,
+    sessionId,
+    displayName: "Ada",
+    clerkId: "clerk-student",
+  });
+
+  function stubChain(options: { chain: mongoose.Types.ObjectId[]; siblings: mongoose.Types.ObjectId[] }) {
+    vi.spyOn(ClassroomSession, "findOne").mockReturnValue({
+      select: () => ({ lean: async () => ({ _id: CONTINUATION, rootSessionId: ROOT }) }),
+    } as never);
+    vi.spyOn(ClassroomSession, "find").mockReturnValue({
+      select: () => ({ lean: async () => options.chain.map((id) => ({ _id: id })) }),
+    } as never);
+    vi.spyOn(ClassroomParticipant, "findOne").mockReturnValue({
+      select: () => ({ lean: async () => ({ participantKey: "clerk:clerk-student" }) }),
+    } as never);
+    vi.spyOn(ClassroomParticipant, "find").mockReturnValue({
+      select: () => ({ sort: () => ({ lean: async () => options.siblings.map((id) => ({ _id: id })) }) }),
+    } as never);
+  }
+
+  it("includes the student's earlier participant rows in the same class", async () => {
+    stubChain({ chain: [ROOT, CONTINUATION], siblings: [NEW_PARTICIPANT, OLD_PARTICIPANT] });
+
+    const keys = await resolveClassroomOwnerKeys(participant(String(CONTINUATION), String(NEW_PARTICIPANT)));
+
+    // Current key first, so callers that want "most current" can take the head.
+    expect(keys).toEqual([`participant:${NEW_PARTICIPANT}`, `participant:${OLD_PARTICIPANT}`]);
+  });
+
+  it("only matches rows sharing the caller's own participantKey", async () => {
+    stubChain({ chain: [ROOT, CONTINUATION], siblings: [NEW_PARTICIPANT] });
+
+    await resolveClassroomOwnerKeys(participant(String(CONTINUATION), String(NEW_PARTICIPANT)));
+
+    // The key is what scopes this to one student; without it the chain query would return the
+    // whole class roster.
+    expect(ClassroomParticipant.find).toHaveBeenCalledWith(
+      expect.objectContaining({ participantKey: "clerk:clerk-student" }),
+    );
+  });
+
+  it("stays within the class chain rather than searching every session", async () => {
+    stubChain({ chain: [ROOT, CONTINUATION], siblings: [NEW_PARTICIPANT] });
+
+    await resolveClassroomOwnerKeys(participant(String(CONTINUATION), String(NEW_PARTICIPANT)));
+
+    expect(ClassroomSession.find).toHaveBeenCalledWith({ $or: [{ _id: ROOT }, { rootSessionId: ROOT }] });
+    const participantQuery = (ClassroomParticipant.find as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0][0];
+    expect(participantQuery).toMatchObject({ sessionId: { $in: [ROOT, CONTINUATION] } });
+  });
+
+  it("returns only the current key for a class that has never been reopened", async () => {
+    stubChain({ chain: [ROOT], siblings: [NEW_PARTICIPANT, OLD_PARTICIPANT] });
+
+    const keys = await resolveClassroomOwnerKeys(participant(String(ROOT), String(NEW_PARTICIPANT)));
+
+    // A single-session chain cannot have lineage, so it short-circuits before querying participants.
+    expect(keys).toEqual([`participant:${NEW_PARTICIPANT}`]);
+    expect(ClassroomParticipant.find).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the current key when the session cannot be found", async () => {
+    vi.spyOn(ClassroomSession, "findOne").mockReturnValue({
+      select: () => ({ lean: async () => null }),
+    } as never);
+
+    const keys = await resolveClassroomOwnerKeys(participant(String(CONTINUATION), String(NEW_PARTICIPANT)));
+
+    expect(keys).toEqual([`participant:${NEW_PARTICIPANT}`]);
+  });
+
+  it("falls back to the current key for a malformed session id", async () => {
+    const keys = await resolveClassroomOwnerKeys(participant("not-an-object-id", String(NEW_PARTICIPANT)));
+
+    expect(keys).toEqual([`participant:${NEW_PARTICIPANT}`]);
   });
 });

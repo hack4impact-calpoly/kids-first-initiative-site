@@ -198,6 +198,53 @@ export async function resolveDataPrincipal(
   );
 }
 
+/**
+ * Every owner key a student's records may sit under within one class.
+ *
+ * Reopening a class appends a continuation session, and a returning student joins it as a *new*
+ * participant row — same `participantKey`, new `_id`. Records are owned by `participant:<_id>`, so
+ * without this a student who returns after a reopen cannot reach anything they did before it.
+ *
+ * Scoped two ways so it cannot widen access: only rows sharing the authorized participant's exact
+ * `participantKey`, and only within the same continuation chain. The authorized participant's own
+ * key is always first, so callers that want "most current" can take the head.
+ */
+export async function resolveClassroomOwnerKeys(participant: AuthorizedClassroomParticipant): Promise<string[]> {
+  const current = `participant:${participant.participantId}`;
+
+  if (!mongoose.Types.ObjectId.isValid(participant.sessionId)) return [current];
+
+  const session = await ClassroomSession.findOne({ _id: participant.sessionId })
+    .select("rootSessionId")
+    .lean<{ _id: mongoose.Types.ObjectId; rootSessionId?: mongoose.Types.ObjectId | null } | null>();
+  if (!session) return [current];
+
+  const rootId = session.rootSessionId ?? session._id;
+  const chainSessionIds = await ClassroomSession.find({
+    $or: [{ _id: rootId }, { rootSessionId: rootId }],
+  })
+    .select("_id")
+    .lean<Array<{ _id: mongoose.Types.ObjectId }>>();
+
+  if (chainSessionIds.length <= 1) return [current];
+
+  const self = await ClassroomParticipant.findOne({ _id: participant.participantId })
+    .select("participantKey")
+    .lean<{ participantKey: string } | null>();
+  if (!self?.participantKey) return [current];
+
+  const siblings = await ClassroomParticipant.find({
+    sessionId: { $in: chainSessionIds.map((entry) => entry._id) },
+    participantKey: self.participantKey,
+  })
+    .select("_id")
+    .sort({ joinedAt: -1 })
+    .lean<Array<{ _id: mongoose.Types.ObjectId }>>();
+
+  const keys = siblings.map((entry) => `participant:${String(entry._id)}`);
+  return [current, ...keys.filter((key) => key !== current)];
+}
+
 export async function canEducatorReadClassroom(actor: RequestActor, classroomSessionId: string | null | undefined) {
   if (!actor.userId || !classroomSessionId || !mongoose.Types.ObjectId.isValid(classroomSessionId)) return false;
   if (actor.role === "admin") return true;
