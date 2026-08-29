@@ -45,6 +45,11 @@ jobs:
           # Add additional environment variables here
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      # Catches a truncated or incompletely promoted game build before it can merge, rather than
+      # letting it reach a child as a blank canvas.
+      - name: Validate embedded WebGL builds
+        run: node scripts/validate-webgl-build.mjs
+
       - name: Run tests
         run: npm test
         env:

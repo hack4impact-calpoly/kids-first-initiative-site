@@ -110,6 +110,26 @@ curl -s https://<site>/api/health | jq '.checks.games'
 
 Then revert the commit that promoted it, and re-check that `sourceSha` moved back.
 
+## Releasing a game build
+
+Promotion is driven by the **build-unity-webgl** workflow. Do not copy artifacts by hand.
+
+1. Actions → **build-unity-webgl** → Run workflow.
+2. Choose the game and the exact source commit, tag, or branch to build.
+3. Leave **promote** enabled to open a website pull request automatically.
+
+The workflow builds the requested revision, stamps provenance markers, validates that the artifact
+has a loader, framework, wasm, and data asset of plausible size plus an `index.html` that references
+the loader, and confirms the diff touches only that game's directory. It then opens a pull request
+stating the source repository, full source SHA, Unity version, and a link to the build run.
+
+The promotion job can push a branch and open a pull request and nothing else. It cannot merge or
+deploy: a human reviews and merges, and merging is what deploys.
+
+If the build fails validation, no pull request is opened and the deployed site is untouched.
+
+Concurrency is keyed per game, so two promotions of the same game cannot interleave.
+
 ## Database backup and restore
 
 MongoDB Atlas takes the backups; this repository holds no copy of learner data.
