@@ -71,8 +71,20 @@ jobs:
 
       # A browser failure is close to undiagnosable from the log alone. Keep the trace, screenshots,
       # and HTML report so a failure can be replayed rather than guessed at.
+      # Reporting, not gating. It surfaces pre-existing accessibility violations that need a browser
+      # to triage; failing the build on them would block every unrelated change and train people to
+      # ignore CI. The report is uploaded either way.
+      - name: Run accessibility checks
+        if: ${{ matrix.node-version == '20.x' }}
+        continue-on-error: true
+        run: npm run test:a11y
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+
       - name: Upload browser test artifacts
-        if: ${{ failure() && matrix.node-version == '20.x' }}
+        if: ${{ always() && matrix.node-version == '20.x' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

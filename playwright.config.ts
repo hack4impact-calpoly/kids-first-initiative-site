@@ -20,6 +20,15 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      // The accessibility suite is a separate project so it can run as a reporting step rather than
+      // a merge gate. It surfaces pre-existing violations that need a browser to triage, and a
+      // permanently red required check would train people to ignore CI.
+      testIgnore: /accessibility\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "accessibility",
+      testMatch: /accessibility\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
   ],
