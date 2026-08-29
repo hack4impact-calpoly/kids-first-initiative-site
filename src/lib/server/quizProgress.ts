@@ -1,7 +1,7 @@
 import connectDB from "@/database/db";
 import Quiz from "@/database/quizSchema";
 import { RequestActor } from "@/lib/server/apiAuthorization";
-import { resolveDataPrincipalFromCredential } from "@/lib/server/classroomAuthorization";
+import { resolveClassroomOwnerKeys, resolveDataPrincipalFromCredential } from "@/lib/server/classroomAuthorization";
 
 type QuizKey = "penguinRunQuiz" | "statesOfMatterQuiz";
 
@@ -40,10 +40,23 @@ export async function getPreviousQuizScore(
     const principal = await resolveDataPrincipalFromCredential(classroomCredential, actor, claimedParticipantId);
     if (!principal.ok || !principal.value.ownerId) return -1;
 
-    const quiz = await Quiz.findOne({ clerkId: principal.value.ownerId }).lean<QuizBeforeScores | null>();
-    const score = quiz?.[getBeforeScoreField(quizKey)];
+    // A student who rejoins a reopened class gets a new participant row, so their baseline sits
+    // under an earlier owner key. Search the lineage, newest first, and take the first real score.
+    const ownerIds = principal.value.classroom
+      ? await resolveClassroomOwnerKeys(principal.value.classroom)
+      : [principal.value.ownerId];
 
-    return typeof score === "number" ? score : -1;
+    const quizzes = await Quiz.find({ clerkId: { $in: ownerIds } })
+      .select("clerkId penguinRunScoreBefore statesOfMatterScoreBefore")
+      .lean<Array<QuizBeforeScores & { clerkId: string }>>();
+
+    const field = getBeforeScoreField(quizKey);
+    for (const ownerId of ownerIds) {
+      const score = quizzes.find((quiz) => quiz.clerkId === ownerId)?.[field];
+      if (typeof score === "number" && score >= 0) return score;
+    }
+
+    return -1;
   } catch (error) {
     // "No previous score" is a state the quiz already renders. Letting a transient database error
     // escape would fail the whole server-rendered page instead.
