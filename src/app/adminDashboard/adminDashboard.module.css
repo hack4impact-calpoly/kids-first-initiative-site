@@ -270,3 +270,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Classroom breakdown: six columns, and each row links through to that class's full record. */
+.classroomHeader,
+.classroomRow {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 0.9fr 0.8fr 0.7fr 0.7fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.classroomHeader {
+  padding: 0 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8a92a6;
+}
+
+.classroomRow {
+  padding: 12px 4px;
+  border-top: 1px solid #eef1f6;
+  text-decoration: none;
+  color: inherit;
+}
+
+.classroomRow:hover {
+  background: #f8fbff;
+}
+
+.scopeNote {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+@media (max-width: 900px) {
+  .classroomHeader {
+    display: none;
+  }
+
+  .classroomRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
