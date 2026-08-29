@@ -17,10 +17,17 @@ on:
         required: true
         default: main
         type: string
+      promote:
+        description: Open a website pull request with the built artifact
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
 
+# One release per game at a time. Two concurrent promotions of the same game would race on the same
+# branch and could interleave two different builds into one pull request.
 concurrency:
   group: unity-webgl-${{ inputs.game }}
   cancel-in-progress: false
@@ -33,6 +40,11 @@ jobs:
 
     env:
       SOURCE_REPOSITORY: ${{ inputs.game == 'penguin-run' && 'hack4impact-calpoly/kids-first-initiative-penguin-run' || 'hack4impact-calpoly/kids-first-initiative-states-of-matter' }}
+
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+      source_short_sha: ${{ steps.source.outputs.short_sha }}
+      unity_version: ${{ steps.source.outputs.unity_version }}
 
     steps:
       - name: Checkout Unity source
@@ -156,3 +168,87 @@ jobs:
           path: ${{ runner.temp }}/webgl-build
           if-no-files-found: error
           retention-days: 7
+
+  promote:
+    name: Open website pull request
+    if: ${{ inputs.promote }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Scoped to exactly what promotion needs: push a branch and open a pull request. It deliberately
+    # cannot merge, deploy, or touch production directly — a human approves the pull request.
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      GAME_DIR: ${{ inputs.game == 'penguin-run' && 'PenguinRun' || 'StatesOfMatter' }}
+      SOURCE_REPOSITORY: ${{ inputs.game == 'penguin-run' && 'hack4impact-calpoly/kids-first-initiative-penguin-run' || 'hack4impact-calpoly/kids-first-initiative-states-of-matter' }}
+      SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
+      SOURCE_SHORT_SHA: ${{ needs.build.outputs.source_short_sha }}
+      UNITY_VERSION: ${{ needs.build.outputs.unity_version }}
+
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v4
+
+      - name: Download WebGL artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webgl-${{ inputs.game }}-${{ needs.build.outputs.source_short_sha }}
+          path: incoming-build
+
+      - name: Replace the embedded build
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="public/game/${GAME_DIR}"
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp -R incoming-build/. "$target"/
+          rm -rf incoming-build
+
+      - name: Validate the promoted build
+        shell: bash
+        run: node scripts/validate-webgl-build.mjs "$GAME_DIR"
+
+      - name: Confirm only this game changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The pull request must contain the selected game and nothing else, so the diff stays
+          # reviewable and a promotion cannot smuggle in an unrelated change.
+          unexpected="$(git status --porcelain -- . ":(exclude)public/game/${GAME_DIR}")"
+          if [ -n "$unexpected" ]; then
+            echo "Promotion changed files outside public/game/${GAME_DIR}:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: release/${{ inputs.game }}-${{ needs.build.outputs.source_short_sha }}
+          base: develop
+          commit-message: "build: promote ${{ inputs.game }} WebGL ${{ needs.build.outputs.source_short_sha }}"
+          title: "Promote ${{ inputs.game }} WebGL build ${{ needs.build.outputs.source_short_sha }}"
+          delete-branch: true
+          add-paths: public/game/${{ inputs.game == 'penguin-run' && 'PenguinRun' || 'StatesOfMatter' }}
+          body: |
+            Automated Unity WebGL promotion.
+
+            | Field | Value |
+            | --- | --- |
+            | Game | `${{ inputs.game }}` |
+            | Source repository | `${{ env.SOURCE_REPOSITORY }}` |
+            | Source revision | `${{ needs.build.outputs.source_sha }}` |
+            | Unity version | `${{ needs.build.outputs.unity_version }}` |
+            | Build run | ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} |
+
+            The artifact was validated for a loader, framework, wasm, and data asset of plausible
+            size, an `index.html` referencing the loader, and complete provenance markers. The diff
+            was checked to contain only `public/game/${{ inputs.game == 'penguin-run' && 'PenguinRun' || 'StatesOfMatter' }}`.
+
+            Merging deploys to production through Vercel. To roll back, revert the merge commit and
+            confirm with `curl -s https://<site>/api/health | jq '.checks.games'`.
