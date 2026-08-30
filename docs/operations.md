@@ -128,11 +128,21 @@ deploy: a human reviews and merges, and merging is what deploys.
 
 If the build fails validation, no pull request is opened and the deployed site is untouched.
 
-**Check the promotion pull request has run its checks.** A pull request opened by a workflow using
-the default token does not start `on: pull_request` workflows, so the site build — and the WebGL
-validation inside it — can be missing. The workflow uses a personal access token to avoid this. If
-the checks are absent or show "action required", approve the run from the **Actions** tab before
-merging; merging without them skips the validation that catches an incomplete artifact.
+**Approve the promotion pull request's checks.** A pull request opened by a workflow using the
+default token does not start `on: pull_request` workflows — GitHub suppresses them so a workflow
+cannot trigger itself. Its checks therefore arrive queued as "action required".
+
+Approve the run from the **Actions** tab before merging. This is not optional bookkeeping: the site
+build is where `validate-webgl-build.mjs` runs, so merging without it skips the check that catches an
+incomplete artifact — on the one kind of pull request that carries a game build.
+
+It also fails quietly. The pull request shows green Vercel and GitGuardian ticks and looks healthy;
+the absence of `build (20.x)` and `build (22.x)` is the thing to notice.
+
+Using a personal access token would make the checks run automatically. `UNITY_REPO_TOKEN` was tried
+and reverted — it is present but not valid, and the promotion job then failed to authenticate and
+opened no pull request at all. If someone issues a working token, wiring it into the
+`create-pull-request` step restores automatic checks.
 
 Concurrency is keyed per game, so two promotions of the same game cannot interleave.
 
