@@ -128,6 +128,12 @@ deploy: a human reviews and merges, and merging is what deploys.
 
 If the build fails validation, no pull request is opened and the deployed site is untouched.
 
+**Check the promotion pull request has run its checks.** A pull request opened by a workflow using
+the default token does not start `on: pull_request` workflows, so the site build — and the WebGL
+validation inside it — can be missing. The workflow uses a personal access token to avoid this. If
+the checks are absent or show "action required", approve the run from the **Actions** tab before
+merging; merging without them skips the validation that catches an incomplete artifact.
+
 Concurrency is keyed per game, so two promotions of the same game cannot interleave.
 
 ## Database backup and restore
