@@ -193,6 +193,12 @@ jobs:
       - name: Checkout website
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
       - name: Download WebGL artifact
         uses: actions/download-artifact@v4
         with:
@@ -225,6 +231,25 @@ jobs:
             echo "$unexpected"
             exit 1
           fi
+
+      # The check that matters for a game artifact, run here rather than left to a pull request
+      # workflow that the default token cannot start.
+      #
+      # Of everything ci does, only two steps say anything about a game build: this one, and the
+      # validator above. The unit tests mock their dependencies, and the browser tests replace the
+      # Unity build with a stub shell, so neither ever loads the real artifact. Running the build
+      # here means a broken artifact fails before a pull request exists, rather than after.
+      #
+      # Deliberately after the diff guard, so that guard inspects a tree containing only what the
+      # promotion changed.
+      - name: Build the site against the promoted artifact
+        run: |
+          npm ci
+          npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v6

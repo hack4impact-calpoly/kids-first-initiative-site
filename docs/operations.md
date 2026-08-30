@@ -128,21 +128,27 @@ deploy: a human reviews and merges, and merging is what deploys.
 
 If the build fails validation, no pull request is opened and the deployed site is untouched.
 
-**Approve the promotion pull request's checks.** A pull request opened by a workflow using the
-default token does not start `on: pull_request` workflows — GitHub suppresses them so a workflow
-cannot trigger itself. Its checks therefore arrive queued as "action required".
+**The promotion job validates itself.** A pull request opened by a workflow using the default token
+does not start `on: pull_request` workflows — GitHub suppresses them so a workflow cannot trigger
+itself — so the promotion pull request arrives with its checks queued as "action required".
 
-Approve the run from the **Actions** tab before merging. This is not optional bookkeeping: the site
-build is where `validate-webgl-build.mjs` runs, so merging without it skips the check that catches an
-incomplete artifact — on the one kind of pull request that carries a game build.
+Rather than depend on that, the promotion job runs the checks that actually say something about a
+game artifact before it opens the pull request: it validates the build files, confirms the diff
+touches only that game, and builds the site against the new artifact. A broken artifact therefore
+fails while there is still nothing to review.
 
-It also fails quietly. The pull request shows green Vercel and GitGuardian ticks and looks healthy;
-the absence of `build (20.x)` and `build (22.x)` is the thing to notice.
+Of everything `ci` runs, only those two say anything about a game build. The unit tests mock their
+dependencies, and the browser tests replace the Unity build with a stub shell, so neither ever loads
+the real artifact.
 
-Using a personal access token would make the checks run automatically. `UNITY_REPO_TOKEN` was tried
-and reverted — it is present but not valid, and the promotion job then failed to authenticate and
-opened no pull request at all. If someone issues a working token, wiring it into the
-`create-pull-request` step restores automatic checks.
+You can still approve the pull request's queued checks from the **Actions** tab, and it is worth
+doing for anything beyond a plain artifact swap. It is no longer the only thing standing between a
+bad build and production.
+
+A working personal access token would make those checks run on their own. `UNITY_REPO_TOKEN` was
+tried and reverted: it is present but not valid, so the job failed to authenticate and opened no
+pull request at all. A GitHub App token is the sturdier option if someone wants to set one up —
+unlike a personal token it does not expire and its pull requests do trigger workflows.
 
 Concurrency is keyed per game, so two promotions of the same game cannot interleave.
 
