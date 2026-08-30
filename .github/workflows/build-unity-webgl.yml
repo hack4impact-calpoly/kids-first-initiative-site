@@ -229,6 +229,15 @@ jobs:
       - name: Open pull request
         uses: peter-evans/create-pull-request@v6
         with:
+          # A pull request opened with the default GITHUB_TOKEN does not start `on: pull_request`
+          # workflows — GitHub suppresses them to avoid a workflow triggering itself. That left the
+          # promotion pull request without the site build, and so without the WebGL validation that
+          # runs inside it, which is the one case that check exists for. A personal access token
+          # makes the pull request look like a human's, so checks run normally.
+          #
+          # Falls back to the default token when the secret is unset: promotion still works, but its
+          # checks then need approving by hand from the Actions tab.
+          token: ${{ secrets.UNITY_REPO_TOKEN || github.token }}
           branch: release/${{ inputs.game }}-${{ needs.build.outputs.source_short_sha }}
           base: develop
           commit-message: "build: promote ${{ inputs.game }} WebGL ${{ needs.build.outputs.source_short_sha }}"
