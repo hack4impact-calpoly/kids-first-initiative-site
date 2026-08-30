@@ -128,11 +128,27 @@ deploy: a human reviews and merges, and merging is what deploys.
 
 If the build fails validation, no pull request is opened and the deployed site is untouched.
 
-**Check the promotion pull request has run its checks.** A pull request opened by a workflow using
-the default token does not start `on: pull_request` workflows, so the site build — and the WebGL
-validation inside it — can be missing. The workflow uses a personal access token to avoid this. If
-the checks are absent or show "action required", approve the run from the **Actions** tab before
-merging; merging without them skips the validation that catches an incomplete artifact.
+**The promotion job validates itself.** A pull request opened by a workflow using the default token
+does not start `on: pull_request` workflows — GitHub suppresses them so a workflow cannot trigger
+itself — so the promotion pull request arrives with its checks queued as "action required".
+
+Rather than depend on that, the promotion job runs the checks that actually say something about a
+game artifact before it opens the pull request: it validates the build files, confirms the diff
+touches only that game, and builds the site against the new artifact. A broken artifact therefore
+fails while there is still nothing to review.
+
+Of everything `ci` runs, only those two say anything about a game build. The unit tests mock their
+dependencies, and the browser tests replace the Unity build with a stub shell, so neither ever loads
+the real artifact.
+
+You can still approve the pull request's queued checks from the **Actions** tab, and it is worth
+doing for anything beyond a plain artifact swap. It is no longer the only thing standing between a
+bad build and production.
+
+A working personal access token would make those checks run on their own. `UNITY_REPO_TOKEN` was
+tried and reverted: it is present but not valid, so the job failed to authenticate and opened no
+pull request at all. A GitHub App token is the sturdier option if someone wants to set one up —
+unlike a personal token it does not expire and its pull requests do trigger workflows.
 
 Concurrency is keyed per game, so two promotions of the same game cannot interleave.
 

@@ -193,6 +193,12 @@ jobs:
       - name: Checkout website
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
       - name: Download WebGL artifact
         uses: actions/download-artifact@v4
         with:
@@ -226,18 +232,41 @@ jobs:
             exit 1
           fi
 
+      # The check that matters for a game artifact, run here rather than left to a pull request
+      # workflow that the default token cannot start.
+      #
+      # Of everything ci does, only two steps say anything about a game build: this one, and the
+      # validator above. The unit tests mock their dependencies, and the browser tests replace the
+      # Unity build with a stub shell, so neither ever loads the real artifact. Running the build
+      # here means a broken artifact fails before a pull request exists, rather than after.
+      #
+      # Deliberately after the diff guard, so that guard inspects a tree containing only what the
+      # promotion changed.
+      - name: Build the site against the promoted artifact
+        run: |
+          npm ci
+          npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+
       - name: Open pull request
         uses: peter-evans/create-pull-request@v6
         with:
-          # A pull request opened with the default GITHUB_TOKEN does not start `on: pull_request`
-          # workflows — GitHub suppresses them to avoid a workflow triggering itself. That left the
-          # promotion pull request without the site build, and so without the WebGL validation that
-          # runs inside it, which is the one case that check exists for. A personal access token
-          # makes the pull request look like a human's, so checks run normally.
+          # Deliberately the default token.
           #
-          # Falls back to the default token when the secret is unset: promotion still works, but its
-          # checks then need approving by hand from the Actions tab.
-          token: ${{ secrets.UNITY_REPO_TOKEN || github.token }}
+          # A pull request opened with it does not start `on: pull_request` workflows — GitHub
+          # suppresses them so a workflow cannot trigger itself — so the promotion pull request
+          # arrives with its checks queued as "action required" and someone approves them from the
+          # Actions tab. That is one click, and the runbook says to do it.
+          #
+          # Using UNITY_REPO_TOKEN instead was tried and reverted: that secret is present but not
+          # valid, and because `||` only falls back on an empty value, git failed to authenticate and
+          # no pull request was opened at all. A promotion that needs one approving click is better
+          # than one that silently produces nothing.
+          #
+          # If someone issues a working token later, setting it here restores automatic checks.
           branch: release/${{ inputs.game }}-${{ needs.build.outputs.source_short_sha }}
           base: develop
           commit-message: "build: promote ${{ inputs.game }} WebGL ${{ needs.build.outputs.source_short_sha }}"
