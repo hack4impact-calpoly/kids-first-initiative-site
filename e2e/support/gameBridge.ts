@@ -38,6 +38,12 @@ export async function prepareGamePage(page: Page, game: GameKey, quizPath: strin
 export async function sendUnityProgress(page: Page, game: GameKey, payload: Record<string, unknown>) {
   const framePath = `/game/${game}/index.html`;
 
+  // Wait for the bridge, not the iframe. The iframe resolves first -- markedly so after a reload,
+  // where it comes from cache while the page still has to hydrate -- and postMessage drops a message
+  // that arrives before the listener exists, silently and with no error. Waiting on the iframe alone
+  // made this helper lose completions on slower runners.
+  await expect(page.locator(`iframe[title="${game}"][data-bridge-ready="true"]`)).toBeAttached();
+
   await expect
     .poll(() => page.frames().some((frame) => frame.url().includes(framePath)), {
       message: `${game} iframe should be loaded`,

@@ -86,7 +86,18 @@ export default function UnityIFrame({
       }
     }
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+
+    // Marks the bridge as live. postMessage drops a message with no listener
+    // silently and with no error, so anything driving the game from outside
+    // has to wait for this rather than for the iframe -- the iframe loads
+    // first, and a progress message sent in that gap is lost for good.
+    const iframe = iframeRef.current;
+    iframe?.setAttribute("data-bridge-ready", "true");
+
+    return () => {
+      iframe?.removeAttribute("data-bridge-ready");
+      window.removeEventListener("message", handleMessage);
+    };
   }, [saveId, userId, sessionId, classroomId, onProgress]);
 
   // UPDATE: url no longer needs saveId since its sent in site-context
