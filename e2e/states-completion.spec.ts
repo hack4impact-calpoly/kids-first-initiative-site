@@ -1,4 +1,9 @@
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+// This suite kept its own copy of the bridge harness while the Penguin suite moved to the shared
+// one, and the two drifted: the copy here never stubbed /api/gameData/mine, so these tests quietly
+// depended on a real database and could not run locally at all.
+import { jsonResponse, prepareGamePage, sendUnityProgress } from "./support/gameBridge";
 
 const completedStageIds = [
   "matter-kitchen/freeze-juice",
@@ -9,58 +14,12 @@ const completedStageIds = [
   "state-lab/melt-wax",
 ];
 
-const unityShell = `<!doctype html>
-<html>
-  <body>
-    <script>
-      window.parent.postMessage({ type: "unity-ready" }, window.location.origin);
-    </script>
-  </body>
-</html>`;
-
-async function prepareGamePage(page: Page) {
-  await page.route("**/game/StatesOfMatter/index.html", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: unityShell }),
-  );
-  await page.route("**/threeStatesOfMatterQuiz**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>Post-game quiz</title>" }),
-  );
-  await page.route("**/api/users/me", (route) => route.fulfill({ status: 401, body: "{}" }));
-}
-
-async function sendUnityProgress(page: Page, payload: Record<string, unknown>) {
-  await expect
-    .poll(() => page.frames().some((frame) => frame.url().includes("/game/StatesOfMatter/index.html")), {
-      message: "States of Matter iframe should be loaded",
-    })
-    .toBe(true);
-  const unityFrame = page.frames().find((frame) => frame.url().includes("/game/StatesOfMatter/index.html"));
-
-  await unityFrame!.evaluate((progressPayload) => {
-    window.parent.postMessage(
-      {
-        type: "unity-progress",
-        payload: progressPayload,
-      },
-      window.location.origin,
-    );
-  }, payload);
-}
-
 function sendCompletion(page: Page) {
-  return sendUnityProgress(page, { completedStageIds, gameCompleted: true });
-}
-
-function jsonResponse(route: Route, body: unknown) {
-  return route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify(body),
-  });
+  return sendUnityProgress(page, "StatesOfMatter", { completedStageIds, gameCompleted: true });
 }
 
 test.beforeEach(async ({ page }) => {
-  await prepareGamePage(page);
+  await prepareGamePage(page, "StatesOfMatter", "/threeStatesOfMatterQuiz");
 });
 
 test("saves final States progress before routing once to the post-game quiz", async ({ page }) => {
@@ -441,7 +400,7 @@ test("requires rejoin instead of falling back to a personal save after classroom
 
   await page.goto("/statesOfMatterGame");
   await expect(page.locator('iframe[title="StatesOfMatter"]')).toBeVisible();
-  await sendUnityProgress(page, { completedStageIds: [completedStageIds[0]] });
+  await sendUnityProgress(page, "StatesOfMatter", { completedStageIds: [completedStageIds[0]] });
   await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), classroomSessionKey)).toBeNull();
 
   await sendCompletion(page);
