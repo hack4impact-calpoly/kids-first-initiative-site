@@ -51,10 +51,36 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.SOURCE_REPOSITORY }}
-          ref: ${{ inputs.source_ref }}
           path: unity-source
           fetch-depth: 0
           lfs: true
+
+      # actions/checkout resolves its ref as a branch or tag only. A short commit SHA -- the most
+      # natural thing to paste after merging something -- is neither, so it failed the run in
+      # seconds with "a branch or tag with the name ... could not be found", before Unity started.
+      # The input has always been described as accepting a commit. The full history is already
+      # here, so resolve it with git, which accepts every form.
+      - name: Check out the requested source ref
+        shell: bash
+        working-directory: unity-source
+        run: |
+          set -euo pipefail
+          ref='${{ inputs.source_ref }}'
+
+          sha="$(git rev-parse --verify --quiet "origin/${ref}^{commit}" || true)"
+          if [ -z "$sha" ]; then
+            sha="$(git rev-parse --verify --quiet "${ref}^{commit}" || true)"
+          fi
+          if [ -z "$sha" ]; then
+            echo "::error::'${ref}' is not a branch, tag, or commit in ${SOURCE_REPOSITORY}"
+            exit 1
+          fi
+
+          git checkout --quiet --detach "$sha"
+          # The clone landed on the default branch, so LFS pointers for this commit may not be
+          # fetched yet. A build from unresolved pointers looks fine until the game is blank.
+          git lfs pull
+          echo "Building ${ref} -> $(git rev-parse HEAD)"
 
       - name: Record source revision
         id: source
