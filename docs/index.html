@@ -438,6 +438,9 @@
     flex-direction: column;
     gap: 9px;
     box-shadow: var(--shadow);
+    /* Grid items default to min-width:auto, which lets an unbreakable token such as a file
+       path widen the track and spill past the card edge. */
+    min-width: 0;
   }
 
   .card h3 {
@@ -645,14 +648,14 @@
             Melting, freezing, and condensing. Reports progress as completed <em>stage ids</em>, which are named
             puzzles.
           </p>
-          <p class="mono">public/game/StatesOfMatter/</p>
+          <p class="where">public/game/StatesOfMatter/</p>
         </div>
         <div class="card">
           <h3>Penguin Run</h3>
           <p>
             Gravity and friction, taught through track building. Reports progress as completed <em>level numbers</em>.
           </p>
-          <p class="mono">public/game/PenguinRun/</p>
+          <p class="where">public/game/PenguinRun/</p>
         </div>
       </div>
 
@@ -818,7 +821,7 @@ CLERK_SECRET_KEY=</code></pre>
           <p>
             API handlers are the security boundary. Ownership is derived server-side, never from a client-supplied id.
           </p>
-          <p class="mono">src/lib/server/apiAuthorization.ts</p>
+          <p class="where">src/lib/server/apiAuthorization.ts</p>
         </div>
         <div class="card">
           <h3>Classroom history</h3>
@@ -826,39 +829,39 @@ CLERK_SECRET_KEY=</code></pre>
             Groups sessions into classes, merges rosters across reopens, computes metrics. Pure functions with no
             database calls.
           </p>
-          <p class="mono">src/lib/server/classroomHistory.ts</p>
+          <p class="where">src/lib/server/classroomHistory.ts</p>
         </div>
         <div class="card">
           <h3>Classroom data access</h3>
           <p>Loads class chains and class detail, and performs reopening.</p>
-          <p class="mono">src/lib/server/classroomClasses.ts</p>
+          <p class="where">src/lib/server/classroomClasses.ts</p>
         </div>
         <div class="card">
           <h3>Unity bridge</h3>
           <p>
             Receives progress from the game over <code>postMessage</code>, saves it, and routes to the post-quiz once.
           </p>
-          <p class="mono">src/components/GamePlayer.tsx</p>
+          <p class="where">src/components/GamePlayer.tsx</p>
         </div>
         <div class="card">
           <h3>Quiz progress</h3>
           <p>Reads the baseline score recorded before play.</p>
-          <p class="mono">src/lib/server/quizProgress.ts</p>
+          <p class="where">src/lib/server/quizProgress.ts</p>
         </div>
         <div class="card">
           <h3>Admin analytics</h3>
           <p>Aggregates outcomes across classes and reports the scope each figure covers.</p>
-          <p class="mono">src/lib/server/adminAnalytics.ts</p>
+          <p class="where">src/lib/server/adminAnalytics.ts</p>
         </div>
         <div class="card">
           <h3>Observability</h3>
           <p>Structured error reports carrying a correlation id and release SHA.</p>
-          <p class="mono">src/lib/server/observability.ts</p>
+          <p class="where">src/lib/server/observability.ts</p>
         </div>
         <div class="card">
           <h3>Quiz scoring</h3>
           <p>Score normalisation shared by the dashboards and class history.</p>
-          <p class="mono">src/lib/quizScoring.ts</p>
+          <p class="where">src/lib/quizScoring.ts</p>
         </div>
       </div>
 
