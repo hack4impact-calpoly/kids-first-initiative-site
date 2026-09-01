@@ -1,143 +1,211 @@
-# KFI Project Handbook
+# Kids First Initiative — Project Handbook
 
-Plain-text companion to [index.html](./index.html). Same content, structured for search, grep, and AI
-assistants. Updated 29 August 2026.
+Kids First Initiative is a web platform that teaches STEM to children in underserved communities.
+Children play one of two Unity WebGL games and answer a short quiz before and after each one, so that
+what they learned can be measured.
 
-**Project:** Kids First Initiative — a web platform teaching STEM to children in underserved
-communities through two Unity WebGL games, bracketed by a pre-quiz and post-quiz so learning can be
-measured.
-**Repository:** `hack4impact-calpoly/kids-first-initiative-site`
-**Integration branch:** `develop` (which is also currently the production branch)
-**Stack:** Next.js 16.3.3, React 18, MongoDB via Mongoose 8, Clerk auth, Chakra UI 3, Vercel hosting
+This handbook is the plain-text companion to [index.html](./index.html), which presents the same
+material formatted for reading.
 
----
+- **Repository:** `hack4impact-calpoly/kids-first-initiative-site`
+- **Stack:** Next.js 16.3.3 (App Router), React 18, Mongoose 8, Clerk, Chakra UI 3
+- **Hosting:** Vercel
+- **Integration branch:** `develop`, which is currently also the production branch
+- **Last updated:** 31 August 2026
 
-## At a glance
+## Contents
 
-Counted from the repository. Each number carries its limitation, because a metric without one
-invites more confidence than it has earned.
-
-| Metric                | Value                    | Caveat                                                                                       |
-| --------------------- | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Unit tests            | 128 across 15 files      | All mock MongoDB — connection ordering, index behaviour, and query shape are unverified here |
-| Browser tests         | 18 across 2 files        | The only layer exercising real wiring; cannot yet cover authorization                        |
-| Accessibility checks  | 26                       | Reports, does not gate — real violations remain; read the CI artifact                        |
-| API endpoints         | 33 across 22 route files | Identity always derived server-side                                                          |
-| Known vulnerabilities | 0                        | Down from 53, including a Clerk middleware auth bypass                                       |
-| Blocked on a person   | 6                        | Access or hardware, not code                                                                 |
-| Pages                 | 23                       | App Router                                                                                   |
-| Mongoose models       | 10                       |                                                                                              |
-| CI workflows          | 3                        | `ci`, `build-unity-webgl`, `promote-to-production`                                           |
+1. [Overview](#overview)
+2. [Getting started](#getting-started)
+3. [Architecture](#architecture)
+4. [Classroom sessions](#classroom-sessions)
+5. [API](#api)
+6. [Testing](#testing)
+7. [Releases](#releases)
+8. [Operations](#operations)
+9. [Outstanding work](#outstanding-work)
+10. [Further reading](#further-reading)
 
 ---
 
-## What the product does
+## Overview
 
-The product exists to **prove learning happened**, not just to entertain. That single goal explains
-most of its design: every game is bracketed by a quiz, and every result is attributable to a specific
-child in a specific class.
-
-**The learning loop:** pre-quiz → game → post-quiz. The difference between the two quizzes is the
-number the organisation cares about. Progress saves continuously during play, so a lost connection or
-closed tab does not cost a child their work.
+Each game is bracketed by a quiz. A child answers the pre-quiz, plays, then answers the post-quiz.
+The difference between the two scores is the outcome the organisation reports, so every result must
+be attributable to a particular child in a particular class. Progress saves continuously during play,
+which means a dropped connection or a closed tab does not lose a child's work.
 
 ### Games
 
-| Game             | Teaches                                 | Progress format                         | Location                      |
-| ---------------- | --------------------------------------- | --------------------------------------- | ----------------------------- |
-| States of Matter | Melting, freezing, condensing           | Completed **stage ids** (named puzzles) | `public/game/StatesOfMatter/` |
-| Penguin Run      | Gravity and friction via track building | Completed **level numbers**             | `public/game/PenguinRun/`     |
+| Game             | Teaches                                      | Reports progress as     | Build location                |
+| ---------------- | -------------------------------------------- | ----------------------- | ----------------------------- |
+| States of Matter | Melting, freezing, condensing                | Completed stage ids     | `public/game/StatesOfMatter/` |
+| Penguin Run      | Gravity and friction, through track building | Completed level numbers | `public/game/PenguinRun/`     |
 
-The two report progress differently, which is why each needs its own browser-test coverage rather
-than assuming equivalence.
+The two games report progress in different formats, so each has its own browser-test coverage.
 
 ### Roles
 
-| Role                | What they do                                                         | Identified by                                                        |
-| ------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Learner (classroom) | Joins with a class code, plays, takes both quizzes                   | HTTP-only cookie tied to a participant record; **no account needed** |
-| Learner (personal)  | Signs in and plays independently                                     | Clerk account                                                        |
-| Educator            | Opens a class, shares a code, watches progress, reopens past classes | Clerk account with educator role, linked to a `Teacher` record       |
-| Administrator       | Cross-class analytics and learning outcomes                          | Clerk account with admin role                                        |
+| Role                | Capabilities                                                            | Identified by                                                      |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Learner (classroom) | Joins with a class code, plays, answers both quizzes                    | HTTP-only cookie tied to a participant record                      |
+| Learner (personal)  | Signs in and plays independently                                        | Clerk account                                                      |
+| Educator            | Opens a class, shares the code, monitors progress, reopens past classes | Clerk account with the educator role, linked to a `Teacher` record |
+| Administrator       | Cross-class analytics and learning outcomes                             | Clerk account with the admin role                                  |
 
-**Why classroom learners have no accounts:** the audience is young children on shared school
-hardware. Requiring accounts would be a barrier and would collect far more personal data than the
-product needs.
-
----
-
-## Components
-
-| Component             | Responsibility                                                                                                                                       | Location                                                          |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Authorization layer   | API handlers are the security boundary — not page visibility, never a client-supplied id. Ownership derived server-side.                             | `src/lib/server/apiAuthorization.ts`, `classroomAuthorization.ts` |
-| Classroom history     | Pure functions grouping sessions into classes, merging rosters across reopens, computing metrics. No database calls, so it is testable in isolation. | `src/lib/server/classroomHistory.ts`                              |
-| Classroom data access | Loads class chains, class detail, and performs reopening                                                                                             | `src/lib/server/classroomClasses.ts`                              |
-| Unity bridge          | Games post progress over `postMessage`; the site saves it and routes to the post-quiz exactly once                                                   | `src/components/GamePlayer.tsx`, `UnityIFrame.tsx`                |
-| Quiz progress         | Reads the baseline recorded before playing. Read and write paths must agree on which record belongs to the learner.                                  | `src/lib/server/quizProgress.ts`                                  |
-| Admin analytics       | Aggregates outcomes across classes, states which sessions each number covers, counts classroom learners without accounts                             | `src/lib/server/adminAnalytics.ts`                                |
-| Observability         | Structured error reports with correlation id and release SHA; context accepts only primitives                                                        | `src/lib/server/observability.ts`                                 |
-| Quiz scoring          | Score normalisation shared by dashboards and history                                                                                                 | `src/lib/quizScoring.ts`                                          |
+Classroom learners do not have accounts. The audience is young children on shared school hardware,
+where account creation is both a barrier to starting a lesson and a larger collection of personal
+data than the platform needs.
 
 ---
 
-## The classroom data model
+## Getting started
 
-**The single most important concept.** Almost every bug in this area has come from misunderstanding
-it.
+### Prerequisites
 
-**A class is not a session — it is a chain of them.** When an educator reopens a closed class, the
-system does not revive the old session. It appends a new one linked back through `rootSessionId`.
-Historical records keep pointing at the sessions that produced them; nothing is rewritten or
+- Node.js 20 or 22. CI tests both.
+- A MongoDB connection string.
+- Clerk API keys. Ask a tech lead.
+
+### Setup
+
+```sh
+npm install
+npm run dev
+```
+
+Create a `.env` file in the repository root with three values, obtained from a tech lead:
+
+```
+MONGO_URI=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+```
+
+There is no `.env.example` in the repository; the list above is the current requirement.
+
+Install the Prettier and ESLint editor extensions and enable format on save. A Husky hook formats
+staged files on commit.
+
+### Commands
+
+| Command                                 | Purpose                                       |
+| --------------------------------------- | --------------------------------------------- |
+| `npm run dev`                           | Development server                            |
+| `npm test`                              | Unit tests                                    |
+| `npm run test:e2e`                      | Browser tests. Requires MongoDB               |
+| `npm run test:a11y`                     | Accessibility report                          |
+| `npm run lint`, `npm run lint:fix`      | ESLint                                        |
+| `npm run format`                        | Prettier                                      |
+| `npm audit`                             | Dependency vulnerabilities                    |
+| `node scripts/validate-webgl-build.mjs` | Verify both embedded game builds are complete |
+
+### Contributing
+
+Branch from `develop`. Run `npm run lint` and `npm test` before opening a pull request against
+`develop`. Do not branch from `main`; see [Releases](#releases) for why it may not exist yet.
+
+### Environment notes
+
+Several local failures have environmental causes:
+
+- **`next build` fails at prerender without Clerk keys.** Compilation and type checking have already
+  run by that point. To build locally with placeholder keys:
+
+  ```sh
+  PK="pk_test_$(printf 'example.clerk.accounts.dev$' | base64 | tr -d '\n')"
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$PK" \
+    CLERK_SECRET_KEY="sk_test_0000000000000000000000000000000000000000" \
+    npm run build
+  ```
+
+- **`npx tsc --noEmit` reports pre-existing errors** in `e2e/` and `.next/`. Filter with
+  `grep -E '^src/'` to see whether your change is clean.
+- **Run `npm install` after switching branches.** Dependencies have moved substantially.
+- **The browser suite requires MongoDB**, which is not available in every environment. CI is the
+  authoritative check for both the build and the browser tests.
+
+---
+
+## Architecture
+
+| Area                  | Responsibility                                                                                                       | Location                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Authorization         | API handlers are the security boundary. Ownership is derived server-side, never from a client-supplied id            | `src/lib/server/apiAuthorization.ts`, `classroomAuthorization.ts` |
+| Classroom history     | Groups sessions into classes, merges rosters across reopens, computes metrics. Pure functions with no database calls | `src/lib/server/classroomHistory.ts`                              |
+| Classroom data access | Loads class chains and class detail; performs reopening                                                              | `src/lib/server/classroomClasses.ts`                              |
+| Unity bridge          | Receives progress from the game over `postMessage`, saves it, and routes to the post-quiz once                       | `src/components/GamePlayer.tsx`, `UnityIFrame.tsx`                |
+| Quiz progress         | Reads the baseline score recorded before play                                                                        | `src/lib/server/quizProgress.ts`                                  |
+| Admin analytics       | Aggregates outcomes across classes and reports the scope each figure covers                                          | `src/lib/server/adminAnalytics.ts`                                |
+| Observability         | Structured error reports carrying a correlation id and release SHA                                                   | `src/lib/server/observability.ts`                                 |
+| Quiz scoring          | Score normalisation shared by the dashboards and class history                                                       | `src/lib/quizScoring.ts`                                          |
+
+The repository contains 23 pages under the App Router and 10 Mongoose schemas in `src/database/`.
+
+Hidden links and disabled buttons are user-interface conveniences and carry no security weight. All
+access decisions are enforced in the API handler.
+
+---
+
+## Classroom sessions
+
+Read this section before changing anything that touches a class. Most of the subtle bugs in this
+project have come from misreading the model below.
+
+A class is a chain of sessions, not a single record. When an educator reopens a closed class, the
+system appends a new session linked to the previous one; it does not reactivate the old session.
+Historical records continue to reference the sessions that produced them, so nothing is rewritten or
 re-attributed.
 
-| Concept                | Meaning                                                       | Consequence                                                                                                 |
-| ---------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `rootSessionId`        | Head of the continuation chain; null on an original session   | A class is addressed by `rootSessionId ?? _id`                                                              |
-| `continuedFromId`      | The session this one continues                                | Chain ordering                                                                                              |
-| `participantKey`       | Stable per learner per class — `clerk:<id>` or `guest:<hash>` | A returning learner is one roster entry, not two. **Never send to a client** — it embeds a Clerk id         |
-| `status` + `expiresAt` | Session state is **derived, never stored**                    | `closed` means closed; `active` with a past expiry means expired. Always use `resolveClassroomSessionState` |
-| `participant:<id>`     | Owner key on a classroom learner's saves and quiz records     | Changes when they rejoin after a reopen; lineage resolution carries progress across                         |
+| Field                    | Meaning                                                      | Consequence                                                                                                      |
+| ------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `rootSessionId`          | Head of the continuation chain; null on an original session  | A class is addressed by `rootSessionId ?? _id`                                                                   |
+| `continuedFromId`        | The session this one continues                               | Determines chain order                                                                                           |
+| `participantKey`         | Stable per learner per class: `clerk:<id>` or `guest:<hash>` | A returning learner collapses to a single roster entry. It embeds a Clerk id, so it must not be sent to a client |
+| `status` and `expiresAt` | Session state is derived, never stored                       | `closed` means closed; `active` with a past expiry means expired. Use `resolveClassroomSessionState`             |
+| `participant:<id>`       | Owner key on a classroom learner's saves and quiz records    | Changes when a learner rejoins after a reopen; lineage resolution carries their progress across                  |
 
-**Database-enforced invariant:** a unique partial index guarantees at most one active continuation
-per class, preventing two simultaneous reopens from leaving a class with two working access codes. It
-builds in the background; failure logs `ClassroomSession index build failed`. If a class shows two
-live sessions, check that index first.
+### Constraints and lifetime
 
-**Session lifetime:** classroom sessions expire after 8 hours. An educator reporting "the code
-stopped working" is usually an expiry, not an outage — they can reopen from Class History, which
-issues a new code and retires every previous one.
+A unique partial index permits at most one active continuation per class, which prevents two
+simultaneous reopens from leaving a class with two working access codes. The index builds in the
+background, and a failure logs `ClassroomSession index build failed`. If a class appears to have two
+live sessions, check the index first.
+
+Classroom sessions expire after 8 hours. An educator reporting that a code has stopped working has
+usually hit the expiry rather than an outage; they can reopen the class from Class History, which
+issues a new code and retires all previous ones.
 
 ---
 
-## API surface
+## API
 
-33 endpoints across 22 route files. Two conventions run throughout: **identity is derived on the
-server**, and an inaccessible resource answers `404` rather than `403` so it cannot be probed for.
+33 endpoints across 22 route files. Two conventions apply throughout: identity is derived on the
+server, and a resource the caller cannot access returns `404` rather than `403`, so its existence
+cannot be probed.
 
-| Route                                             | Methods        | Access                                                |
-| ------------------------------------------------- | -------------- | ----------------------------------------------------- |
-| `/api/health`                                     | GET            | Public — deployment health only, no learner data      |
-| `/api/classroom-sessions`                         | GET POST PATCH | Signed-in educator, scoped to own classes             |
-| `/api/classroom-sessions/join`                    | POST           | Public with active code; issues classroom credential  |
-| `/api/classroom-sessions/history`                 | GET            | Educator, own classes only                            |
-| `/api/classroom-sessions/history/:classId`        | GET            | Owning educator or administrator                      |
-| `/api/classroom-sessions/history/:classId/reopen` | POST           | Owning educator only — **no admin bypass**            |
-| `/api/gameData`                                   | GET POST       | GET admin; POST owner or credentialed participant     |
-| `/api/gameData/mine`                              | GET            | Caller's own saves, including classroom lineage       |
-| `/api/gameData/:saveId`                           | GET PATCH      | Owner, admin, or educator owning the classroom        |
-| `/api/quiz`, `/api/quiz/:id`                      | GET POST PUT   | Owner or admin; educators read within their classroom |
-| `/api/admin/analytics`                            | GET            | Administrator                                         |
-| `/api/admin/:id/role`                             | PATCH          | Administrator                                         |
-| `/api/auth/admin-access`                          | GET            | Administrator                                         |
-| `/api/users`, `/api/users/:id`                    | GET POST PUT   | Administrator                                         |
-| `/api/users/me`, `/api/users/me/photo`            | GET PATCH      | Signed-in user, own record                            |
-| `/api/sessions`, `/api/sessions/:sessionId`       | GET POST PATCH | Owner or administrator                                |
-| `/api/events`                                     | GET POST       | GET admin; POST owner or credentialed participant     |
+| Route                                             | Methods        | Access                                                            |
+| ------------------------------------------------- | -------------- | ----------------------------------------------------------------- |
+| `/api/health`                                     | GET            | Public. Deployment health only, no learner data                   |
+| `/api/classroom-sessions`                         | GET POST PATCH | Signed-in educator, scoped to their own classes                   |
+| `/api/classroom-sessions/join`                    | POST           | Public with an active code. Issues a classroom credential         |
+| `/api/classroom-sessions/history`                 | GET            | Educator, own classes only                                        |
+| `/api/classroom-sessions/history/:classId`        | GET            | Owning educator or administrator                                  |
+| `/api/classroom-sessions/history/:classId/reopen` | POST           | Owning educator only. No administrator bypass                     |
+| `/api/gameData`                                   | GET POST       | GET administrator; POST owner or credentialed participant         |
+| `/api/gameData/mine`                              | GET            | The caller's own saves, including classroom lineage               |
+| `/api/gameData/:saveId`                           | GET PATCH      | Owner, administrator, or the educator who owns the classroom      |
+| `/api/quiz`, `/api/quiz/:id`                      | GET POST PUT   | Owner or administrator; educators may read within their classroom |
+| `/api/admin/analytics`                            | GET            | Administrator                                                     |
+| `/api/admin/:id/role`                             | PATCH          | Administrator                                                     |
+| `/api/auth/admin-access`                          | GET            | Administrator                                                     |
+| `/api/users`, `/api/users/:id`                    | GET POST PUT   | Administrator                                                     |
+| `/api/users/me`, `/api/users/me/photo`            | GET PATCH      | Signed-in user, own record                                        |
+| `/api/sessions`, `/api/sessions/:sessionId`       | GET POST PATCH | Owner or administrator                                            |
+| `/api/events`                                     | GET POST       | GET administrator; POST owner or credentialed participant         |
 
-**What never crosses the boundary:** stored records contain Clerk ids, quiz ids, and per-question
-answers, and `participantKey` embeds a Clerk id. History and analytics responses are projected views
-— those fields are never read, not merely stripped afterwards.
+Stored records contain Clerk ids, quiz ids, and per-question answers, and `participantKey` embeds a
+Clerk id. History and analytics endpoints return projected views that never select these fields.
 
 Full policy: [api-authorization.md](./api-authorization.md).
 
@@ -145,96 +213,109 @@ Full policy: [api-authorization.md](./api-authorization.md).
 
 ## Testing
 
-Three layers, each with a real blind spot. Knowing where each stops is more useful than the totals.
+| Layer                       | Command             | Covers                                                                           | Does not cover                                                                   |
+| --------------------------- | ------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Unit (128 tests, 15 files)  | `npm test`          | Authorization decisions, classroom chain logic, scoring, analytics               | The real database; MongoDB is mocked throughout                                  |
+| Browser (18 tests, 2 files) | `npm run test:e2e`  | Both games' completion contracts, save creation and retry, classroom attribution | Authorization, pending a test-only auth stub (issue #69)                         |
+| Accessibility (26 checks)   | `npm run test:a11y` | WCAG 2.1 AA via axe, horizontal overflow at device sizes, reduced motion         | Audio-only instructions, touch target reach, operability of the games themselves |
 
-| Layer              | Command             | Covers                                                                           | Cannot see                                                    |
-| ------------------ | ------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Unit (128)         | `npm test`          | Authorization decisions, classroom chain logic, scoring, analytics               | Anything about the real database — MongoDB is mocked          |
-| Browser (18)       | `npm run test:e2e`  | Both games' completion contracts, save creation and retry, classroom attribution | Authorization, until a test-only auth stub exists (issue #69) |
-| Accessibility (26) | `npm run test:a11y` | WCAG 2.1 AA via axe, layout overflow at device sizes, reduced motion             | Audio-only instructions, touch target reach, game operability |
+Unit tests mock MongoDB, so they cover authorization and business logic but not database wiring.
+Connection ordering, index behaviour, and query shape are unverified at that layer. A recent
+high-severity bug, in which a query was issued before the connection was opened and hung for ten
+seconds before failing, was invisible to the whole unit suite and was found by reading the call
+graph.
 
-**The blind spot that has already cost the project:** the highest-severity bug found recently — a
-database call issued before the connection was opened, hanging ten seconds then failing — was
-invisible to all 128 unit tests because they mock MongoDB. It was found by reading the call graph.
-Treat unit tests as covering _decisions_, not _wiring_.
+The accessibility suite reports; it does not gate merges. Known violations remain, so a green
+pipeline does not mean a clean report. The Playwright report is uploaded on every CI run; read it.
+Keyboard focus visibility is checked by hand, because the automated version was timing-dependent and
+was removed.
 
-**Accessibility runs as a reporting step, not a merge gate.** Real violations remain; the Playwright
-report is uploaded on every CI run. Keyboard focus visibility is checked manually — an automated
-version proved timing-dependent and unreliable, and a flaky check is worse than none.
+Both browser suites share one harness in `e2e/support/gameBridge.ts`. Do not add a local copy. The
+States suite kept its own until August 2026; the two drifted, and the stale copy left that suite
+dependent on a live database, where it failed 11 of its 13 tests.
 
----
-
-## Operations
-
-`GET /api/health` is the first thing to check. It separates a database problem from a broken game
-build in one request, carries no learner data, and answers `503` on failure so an uptime monitor can
-alert without parsing the body.
-
-```sh
-curl -s https://<site>/api/health | jq
-```
-
-| Check      | Reports                                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------------------- |
-| `database` | Connection state. `degraded` means queries would buffer and time out — presents as a hang, not an error |
-| `games`    | Per game: required files present, plus the exact Unity source SHA live. Makes rollback verifiable       |
-| `release`  | The deploying commit, so an alert identifies which version is broken                                    |
-
-**Error reports** are single-line JSON via `reportError` with a correlation id, environment, and
-release. Context accepts **only primitives** — objects and arrays are dropped, so a quiz answer, a
-child's name, or a request body cannot be attached by accident. Scopes stay distinguishable
-(`unity-boot` vs `progress-save`) so alerts can separate them. `setErrorSink` is the seam for a
-hosted tracker.
-
-**When something breaks:** during a live class, **roll back rather than fix forward** — an educator
-with thirty children waiting cannot absorb a fix-and-deploy cycle. Vercel instant rollback takes
-effect immediately with no git operation.
-
-Full runbook: [operations.md](./operations.md).
+CI runs on Node 20 and 22.
 
 ---
 
-## Releasing
+## Releases
 
-**Today `develop` is production.** Vercel deploys production from `develop`, so every merged pull
-request goes live immediately. There is no staging and no moment at which anyone decides to release.
-Until the switch below is thrown, treat every merge as a production change.
+`develop` is currently the production branch. Vercel deploys from it, so every merged pull request
+goes live immediately. There is no staging environment and no separate release step. Treat every
+merge as a production change until the switch below has been made.
 
-The replacement is built: `main` holds what is live, `develop` stays the integration branch, and
-`promote-to-production` fast-forwards `main` to a chosen commit. It refuses anything that is not
-already an ancestor of `develop` **and** has a green CI run for that exact commit — a green run on a
-different commit proves nothing.
+The replacement is already built. `main` holds what is live, `develop` remains the integration
+branch, and the `promote-to-production` workflow fast-forwards `main` to a chosen commit. It refuses
+any commit that is not already an ancestor of `develop` and does not have a passing CI run for that
+exact SHA.
 
-**Consequence that catches people out:** once `main` is production, reverting on `develop` no longer
-changes what is live. You have to promote again.
+Once `main` is the production branch, reverting a commit on `develop` no longer changes what is live.
+The revert must also be promoted.
+
+### Unity builds
+
+Game builds are committed to `public/game/<Game>/`. The `build-unity-webgl` workflow builds a game
+from its source repository and opens a pull request containing only that game's directory. The
+promotion job validates the artifact and builds the site against it before opening the pull request,
+because a pull request opened with the default `GITHUB_TOKEN` does not trigger `on: pull_request`
+workflows and would otherwise arrive with no checks.
+
+The workflow's `source_ref` input accepts a branch, tag, or commit SHA.
 
 Full detail: [releases.md](./releases.md).
 
 ---
 
-## Launch checklist
+## Operations
 
-Six items. None are blocked on code — they need dashboard access, real hardware, or a decision.
-Ordered by risk, not effort.
+`GET /api/health` distinguishes a database problem from a broken game build in a single request. It
+carries no learner data and returns `503` on failure, so an uptime monitor can alert on it without
+parsing the body.
 
-### 1. Run the MongoDB restore drill — highest risk
+```sh
+curl -s https://<site>/api/health | jq
+```
 
-Children's learning records are stored with no verified way to get them back. An untested backup is
-an assumption, not a backup.
+| Field      | Reports                                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `database` | Connection state. `degraded` means queries would buffer and time out, which presents as a hang rather than an error    |
+| `games`    | Per game: whether the required files are present, and the Unity source SHA currently live. Makes a rollback verifiable |
+| `release`  | The deployed commit, so an alert identifies which version is affected                                                  |
 
-- Atlas → Backup → Restore, targeting a **new** cluster, never production
-- `MONGO_URI=<restored-uri> npm run dev`
-- Confirm an educator can open a class and see its roster and quiz results — "the cluster came up"
-  proves nothing
-- Delete the temporary cluster; record the date and who ran it
+Errors are reported through `reportError` as single-line JSON with a correlation id, environment, and
+release. Its context parameter accepts only primitives, so a quiz answer, a child's name, or a
+request body cannot be attached by accident. Scopes such as `unity-boot` and `progress-save` stay
+distinguishable so alerts can separate them. `setErrorSink` is the integration point for a hosted
+tracker.
 
-**Access:** MongoDB Atlas · **Time:** ~1 hour · **Detail:** operations.md
+During a live class, roll back rather than fix forward. An educator with a room of children waiting
+cannot absorb a fix-and-deploy cycle, and Vercel's instant rollback takes effect without a git
+operation.
 
-### 2. Point Vercel's production branch at `main` — needs dashboard
+Full runbook: [operations.md](./operations.md).
 
-The switch that turns the release gate on. All three steps must happen together: a `main` that exists
-while Vercel still deploys `develop` looks authoritative and goes stale immediately, which is why it
-has not been created ahead of time.
+---
+
+## Outstanding work
+
+### Before launch
+
+Five items remain. None are blocked on code; each needs dashboard access, hardware, or a decision.
+
+**1. Run the MongoDB restore drill.** Children's learning records are stored without a verified means
+of recovering them.
+
+- Restore from Atlas → Backup → Restore, targeting a new cluster rather than production.
+- Run `MONGO_URI=<restored-uri> npm run dev`.
+- Confirm an educator can open a class and see its roster and quiz results. Checking only that the
+  cluster starts does not exercise the data.
+- Delete the temporary cluster, and record the date and who ran the drill.
+
+_Requires MongoDB Atlas access. About 1 hour. Detail in operations.md._
+
+**2. Point Vercel's production branch at `main`.** This enables the release gate. All three steps
+belong together, because a `main` branch that exists while Vercel still deploys `develop` looks
+authoritative and goes stale immediately.
 
 ```sh
 git fetch origin
@@ -242,115 +323,60 @@ git branch main origin/develop
 git push origin main
 ```
 
-- Protect both branches — Settings → Branches
-- Vercel → Project → Settings → Git → **Production Branch** → `main`
-- Promote once, confirm with `curl -s https://<site>/api/health | jq .release`
+- Protect both branches under Settings → Branches.
+- Set Vercel → Project → Settings → Git → Production Branch to `main`.
+- Promote once and confirm with `curl -s https://<site>/api/health | jq .release`.
 
-**Access:** Vercel + repo settings · **Time:** ~15 min · **Detail:** releases.md
+_Requires Vercel and repository settings access. About 15 minutes. Detail in releases.md._
 
-### 3. Run the device QA pass — critical path
+**3. Run the device QA pass.** The largest remaining item, and the only one that produces further
+work in the form of a defect list.
 
-The largest remaining item, and the only one whose output is _more work_ — it produces a defect list
-that then needs fixing. Two non-negotiables:
-
-- Run the full loop for both games **twice** — once signed in, once as a classroom participant. Those
+- Run the full loop for both games twice: once signed in, once as a classroom participant. These
   resolve ownership differently and have broken independently.
-- **Play with sound off.** For audio-heavy games aimed at children, audio-only instructions are the
-  most likely failure and the most consequential.
+- Play with sound off. Both games are audio-heavy, and any instruction delivered only as audio will
+  be missed.
+- Confirm the on-screen guides in Penguin Run render. They have been through three rounds of fixes
+  and have never been visually verified.
 
-**Access:** real Chromebook + iPad, with sound · **Time:** ~1 week + fix tail · **Detail:**
-accessibility-qa.md
+_Requires a physical Chromebook and iPad with sound. About 1 week plus a fix tail. Detail in
+accessibility-qa.md._
 
-### 4. Assign an owner to each alert — decision
+**4. Assign an owner to each alert.** Every alert in the runbook needs a named person. The team that
+built the project is graduating, so alerts left unassigned will have no default recipient.
 
-Every alert in the runbook needs a named person. An alert with no owner is a notification everyone
-assumes someone else is handling — which matters more here because the team that built this is
-graduating.
+_No access required. About 30 minutes. Detail in operations.md._
 
-**Access:** none · **Time:** ~30 min · **Detail:** operations.md
+**5. Choose an error-tracking vendor.** `setErrorSink` is the integration point. The choice has been
+deferred because it carries a recurring cost and a data-processing agreement for a product used by
+children. Confirm the vendor does not capture request bodies or session replay by default; the
+reporting layer deliberately excludes answers and names, and session replay would reintroduce them.
 
-### 5. Choose an error-tracking vendor — decision
+_Requires budget approval. About 2 hours once chosen._
 
-`setErrorSink` is the seam. Not chosen deliberately: it carries a recurring cost and a
-data-processing agreement, for a product used by children. Confirm the vendor does **not** capture
-request bodies or session replay by default — the reporting layer keeps answers and names out, and
-session replay would put them straight back in.
+### Status by area
 
-**Access:** budget approval · **Time:** ~2 hours once chosen
-
-### 6. Run the first Unity promotion — never executed
-
-Built but never run; needs Unity licence secrets and a ~90 minute build. Two passes: once with
-`promote` disabled to confirm the build half works, then again with it enabled. Low risk by
-construction — the promotion job can push a branch and open a pull request and nothing else, and a
-failed build opens no pull request.
-
-**Access:** Unity licence secrets · **Time:** ~90 min, mostly waiting
-
----
-
-## Where things stand
-
-| Area                                   | Status                    | Remaining                                           |
-| -------------------------------------- | ------------------------- | --------------------------------------------------- |
-| Learning loop, both games              | Shipped                   | Verification on real devices                        |
-| Classroom sessions, reopening, history | Shipped                   | —                                                   |
-| Admin analytics                        | Shipped                   | —                                                   |
-| Dependency security                    | Clean (0 vulnerabilities) | Six pre-existing React hook warnings need a browser |
-| Observability & health checks (#49)    | Needs a person            | Restore drill, alert owners, vendor choice          |
-| Deployment automation (#48)            | Needs a person            | First promotion run                                 |
-| Accessibility & device QA (#50)        | Needs a person            | The manual pass                                     |
-| End-to-end coverage (#47)              | Open                      | Deterministic database fixtures, per-test seeding   |
-| Browser authorization tests (#69)      | Open                      | A test-only auth stub — not a middleware change     |
+| Area                                   | Status                  | Remaining                                                       |
+| -------------------------------------- | ----------------------- | --------------------------------------------------------------- |
+| Learning loop, both games              | Shipped                 | Verification on real devices                                    |
+| Classroom sessions, reopening, history | Shipped                 | —                                                               |
+| Admin analytics                        | Shipped                 | —                                                               |
+| Dependency security                    | 0 known vulnerabilities | Six pre-existing React hook warnings need a browser to diagnose |
+| Unity build and promotion (#48)        | Shipped                 | —                                                               |
+| Observability and health checks (#49)  | Needs a person          | Restore drill, alert owners, vendor choice                      |
+| Accessibility and device QA (#50)      | Needs a person          | The manual pass                                                 |
+| End-to-end coverage (#47)              | Open                    | Deterministic database fixtures, per-test seeding               |
+| Browser authorization tests (#69)      | Open                    | A test-only auth stub, not a middleware change                  |
 
 ---
 
-## Local setup
-
-1. Clone and `npm install`
-2. Create `.env` with secrets from a tech lead: `MONGO_URI`,
-   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-3. Install Prettier and ESLint editor extensions; enable format on save
-4. `npm run dev`
-
-**Contributing:** branch from `develop`, not `main`. Run `npm run lint` and `npm test` before opening
-a pull request against `develop`. A Husky hook formats staged files on commit.
-
-| Command                                 | Does                                         |
-| --------------------------------------- | -------------------------------------------- |
-| `npm run dev`                           | Local development server                     |
-| `npm test`                              | 128 unit tests                               |
-| `npm run test:e2e`                      | Browser tests (needs MongoDB)                |
-| `npm run test:a11y`                     | Accessibility report                         |
-| `npm run lint` / `lint:fix`             | ESLint and Prettier                          |
-| `npm audit`                             | Expect 0 vulnerabilities                     |
-| `node scripts/validate-webgl-build.mjs` | Check both embedded game builds are complete |
-
-### Two environment gotchas that look like code bugs
-
-- A local `next build` fails at prerender **without Clerk keys**. Compilation and type-checking still
-  ran, so that failure is environmental. For a full local build:
-  ```sh
-  PK="pk_test_$(printf 'example.clerk.accounts.dev$' | base64 | tr -d '\n')"
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$PK" \
-    CLERK_SECRET_KEY="sk_test_0000000000000000000000000000000000000000" \
-    npm run build
-  ```
-- `npx tsc --noEmit` reports pre-existing errors in `e2e/` and `.next/`. Filter with
-  `grep -E '^src/'` to see whether a change is actually clean.
-- **Run `npm install` after switching branches** — dependencies moved substantially.
-- The browser suite needs MongoDB, which is not available in every environment. **CI is the real
-  check** for both the build and the browser tests.
-
----
-
-## Deeper reading
+## Further reading
 
 | Document                                             | Covers                                                                                     |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | [operations.md](./operations.md)                     | On-call runbook: health checks, alert thresholds, rollback, restore drill, incident triage |
-| [releases.md](./releases.md)                         | Branch topology, migration to `main`, promotion workflow guarantees                        |
-| [accessibility-qa.md](./accessibility-qa.md)         | Device matrix, manual launch pass, automation limits                                       |
+| [releases.md](./releases.md)                         | Branch topology, the migration to `main`, promotion workflow guarantees                    |
+| [accessibility-qa.md](./accessibility-qa.md)         | Device matrix, the manual launch pass, and the limits of the automation                    |
 | [api-authorization.md](./api-authorization.md)       | Route inventory, principals, response conventions                                          |
 | [game-progress-bridge.md](./game-progress-bridge.md) | The contract Unity builds use to report progress                                           |
-| [index.html](./index.html)                           | This handbook, rendered for reading and sharing                                            |
+| [index.html](./index.html)                           | This handbook, formatted for reading and sharing                                           |
