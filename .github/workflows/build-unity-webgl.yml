@@ -222,7 +222,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           cache: npm
 
       - name: Download WebGL artifact
@@ -273,9 +273,10 @@ jobs:
           npm ci
           npm run build
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          # This validates compilation and the artifact, not live services.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+          CLERK_SECRET_KEY: sk_test_placeholder
+          MONGO_URI: mongodb://127.0.0.1:27017/kfi-ci
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v6
@@ -287,12 +288,7 @@ jobs:
           # arrives with its checks queued as "action required" and someone approves them from the
           # Actions tab. That is one click, and the runbook says to do it.
           #
-          # Using UNITY_REPO_TOKEN instead was tried and reverted: that secret is present but not
-          # valid, and because `||` only falls back on an empty value, git failed to authenticate and
-          # no pull request was opened at all. A promotion that needs one approving click is better
-          # than one that silently produces nothing.
-          #
-          # If someone issues a working token later, setting it here restores automatic checks.
+          # No personal access token is required or used for promotion.
           branch: release/${{ inputs.game }}-${{ needs.build.outputs.source_short_sha }}
           base: develop
           commit-message: "build: promote ${{ inputs.game }} WebGL ${{ needs.build.outputs.source_short_sha }}"

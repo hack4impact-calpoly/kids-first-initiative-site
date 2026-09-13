@@ -1,50 +1,46 @@
 name: ci
 
-# Controls when the workflow will run
 on:
   push:
     branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop"]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
 
-    # Use matrix strategy to test multiple Node.js versions
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Compile-only build and mocked tests: no Atlas or Clerk account is required.
+    # Never substitute Production or Preview credentials here.
+    env:
+      MONGO_URI: mongodb://127.0.0.1:27017/kfi-ci
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+      CLERK_SECRET_KEY: sk_test_placeholder
+
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        node-version: [22.x, 24.x]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Dry-run build
         run: npm run build
-        env:
-          # These env variables must be set in the repository's secrets
-          # - Settings -> Secrets and variables -> New repository secret
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          # Add additional environment variables here
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
       # Catches a truncated or incompletely promoted game build before it can merge, rather than
       # letting it reach a child as a blank canvas.
       - name: Validate embedded WebGL builds
@@ -52,22 +48,14 @@ jobs:
 
       - name: Run tests
         run: npm test
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          MONGO_URI: ${{ secrets.MONGO_URI }}
 
       - name: Install Playwright browser
-        if: ${{ matrix.node-version == '20.x' }}
+        if: ${{ matrix.node-version == '24.x' }}
         run: npx playwright install --with-deps chromium
 
       - name: Run browser tests
-        if: ${{ matrix.node-version == '20.x' }}
+        if: ${{ matrix.node-version == '24.x' }}
         run: npm run test:e2e
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          MONGO_URI: ${{ secrets.MONGO_URI }}
 
       # A browser failure is close to undiagnosable from the log alone. Keep the trace, screenshots,
       # and HTML report so a failure can be replayed rather than guessed at.
@@ -75,16 +63,12 @@ jobs:
       # to triage; failing the build on them would block every unrelated change and train people to
       # ignore CI. The report is uploaded either way.
       - name: Run accessibility checks
-        if: ${{ matrix.node-version == '20.x' }}
+        if: ${{ matrix.node-version == '24.x' }}
         continue-on-error: true
         run: npm run test:a11y
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          MONGO_URI: ${{ secrets.MONGO_URI }}
 
       - name: Upload browser test artifacts
-        if: ${{ always() && matrix.node-version == '20.x' }}
+        if: ${{ always() && matrix.node-version == '24.x' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

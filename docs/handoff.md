@@ -23,10 +23,16 @@ invite the incoming owner; do not hand over a former contributor's personal logi
 | Learner data and service costs      | **Unassigned / unassigned** | Retention/deletion process, data-request contact, plans/costs/renewal dates         |
 | Monitoring and incidents            | **Unassigned / unassigned** | Alert destination, responder, backup, escalation path                               |
 
-For GitHub Actions, the website workflow uses secrets `MONGO_URI`, `CLERK_SECRET_KEY`, `UNITY_EMAIL`,
-`UNITY_PASSWORD`, and `UNITY_SERIAL`, plus the variable `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
-Confirm the Vercel environments separately. `UNITY_REPO_TOKEN` is not used by the current promotion
-workflow. Test invitations and recovery access before retiring the outgoing team's access.
+Web CI and the Unity artifact's site-build check use dummy service settings, not MongoDB or Clerk
+credentials. Unity compilation still needs `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_SERIAL`;
+promotion uses the built-in GitHub token. Confirm the Vercel environments separately.
+
+After this workflow change is merged and default-branch CI passes, remove the old Actions secrets
+`MONGO_URI` and `CLERK_SECRET_KEY` and variable `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. Legacy
+`UNITY_REPO_TOKEN`, `HOSTING_REPO` (secret and variable), and `HOSTING_REPO_REF` are unused by the
+current workflows. Review historical branches before rerunning them. Removing a GitHub secret does
+not revoke the underlying credential at its provider. Test invitations and recovery access before
+retiring the outgoing team's access.
 
 ## Resolve or explicitly accept
 

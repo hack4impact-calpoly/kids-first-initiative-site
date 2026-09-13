@@ -40,10 +40,10 @@ export default defineConfig({
     env: {
       ...process.env,
       KFI_E2E_BYPASS_CLERK: "1",
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
-        process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "pk_test_Y2xlcmsuZXhhbXBsZS5jb20k",
-      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ?? "sk_test_placeholder",
-      MONGO_URI: process.env.MONGO_URI ?? "mongodb://127.0.0.1:27017/kfi-playwright",
+      // These suites stub services. Never inherit live credentials from the shell.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZXhhbXBsZS5jb20k",
+      CLERK_SECRET_KEY: "sk_test_placeholder",
+      MONGO_URI: "mongodb://127.0.0.1:27017/kfi-playwright",
     },
   },
 });
