@@ -9,7 +9,7 @@ in [package.json](../package.json); deployed settings must be checked in the ser
 
 ## Run the website locally
 
-You need Git, Node.js 22 (CI also runs 20), a development MongoDB database, and keys for a Clerk
+You need Git, Node.js 24 (CI also runs 22), a development MongoDB database, and keys for a Clerk
 development application. Unity is only needed when editing a game.
 
 ```sh
@@ -121,11 +121,15 @@ npm run test:e2e
 | `npm run test:a11y`                       | Automated accessibility findings on public pages          | Full accessibility; findings currently do not block CI                                             |
 | [Manual device pass](accessibility-qa.md) | Real games, real accounts, input, audio, and results      | Only the devices and cases actually recorded                                                       |
 
-Playwright supplies placeholder credentials and starts its own server at `127.0.0.1:3100`; the
+Playwright forces placeholder credentials and starts its own server at `127.0.0.1:3100`; the
 current bridge tests do not need a running MongoDB or Clerk service. Stop any unrelated server on
 that port before testing. Never enable `KFI_E2E_BYPASS_CLERK` for normal development or deployment.
 
-CI builds and runs unit tests on Node 20 and 22, and browser/accessibility checks on Node 20.
+CI builds and runs unit tests on Node 22 and 24, and browser/accessibility checks on Node 24.
+Both web CI and the Unity artifact's site-build check use dummy Clerk keys and a loopback MongoDB
+URI. No real MongoDB or Clerk credentials, account, or running database are needed for these checks.
+Future real-service integration tests need a separate, isolated test environment—not Production
+or Preview learner data. These dummy settings are not deployment configuration.
 It does not run ESLint. Run lint locally and inspect the uploaded Playwright report even when CI
 is green. `npm run format` formats the whole repository; use Prettier on changed files when working
 in an existing checkout. Husky formats staged files on commit.
