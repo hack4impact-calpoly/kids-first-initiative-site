@@ -17,8 +17,23 @@ describe("CI service isolation", () => {
     const names = Array.from(workflow("build-unity-webgl").matchAll(/\bsecrets\.([A-Z_]+)/g))
       .map((match) => match[1])
       .sort();
-    expect(names).toEqual(["UNITY_EMAIL", "UNITY_PASSWORD", "UNITY_SERIAL"]);
+    expect(names).toEqual(["UNITY_CLIENT_EMAIL", "UNITY_CLIENT_LICENSE", "UNITY_CLIENT_PASSWORD"]);
     expect(workflow("build-unity-webgl")).not.toMatch(/\$\{\{\s*vars[.\[]/);
+  });
+
+  it("activates Personal builds with the client license and no legacy serial fallback", () => {
+    const text = workflow("build-unity-webgl");
+    expect(text).toContain("UNITY_EMAIL: ${{ secrets.UNITY_CLIENT_EMAIL }}");
+    expect(text).toContain("UNITY_PASSWORD: ${{ secrets.UNITY_CLIENT_PASSWORD }}");
+    expect(text).toContain("UNITY_LICENSE: ${{ secrets.UNITY_CLIENT_LICENSE }}");
+    expect(text).not.toContain("UNITY_SERIAL");
+    expect(text).not.toMatch(/skipActivation:\s*true/);
+  });
+
+  it("keeps publication behind the explicit promotion input", () => {
+    expect(workflow("build-unity-webgl")).toMatch(
+      /promote:\s*\n\s*name: Open website pull request\s*\n\s*if: \$\{\{ inputs\.promote \}\}/,
+    );
   });
 
   it.each(["ci", "build-unity-webgl"])("uses only dummy service settings in %s", (name) => {

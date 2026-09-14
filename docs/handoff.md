@@ -24,8 +24,10 @@ invite the incoming owner; do not hand over a former contributor's personal logi
 | Monitoring and incidents            | **Unassigned / unassigned** | Alert destination, responder, backup, escalation path                               |
 
 Web CI and the Unity artifact's site-build check use dummy service settings, not MongoDB or Clerk
-credentials. Unity compilation still needs `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_SERIAL`;
-promotion uses the built-in GitHub token. Confirm the Vercel environments separately.
+credentials. Unity compilation uses the client account's Actions secrets `UNITY_CLIENT_EMAIL`,
+`UNITY_CLIENT_PASSWORD`, and `UNITY_CLIENT_LICENSE` (Personal license file); promotion uses the
+built-in GitHub token. See [Unity credential setup](releases.md#unity-build-account) and confirm the
+Vercel environments separately. Record the license owner and recovery access privately.
 
 After this workflow change is merged and default-branch CI passes, remove the old Actions secrets
 `MONGO_URI` and `CLERK_SECRET_KEY` and variable `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. Legacy
