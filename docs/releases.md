@@ -70,6 +70,32 @@ approval; do not assume the checks ran automatically. The promotion job's own va
 provides evidence even before approval. See [GitHub's workflow-trigger rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 The browser suite stubs Unity, so it does not replace a real game check.
 
+### Unity build account
+
+The build workflow uses a client-controlled Unity account with a Personal license. Confirm the
+organization's license eligibility with Unity; a successful build is not a licensing review.
+Store these **website repository Actions secrets**, never in Git or Vercel:
+
+| Secret                  | Value                                                                 |
+| ----------------------- | --------------------------------------------------------------------- |
+| `UNITY_CLIENT_EMAIL`    | Unity account email                                                   |
+| `UNITY_CLIENT_PASSWORD` | Unity password, not the Google sign-in password                       |
+| `UNITY_CLIENT_LICENSE`  | Complete contents of that account's Hub-generated `.ulf` license file |
+
+Follow [GameCI's Personal activation guide](https://game.ci/docs/github/activation/#personal-license).
+On macOS the file is `/Library/Application Support/Unity/Unity_lic.ulf`; confirm Hub is signed into
+the intended account before using it. A Google-linked account can set a Unity password through
+**Account → Security → Password → Reset password**. Keep recovery details in the client's password
+manager and re-check Hub sign-in after a password reset.
+
+When changing accounts, keep the working credentials intact and test replacements on a branch.
+Run **both games**, using recorded source SHAs and **`promote=false`**, then record successful run
+links before merging the credential change. This builds artifacts without opening game-update PRs
+or changing the live games. For the serial-to-Personal migration, the old `UNITY_EMAIL`,
+`UNITY_PASSWORD`, and `UNITY_SERIAL` secrets are rollback-only; remove them after the replacement
+builds pass and the new workflow is merged. Historical workflow reruns may still require them.
+Deleting GitHub secrets does not revoke the old Unity account or license.
+
 ## Proposed controlled release path
 
 The checked-in [`promote-to-production`](../.github/workflows/promote-to-production.yml) workflow
