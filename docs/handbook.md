@@ -4,9 +4,9 @@ Kids First Initiative combines two Unity games with before/after quizzes and cla
 Start with the [partner guide](partner-guide.md) for the teaching workflow and
 [handoff checklist](handoff.md) for access, ownership, and unresolved work.
 
-Handoff status updated 17 September 2026; verified deployed baseline `da49c4e`. Dependencies and
+Handoff status updated 17 September 2026; verified deployed baseline `9dc8d04`. Dependencies and
 commands are defined in [package.json](../package.json). See [handoff.md](handoff.md) for the
-production/Preview split, pending readiness-patch release, and incoming-owner access checks.
+production/Preview split, completed health/contrast and storage work, and remaining transfer checks.
 
 ## Run the website locally
 
@@ -109,18 +109,19 @@ not update the website until a new WebGL build is promoted.
 npm run lint
 npm test
 npm run build
+node scripts/validate-private-docs.mjs
 node scripts/validate-webgl-build.mjs
 npx playwright install chromium
 npm run test:e2e
 ```
 
-| Check                                     | What it establishes                                       | What it leaves untested                                                                            |
-| ----------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Unit tests                                | Authorization helpers, scoring, class logic               | Real MongoDB queries, indexes, and migrations                                                      |
-| Browser tests                             | Website completion, attribution, and save-retry contracts | Real Unity, database persistence, and Clerk authorization; those dependencies are stubbed/bypassed |
-| WebGL validator / site build              | Required artifact files and site compilation              | Actual gameplay, audio, rendering, and touch controls                                              |
-| `npm run test:a11y`                       | Automated accessibility findings on public pages          | Full accessibility; findings currently do not block CI                                             |
-| [Manual device pass](accessibility-qa.md) | Real games, real accounts, input, audio, and results      | Only the devices and cases actually recorded                                                       |
+| Check                                     | What it establishes                                       | What it leaves untested                                                                                        |
+| ----------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Unit tests                                | Authorization helpers, scoring, class logic               | Real MongoDB queries, indexes, and migrations                                                                  |
+| Browser tests                             | Website completion, attribution, and save-retry contracts | Real Unity, database persistence, and Clerk authorization; those dependencies are stubbed/bypassed             |
+| WebGL validator / site build              | Required artifact files and site compilation              | Actual gameplay, audio, rendering, and touch controls                                                          |
+| `npm run test:a11y`                       | Automated accessibility findings on public pages          | Full accessibility; the broad audit is reporting-only, while sign-in contrast gates the required browser suite |
+| [Manual device pass](accessibility-qa.md) | Real games, real accounts, input, audio, and results      | Only the devices and cases actually recorded                                                                   |
 
 Playwright forces placeholder credentials and starts its own server at `127.0.0.1:3100`; the
 current bridge tests do not need a running MongoDB or Clerk service. Stop any unrelated server on
@@ -137,18 +138,37 @@ in an existing checkout. Husky formats staged files on commit.
 
 ## Contribute and troubleshoot
 
+### Documentation on the website
+
+After the viewer is deployed, admins open **Documentation & handoff** from `/adminDashboard`.
+The server route `/adminDashboard/docs/[[...slug]]` authenticates every `GET`/`HEAD` and reads only
+allowlisted files from `docs/`; Markdown is rendered on the server, with raw HTML disabled. Guide
+links stay behind the same admin gate; source-code references open GitHub. The overview uses the
+checked-in `docs/index.html`. No documentation body is imported into client code or copied to `public/`.
+
+Responses are private/non-cacheable; the route fails closed if authentication fails. Proxy also
+checks documentation paths, including filenames, and the browser-test auth bypass never applies
+to them. Run `node scripts/validate-private-docs.mjs` after building to verify server tracing and
+check public bundles for guide content; CI runs this too. Add new guides to the allowlist in
+[`adminDocumentation.ts`](../src/lib/server/adminDocumentation.ts).
+
+This protects website delivery, not secrecy of the URL or the public GitHub copies. Authorized
+admins can still copy or save what they read. Never put credentials or learner records in docs.
+
+### Contributions
+
 Branch from `develop` and open pull requests against it. Include the behavior changed, verification,
 and any data or deployment implications. **Merges to `develop` currently deploy production**;
 coordinate classroom-impacting releases with the partner. See [releases.md](releases.md).
 
-| Symptom                                  | First check                                                                                                                                   |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local build fails on Clerk configuration | Both keys are set, from the same development app; placeholders do not validate real sign-in                                                   |
-| Database calls hang                      | `MONGO_URI`, Atlas network access, database credentials, and `await connectDB()` before queries                                               |
-| Signed in but wrong dashboard / `403`    | Clerk session claim and MongoDB role; refresh the session after a role change                                                                 |
-| Class code rejected                      | Expiry or a newer class; reopen the intended class and share its new code                                                                     |
-| Game is blank                            | Browser console/network, complete build files, then the real device pass                                                                      |
-| Health monitor reports `401`             | Check that the public-health fix is deployed and review deployment protection; this does not prove database failure. [Runbook](operations.md) |
+| Symptom                                  | First check                                                                                                                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local build fails on Clerk configuration | Both keys are set, from the same development app; placeholders do not validate real sign-in                                                                                 |
+| Database calls hang                      | `MONGO_URI`, Atlas network access, database credentials, and `await connectDB()` before queries                                                                             |
+| Signed in but wrong dashboard / `403`    | Clerk session claim and MongoDB role; refresh the session after a role change                                                                                               |
+| Class code rejected                      | Expiry or a newer class; reopen the intended class and share its new code                                                                                                   |
+| Game is blank                            | Browser console/network, complete build files, then the real device pass                                                                                                    |
+| Health monitor reports `401`             | Check the deployment URL, protection, and release; a rollback before `9dc8d04` restores the old restriction. This does not prove database failure. [Runbook](operations.md) |
 
 Record new gaps in the owning repository's issues. Keep [handoff.md](handoff.md) current with
 decisions and evidence; keep incident procedures in [operations.md](operations.md).

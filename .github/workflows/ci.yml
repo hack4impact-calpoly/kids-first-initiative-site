@@ -41,6 +41,8 @@ jobs:
 
       - name: Dry-run build
         run: npm run build
+      - name: Verify documentation stays server-only
+        run: node scripts/validate-private-docs.mjs
       # Catches a truncated or incompletely promoted game build before it can merge, rather than
       # letting it reach a child as a blank canvas.
       - name: Validate embedded WebGL builds

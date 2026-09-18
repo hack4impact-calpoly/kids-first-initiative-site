@@ -11,6 +11,8 @@ const isGuestCapableApi = createRouteMatcher([
 ]);
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
 const isAdminRoute = createRouteMatcher(["/adminDashboard(.*)"]);
+const isAdminDocumentation = (pathname: string) =>
+  pathname === "/adminDashboard/docs" || pathname.startsWith("/adminDashboard/docs/");
 
 // !IMPORTANT, add this to your env:
 // NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
@@ -29,6 +31,13 @@ const authenticatedProxy = clerkMiddleware(
     }
 
     const role = sessionClaims?.role;
+
+    if (isAdminDocumentation(req.nextUrl.pathname) && (!userId || role !== "admin")) {
+      return NextResponse.json(
+        { error: userId ? "Administrator access required" : "Unauthorized" },
+        { status: userId ? 403 : 401, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex" } },
+      );
+    }
 
     // Protect admin routes (can pass an error instead)
     if (isAdminRoute(req) && role !== "admin") {
@@ -53,7 +62,11 @@ const proxy: NextMiddleware = (request, event) => {
     return NextResponse.next();
   }
 
-  if (process.env.NODE_ENV !== "production" && process.env.KFI_E2E_BYPASS_CLERK === "1") {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.KFI_E2E_BYPASS_CLERK === "1" &&
+    !isAdminDocumentation(request.nextUrl.pathname)
+  ) {
     return NextResponse.next();
   }
 
@@ -70,5 +83,7 @@ export const config = {
     "/(api|trpc)(.*)",
     // Include Clerk's JavaScript assets as well as its API requests.
     "/__clerk/:path*",
+    // Documentation filenames (including .html/.css/.js guesses) must never skip authentication.
+    "/adminDashboard/docs/:path*",
   ],
 };

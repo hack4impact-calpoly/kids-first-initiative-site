@@ -3,6 +3,10 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Private server files only. Do not copy documentation into public/ or import it in client code.
+  outputFileTracingIncludes: {
+    "/adminDashboard/docs/\\[\\[\\.\\.\\.slug\\]\\]": ["./docs/*.md", "./docs/index.html"],
+  },
   async headers() {
     return [
       // WASM

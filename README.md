@@ -16,12 +16,17 @@ The website embeds the separately maintained States of Matter and Penguin Run Un
 | Release or support owner           | [Release process](docs/releases.md) · [Operations runbook](docs/operations.md) |
 
 Review date: 17 September 2026. `develop` feeds production. Production Clerk, organization-owned
-MongoDB, isolated Preview data, CI cleanup, and the new Unity build account are set up. See the
-[handoff checklist](docs/handoff.md) for the verified deployment, readiness-patch release checks,
-remaining owner/contact details, and client acceptance. Backup work is excluded from this handoff.
+MongoDB, isolated Preview data, CI cleanup, and the new Unity build account are set up.
+Health/contrast fixes are live; old previews were cleaned up and Preview retention is now 7 days
+(Production: 30 days). The [handoff checklist](docs/handoff.md) records the verified release and
+remaining access, alert-delivery, storage-usage, and acceptance checks. Backup work remains excluded.
 
 Technical references: [API authorization](docs/api-authorization.md),
 [Unity progress contract](docs/game-progress-bridge.md), and [device/accessibility QA](docs/accessibility-qa.md).
+
+The admin documentation viewer is prepared for the next release: after deployment, sign in as an
+admin and choose **Documentation & handoff** on the admin dashboard. All guides are checked on the
+server and excluded from public assets. This does not make copies in this public repository private.
 
 ## Purpose
 

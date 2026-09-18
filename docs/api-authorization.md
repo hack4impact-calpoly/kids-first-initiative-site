@@ -4,6 +4,13 @@ API handlers are the authoritative security boundary. Browser route visibility a
 The proxy also returns `401` for anonymous account APIs. The public read-only health probe and
 credentialed classroom flow are explicit exceptions; their handlers still define permitted access.
 
+The documentation viewer (`/adminDashboard/docs` and its guide paths) checks the signed-in admin
+claim inside its server handler before reading any file, as well as in Proxy. `GET` and `HEAD`
+return `401` for anonymous users and `403` for other roles. Files are allowlisted, rendered only on
+the server, excluded from public assets, and sent with private/no-store headers. URL knowledge,
+file extensions, client role hints, and the development test bypass do not grant access. This does
+not restrict copies already in the public repository; see [developer notes](handbook.md#documentation-on-the-website).
+
 ## Principals
 
 - **Clerk user:** Identified only by `auth().userId`. The `admin` role comes from the Clerk session claim. A user may self-select only `player`, `parent`, or `educator` during initial registration.
