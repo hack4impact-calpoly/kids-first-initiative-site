@@ -4,8 +4,9 @@ Kids First Initiative combines two Unity games with before/after quizzes and cla
 Start with the [partner guide](partner-guide.md) for the teaching workflow and
 [handoff checklist](handoff.md) for access, ownership, and unresolved work.
 
-Reviewed 5 September 2026 against website commit `3258a3f`. Dependencies and commands are defined
-in [package.json](../package.json); deployed settings must be checked in the service dashboards.
+Handoff status updated 17 September 2026; verified deployed baseline `da49c4e`. Dependencies and
+commands are defined in [package.json](../package.json). See [handoff.md](handoff.md) for the
+production/Preview split, pending readiness-patch release, and incoming-owner access checks.
 
 ## Run the website locally
 
@@ -140,14 +141,14 @@ Branch from `develop` and open pull requests against it. Include the behavior ch
 and any data or deployment implications. **Merges to `develop` currently deploy production**;
 coordinate classroom-impacting releases with the partner. See [releases.md](releases.md).
 
-| Symptom                                  | First check                                                                                     |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Local build fails on Clerk configuration | Both keys are set, from the same development app; placeholders do not validate real sign-in     |
-| Database calls hang                      | `MONGO_URI`, Atlas network access, database credentials, and `await connectDB()` before queries |
-| Signed in but wrong dashboard / `403`    | Clerk session claim and MongoDB role; refresh the session after a role change                   |
-| Class code rejected                      | Expiry or a newer class; reopen the intended class and share its new code                       |
-| Game is blank                            | Browser console/network, complete build files, then the real device pass                        |
-| Health monitor reports `401`             | Known proxy restriction; see [operations.md](operations.md), not evidence of database failure   |
+| Symptom                                  | First check                                                                                                                                   |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local build fails on Clerk configuration | Both keys are set, from the same development app; placeholders do not validate real sign-in                                                   |
+| Database calls hang                      | `MONGO_URI`, Atlas network access, database credentials, and `await connectDB()` before queries                                               |
+| Signed in but wrong dashboard / `403`    | Clerk session claim and MongoDB role; refresh the session after a role change                                                                 |
+| Class code rejected                      | Expiry or a newer class; reopen the intended class and share its new code                                                                     |
+| Game is blank                            | Browser console/network, complete build files, then the real device pass                                                                      |
+| Health monitor reports `401`             | Check that the public-health fix is deployed and review deployment protection; this does not prove database failure. [Runbook](operations.md) |
 
 Record new gaps in the owning repository's issues. Keep [handoff.md](handoff.md) current with
 decisions and evidence; keep incident procedures in [operations.md](operations.md).

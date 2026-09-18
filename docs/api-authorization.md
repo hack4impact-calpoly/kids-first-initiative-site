@@ -1,7 +1,8 @@
 # API Authorization Policy
 
 API handlers are the authoritative security boundary. Browser route visibility and client-supplied IDs are not authorization.
-Middleware also returns `401` for anonymous access to APIs that are not part of the credentialed classroom flow.
+The proxy also returns `401` for anonymous account APIs. The public read-only health probe and
+credentialed classroom flow are explicit exceptions; their handlers still define permitted access.
 
 ## Principals
 
@@ -14,44 +15,45 @@ Classroom records are keyed to the authorized participant, including for signed-
 
 ## Route Inventory
 
-| Route                                             | Method           | Access                                                                                        |
-| ------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------- |
-| `/api/admin/:id/role`                             | PATCH            | Administrator                                                                                 |
-| `/api/admin/analytics`                            | GET              | Administrator                                                                                 |
-| `/api/auth/admin-access`                          | GET              | Administrator                                                                                 |
-| `/api/health`                                     | GET              | Handler has no auth check, but the proxy currently requires sign-in; see monitoring gap below |
-| `/api/classroom-sessions`                         | GET, POST, PATCH | Signed-in educator; sessions are teacher-scoped                                               |
-| `/api/classroom-sessions/join`                    | POST             | Public with an active access code; issues classroom credential                                |
-| `/api/classroom-sessions/history`                 | GET              | Signed-in educator; only their own classes                                                    |
-| `/api/classroom-sessions/history/:classId`        | GET              | Educator who owns the class, or administrator                                                 |
-| `/api/classroom-sessions/history/:classId/reopen` | POST             | Owning educator only; no administrator bypass                                                 |
-| `/api/events`                                     | GET              | Administrator                                                                                 |
-| `/api/events`                                     | POST             | Signed-in session owner or credentialed classroom participant                                 |
-| `/api/example`                                    | GET              | Administrator                                                                                 |
-| `/api/gameData`                                   | GET              | Administrator                                                                                 |
-| `/api/gameData`                                   | POST             | Signed-in owner or credentialed classroom participant                                         |
-| `/api/gameData/:saveId`                           | GET              | Owner, administrator, or educator who owns the classroom                                      |
-| `/api/gameData/:saveId`                           | PATCH            | Owner only                                                                                    |
-| `/api/gameData/mine`                              | GET              | Signed-in user or classroom participant; own records only                                     |
-| `/api/quiz`                                       | GET              | Administrator                                                                                 |
-| `/api/quiz`                                       | POST             | Signed-in owner or credentialed classroom participant                                         |
-| `/api/quiz/:id`                                   | GET              | Owner, administrator, or educator who owns the classroom                                      |
-| `/api/quiz/:id`                                   | PUT              | Owner or administrator                                                                        |
-| `/api/sessions`                                   | GET              | Administrator                                                                                 |
-| `/api/sessions`                                   | POST             | Signed-in user; owner is derived from Clerk                                                   |
-| `/api/sessions/:sessionId`                        | GET, PATCH       | Session owner or administrator                                                                |
-| `/api/users`                                      | GET              | Administrator                                                                                 |
-| `/api/users`                                      | POST             | Signed-in user creating or refreshing their own record                                        |
-| `/api/users/:id`                                  | GET, PUT         | Administrator                                                                                 |
-| `/api/users/me`                                   | GET              | Signed-in user                                                                                |
-| `/api/users/me/photo`                             | PATCH            | Signed-in user                                                                                |
+| Route                                             | Method           | Access                                                            |
+| ------------------------------------------------- | ---------------- | ----------------------------------------------------------------- |
+| `/api/admin/:id/role`                             | PATCH            | Administrator                                                     |
+| `/api/admin/analytics`                            | GET              | Administrator                                                     |
+| `/api/auth/admin-access`                          | GET              | Administrator                                                     |
+| `/api/health`                                     | GET, HEAD        | Public, read-only deployment/connectivity status; no learner data |
+| `/api/classroom-sessions`                         | GET, POST, PATCH | Signed-in educator; sessions are teacher-scoped                   |
+| `/api/classroom-sessions/join`                    | POST             | Public with an active access code; issues classroom credential    |
+| `/api/classroom-sessions/history`                 | GET              | Signed-in educator; only their own classes                        |
+| `/api/classroom-sessions/history/:classId`        | GET              | Educator who owns the class, or administrator                     |
+| `/api/classroom-sessions/history/:classId/reopen` | POST             | Owning educator only; no administrator bypass                     |
+| `/api/events`                                     | GET              | Administrator                                                     |
+| `/api/events`                                     | POST             | Signed-in session owner or credentialed classroom participant     |
+| `/api/example`                                    | GET              | Administrator                                                     |
+| `/api/gameData`                                   | GET              | Administrator                                                     |
+| `/api/gameData`                                   | POST             | Signed-in owner or credentialed classroom participant             |
+| `/api/gameData/:saveId`                           | GET              | Owner, administrator, or educator who owns the classroom          |
+| `/api/gameData/:saveId`                           | PATCH            | Owner only                                                        |
+| `/api/gameData/mine`                              | GET              | Signed-in user or classroom participant; own records only         |
+| `/api/quiz`                                       | GET              | Administrator                                                     |
+| `/api/quiz`                                       | POST             | Signed-in owner or credentialed classroom participant             |
+| `/api/quiz/:id`                                   | GET              | Owner, administrator, or educator who owns the classroom          |
+| `/api/quiz/:id`                                   | PUT              | Owner or administrator                                            |
+| `/api/sessions`                                   | GET              | Administrator                                                     |
+| `/api/sessions`                                   | POST             | Signed-in user; owner is derived from Clerk                       |
+| `/api/sessions/:sessionId`                        | GET, PATCH       | Session owner or administrator                                    |
+| `/api/users`                                      | GET              | Administrator                                                     |
+| `/api/users`                                      | POST             | Signed-in user creating or refreshing their own record            |
+| `/api/users/:id`                                  | GET, PUT         | Administrator                                                     |
+| `/api/users/me`                                   | GET              | Signed-in user                                                    |
+| `/api/users/me/photo`                             | PATCH            | Signed-in user                                                    |
 
 ## Response Rules
 
-The intended public health endpoint is currently blocked by `src/proxy.ts`: a live anonymous
-request returned `401` on 5 September 2026. This is an implementation gap, not the intended monitoring
-policy. See [operations.md](operations.md). Guest join identity also depends on the supplied token;
-a repeated display name does not resume the same participant automatically.
+The proxy exempts only exact `GET`/`HEAD /api/health` requests from Clerk. Similar paths and other
+methods do not inherit that exemption. Health reports `200`/`503` without learner data; see the
+[runbook](operations.md) for deployment verification (the older deployed baseline still blocks it).
+Guest join identity depends on the supplied token; a repeated display name does not resume the
+same participant automatically.
 
 - `401` means no valid Clerk or classroom credential was supplied.
 - `403` means the caller is authenticated but lacks the required role or participant binding.

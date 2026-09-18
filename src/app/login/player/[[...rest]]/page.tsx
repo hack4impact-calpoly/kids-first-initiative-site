@@ -11,7 +11,8 @@ const FACILITATOR_LOGIN_ROUTE = "/login/facilitator";
 const NAVY = "#211E5D";
 const CARD_BG = "#F8F8F8";
 const INPUT_BORDER = "#D9D9D9";
-const LINK_BLUE = "#4476BB";
+// Meets WCAG AA for small text on both the white page and light-gray card.
+const LINK_BLUE = "#315F9C";
 
 const fieldInputStyle = {
   width: "100%",

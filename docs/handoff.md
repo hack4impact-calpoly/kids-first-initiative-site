@@ -1,73 +1,83 @@
 # Handoff checklist
 
-Use this page in the transfer meeting. Fill in owner names, private access records, and evidence
-before accepting responsibility. A checked-in feature or green build is not operational sign-off.
+Use this page in the transfer meeting. The core service cutover is complete; incoming-owner access
+and client acceptance still need to be recorded. Keep passwords and recovery codes in the
+organization's password manager, never here.
 
-Reviewed **5 September 2026**, website `3258a3f`. The [CI run for that commit](https://github.com/hack4impact-calpoly/kids-first-initiative-site/actions/runs/33461768805) passed; GitHub
-lists `develop` as the default branch and the latest production deployment at that commit. There
-is no remote `main` branch. Vercel settings, billing, backups, and ownership were not inspected.
+## Verified baseline — 17 September 2026
+
+Production: [kids-first-initiative-site.vercel.app](https://kids-first-initiative-site.vercel.app).
+Vercel team `kids-first-initiative`, project `kids-first-initiative-site`; **`develop` deploys
+production**. There is no remote `main`; the proposed branch switch is optional future work.
+
+| Area                      | Completed / evidence                                                                                                                                                                                           |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Website                   | Production deployment `dpl_FmL4zJMMezjYxYgbK66gbtJGk7cn` is READY at `da49c4e`. [Post-merge CI passed](https://github.com/hack4impact-calpoly/kids-first-initiative-site/actions/runs/35185304856).            |
+| Production authentication | Clerk production keys and `/__clerk` proxy are active. The production admin was provisioned; test-instance users do not transfer automatically.                                                                |
+| Production data           | Fresh organization-controlled Atlas database `kids_first_production`; no former developer data was migrated or wiped.                                                                                          |
+| Preview isolation         | Clerk test keys and separate `kids_first_preview` database/user. Preview database credentials were verified unable to read production. Historical deployments may still carry old settings.                    |
+| CI cleanup                | Web tests/builds use dummy service settings. Unused GitHub database/authentication/hosting credentials were removed after [PR #84](https://github.com/hack4impact-calpoly/kids-first-initiative-site/pull/84). |
+| Unity account             | [PR #85](https://github.com/hack4impact-calpoly/kids-first-initiative-site/pull/85) merged. Both games compiled with the new account's Personal license; neither test run promoted new game files.             |
+| Functional testing        | Project lead reported testing looked good during handoff preparation. Exact device/browser coverage and incoming-team acceptance have not been recorded.                                                       |
+
+Unity build evidence: [Penguin Run, attempt 3](https://github.com/hack4impact-calpoly/kids-first-initiative-site/actions/runs/34816495085/attempts/3)
+and [States of Matter](https://github.com/hack4impact-calpoly/kids-first-initiative-site/actions/runs/35182279518).
+Published source revisions remain `690d3f93b3dc2153ff09f71f1309ca88dfc30b28` (Penguin Run) and
+`94405c5340fda3eb00f751ebb1641ee7192032fb` (States of Matter).
+
+This snapshot predates the health/contrast readiness patch. Verify that patch's deployed commit and
+public health response before signing off; do not mistake a local fix for a production release.
 
 ## Transfer access and responsibility
 
-Keep secret values in the organization's password manager. Record account/project identifiers and
-invite the incoming owner; do not hand over a former contributor's personal login.
+Invite the incoming owner and test access and recovery. A configured service is not proof that the
+incoming team controls it. Names below are deliberately blank until confirmed.
 
-| Area                                | Incoming owner / backup     | Evidence to record                                                                  |
-| ----------------------------------- | --------------------------- | ----------------------------------------------------------------------------------- |
-| Partner decisions and support       | **Unassigned / unassigned** | Contact channel, support hours, launch decision maker                               |
-| Website and both Unity repositories | **Unassigned / unassigned** | Team access to all three repos; ability to review PRs and run Actions               |
-| Vercel hosting                      | **Unassigned / unassigned** | Team/project, production URL and branch, deploy/rollback access, billing            |
-| MongoDB Atlas                       | **Unassigned / unassigned** | Organization/project/cluster, database access, backup settings and restore operator |
-| Clerk authentication                | **Unassigned / unassigned** | Development and production applications, admin access, role-claim configuration     |
-| Unity builds                        | **Unassigned / unassigned** | License owner; Actions credentials usable by the incoming team                      |
-| Learner data and service costs      | **Unassigned / unassigned** | Retention/deletion process, data-request contact, plans/costs/renewal dates         |
-| Monitoring and incidents            | **Unassigned / unassigned** | Alert destination, responder, backup, escalation path                               |
+| Area                                | Incoming owner / backup     | Evidence to record                                                             |
+| ----------------------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| Partner decisions and support       | **Unassigned / unassigned** | Support channel/hours, launch decision maker, escalation contact               |
+| Website and both Unity repositories | **Unassigned / unassigned** | Access to all three repos; ability to review PRs and run Actions               |
+| Vercel hosting                      | **Unassigned / unassigned** | Team/project access, deploy/rollback access, billing and storage alerts        |
+| MongoDB Atlas                       | **Unassigned / unassigned** | Organization/project/cluster access; production and Preview database ownership |
+| Clerk authentication                | **Unassigned / unassigned** | Production **and test/Preview** instance access, recovery, role claims         |
+| Unity builds                        | **Unassigned / unassigned** | New account/license owner and recovery access; secure credential record        |
+| Learner data and service costs      | **Unassigned / unassigned** | Retention/deletion contact, billing contacts and plan/renewal records          |
+| Monitoring and incidents            | **Unassigned / unassigned** | Alert destination, responder, backup and escalation path                       |
 
-Web CI and the Unity artifact's site-build check use dummy service settings, not MongoDB or Clerk
-credentials. Unity compilation uses the client account's Actions secrets `UNITY_CLIENT_EMAIL`,
-`UNITY_CLIENT_PASSWORD`, and `UNITY_CLIENT_LICENSE` (Personal license file); promotion uses the
-built-in GitHub token. See [Unity credential setup](releases.md#unity-build-account) and confirm the
-Vercel environments separately. Record the license owner and recovery access privately.
+Actions uses `UNITY_CLIENT_EMAIL`, `UNITY_CLIENT_PASSWORD`, and `UNITY_CLIENT_LICENSE`;
+promotion uses `GITHUB_TOKEN`. The unused `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_SERIAL`
+secrets remain for historical-workflow rollback only. Their eventual removal does not revoke the
+old provider account. Preserve the working Personal license when rotating only the password.
+See [Unity credentials](releases.md#unity-build-account).
 
-After this workflow change is merged and default-branch CI passes, remove the old Actions secrets
-`MONGO_URI` and `CLERK_SECRET_KEY` and variable `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. Legacy
-`UNITY_REPO_TOKEN`, `HOSTING_REPO` (secret and variable), and `HOSTING_REPO_REF` are unused by the
-current workflows. Review historical branches before rerunning them. Removing a GitHub secret does
-not revoke the underlying credential at its provider. Test invitations and recovery access before
-retiring the outgoing team's access.
+## Remaining decisions and release checks
 
-## Resolve or explicitly accept
+- [ ] Deploy the health/contrast fixes; confirm anonymous health is `200` when healthy and account/admin
+      APIs still reject anonymous callers. Send a test alert to the named responder. [Runbook](operations.md)
+- [ ] Confirm the Vercel storage warning in **Team → Usage → Deployment Storage**. The read-only check
+      found 99 retained READY deployments, but the CLI did not return usage totals. No deployments
+      or retention settings were changed. [Storage procedure](operations.md#deployment-storage)
+- [ ] Incoming developer runs a fresh checkout and demonstrates the release/rollback process.
+- [ ] Record actual device/browser coverage from the completed testing; resolve or accept remaining
+      shared-device, guest-rejoin, and accessibility limits. [QA checklist](accessibility-qa.md)
+- [ ] Fill in owners above and obtain partner/technical acceptance below.
 
-| Item                            | Current evidence / required next action                                                                                                                                                    | Owner role                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| Health monitoring               | Live unauthenticated `/api/health` returned **401** on 5 September. The proxy blocks it; resolve and verify public health checks before relying on uptime alerts. [Runbook](operations.md) | Developer                 |
-| Production release gate         | `develop` still deploys production. Activate and rehearse the proposed `main` release path; its token permissions/protection still need verification. [Releases](releases.md)              | Hosting/repository owner  |
-| Recovery                        | Backup configuration and an application-level restore have not been verified. Record retention, recovery targets, and a successful isolated restore.                                       | Database owner            |
-| Real devices and accessibility  | No completed device sign-off is recorded. Play both games, verify Penguin Run's rail/track guides, and record limitations. [QA](accessibility-qa.md)                                       | Partner + developer       |
-| Shared devices and guest return | Browser credentials/local Unity progress are shared; guest rejoin can create a new identity. Test learner turnover and reopening before promising continuity.                              | Partner + developer       |
-| Monitoring coverage             | Browser save/quiz/Unity errors are not all wired to structured server reports. Verify alert delivery; choose an error tracker only if one is needed.                                       | Developer + support owner |
-| Test coverage                   | Browser suites stub real services and Unity. Real authorization and database integration remain work items.                                                                                | Developer                 |
+**Scope decision:** backup verification and a restore drill were excluded from this handoff work
+by the project lead on 17 September 2026. They remain unverified, not certified unnecessary or
+complete. The [optional recovery runbook](operations.md#backup-and-recovery) is retained for future use.
 
-Existing issue threads: [E2E #47](https://github.com/hack4impact-calpoly/kids-first-initiative-site/issues/47),
-[Unity promotion #48](https://github.com/hack4impact-calpoly/kids-first-initiative-site/issues/48),
-[observability #49](https://github.com/hack4impact-calpoly/kids-first-initiative-site/issues/49),
+Known limits: browser tests stub service/game interactions; green CI is not full real-account or
+Unity gameplay coverage. Guest rejoining may create a new identity, and shared browser profiles
+can retain another learner's credentials/progress. Browser save/quiz/Unity errors are not all
+connected to server alerts. These are follow-up/acceptance items, not claims of completed coverage.
+
+## Acceptance record
+
+Date: **\_** · partner owner: **\_** · technical owner: **\_** · deployed website commit: **\_**
+
+Testing evidence/devices: **\_** · support channel: **\_** · accepted limitations and owners: **\_**
+
+Related tracking: [observability #49](https://github.com/hack4impact-calpoly/kids-first-initiative-site/issues/49),
 [device QA #50](https://github.com/hack4impact-calpoly/kids-first-initiative-site/issues/50),
 [browser authorization #69](https://github.com/hack4impact-calpoly/kids-first-initiative-site/issues/69).
-The health and guest-return observations above were found during this documentation review; do not
-assume the issue threads already contain them.
-
-## Demonstrate the handoff
-
-- [ ] Incoming developer runs the website from a fresh checkout using development services.
-- [ ] Partner educator creates a class; a separate learner completes both game/quiz loops; results appear.
-- [ ] Team tests reopening, a save failure/retry, and a second learner on the same device.
-- [ ] Incoming developer builds a Unity revision, reviews its website promotion, and identifies the deployed revision.
-- [ ] Service owner rehearses rollback and proves restored class/quiz data can be read.
-- [ ] An alert reaches the named responder; everyone knows the support channel.
-- [ ] Partner and technical owners record accepted limitations and the launch decision.
-
-**Acceptance record:** date **_ · partner owner _** · technical owner **_ · release _** ·
-evidence links **_ · accepted limitations and follow-up owners _**
-
-Keep this record and service ownership current at each team transition. Update deployment state
-here and in [releases.md](releases.md) after the production branch changes.
+Update this record after release and at each ownership transition.

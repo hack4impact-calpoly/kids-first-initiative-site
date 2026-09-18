@@ -136,11 +136,35 @@ describe.each([
     vi.stubEnv("CLERK_SECRET_KEY", key);
   });
 
-  it("still rejects anonymous requests to account APIs", async () => {
+  it.each([
+    "/api/users/me",
+    "/api/auth/admin-access",
+    "/api/admin/analytics",
+    "/api/health/private",
+    "/api/health-check",
+  ])("still rejects anonymous requests to %s", async (path) => {
     const { default: proxy } = await import("./proxy");
-    const response = await proxy(new NextRequest(`${appOrigin}/api/users/me`), event);
+    const response = await proxy(new NextRequest(`${appOrigin}${path}`), event);
     expect(response?.status).toBe(401);
     expect(await response?.json()).toEqual({ error: "Unauthorized" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["GET", "HEAD"])("allows an anonymous %s health probe without contacting Clerk", async (method) => {
+    // A monitor must still reach the health handler if Clerk is misconfigured or unavailable.
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    vi.stubEnv("CLERK_SECRET_KEY", "");
+    const { default: proxy } = await import("./proxy");
+    const response = await proxy(new NextRequest(`${appOrigin}/api/health?probe=uptime`, { method }), event);
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("x-middleware-next")).toBe("1");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not exempt writes to the health path from authentication", async () => {
+    const { default: proxy } = await import("./proxy");
+    const response = await proxy(new NextRequest(`${appOrigin}/api/health`, { method: "POST" }), event);
+    expect(response?.status).toBe(401);
     expect(fetch).not.toHaveBeenCalled();
   });
 

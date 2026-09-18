@@ -8,7 +8,7 @@ For the support owner and incoming developer. Contacts and account ownership bel
 1. Record the time, page/game, device/browser, affected group, and visible error. Keep learner names,
    answers, and credentials out of tickets and shared screenshots.
 2. Check the current production deployment in Vercel, then database connectivity in Atlas. If
-   sign-in fails, check the Clerk application. The public health probe is currently blocked; see below.
+   sign-in fails, check the Clerk application. Use the health probe below once the readiness patch is deployed.
 3. If a recent release broke the lesson, have the hosting owner roll back to a known working
    deployment. Tell the educator whether to retry or pause, through the agreed support channel.
 4. After recovery, verify a real learner can save progress and complete a quiz. Record the cause,
@@ -23,16 +23,17 @@ For the support owner and incoming developer. Contacts and account ownership bel
 | Clerk                  | Registered-user identity and role claims                                  |
 | GitHub Actions / Unity | Build games from their source repositories and open website promotion PRs |
 
-**Known monitoring blocker, verified 5 September 2026:** an unauthenticated request to
-`/api/health` on the live site returns `401`. The handler is designed to report deployment health,
-but [`src/proxy.ts`](../src/proxy.ts) requires sign-in before the request reaches it. Resolve that
-restriction and verify the complete request path before configuring a public health monitor.
+The readiness patch makes exact `GET`/`HEAD` requests to `/api/health` public, without contacting
+Clerk. Other account/admin APIs remain protected. Responses are not cached and contain no learner
+records or credentials. The deployed baseline `da49c4e` still has the old `401` restriction;
+confirm the fix is deployed before configuring a public monitor.
 
 ```sh
 curl -i --max-time 20 https://kids-first-initiative-site.vercel.app/api/health
 ```
 
-When the handler is reachable, its response is `200` for healthy checks and `503` for failed checks:
+Expect `200` for healthy checks and `503` for failed/degraded checks. A `401` means the public probe
+is still blocked (check the deployed commit and deployment protection), not that MongoDB is down.
 
 | Field             | Meaning and limit                                                                                                                 |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,8 +41,8 @@ When the handler is reachable, its response is `200` for healthy checks and `503
 | `checks.database` | Connection state; this does not test successful reads/writes or restore capability                                                |
 | `checks.games[]`  | Presence of `index.html`, `_source_sha.txt`, and `_build_id.txt`, plus source/build identifiers; this does not load the real game |
 
-Use Vercel's deployment commit and the game markers under `/game/<Game>/` to identify a release
-while public health is blocked. `node scripts/validate-webgl-build.mjs` performs more complete
+Use Vercel's deployment commit and the game markers under `/game/<Game>/` to identify a release.
+`node scripts/validate-webgl-build.mjs` performs more complete
 artifact checks locally/CI; actual gameplay still needs a browser and device.
 
 ## Logging and alerts
@@ -61,12 +62,12 @@ tracker, not every browser error. Confirm coverage and data capture before selec
 
 Suggested initial alerts, to tune after observing traffic:
 
-| Signal                          | Starting threshold                                   | First action                                                      |
-| ------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
-| Public health, once unblocked   | Two consecutive failures, checked every five minutes | Inspect Vercel and Atlas                                          |
-| Database errors                 | Any in five minutes                                  | Check database access, availability, and connection limits        |
-| Production deployment fails     | Each failed production build                         | Inspect the build log; verify the prior deployment still serves   |
-| Game boot / save / quiz failure | Configure after these browser events are collected   | Determine scope; protect unsaved work and inspect game/API errors |
+| Signal                                       | Starting threshold                                   | First action                                                      |
+| -------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| Public health, after deployment verification | Two consecutive failures, checked every five minutes | Inspect Vercel and Atlas                                          |
+| Database errors                              | Any in five minutes                                  | Check database access, availability, and connection limits        |
+| Production deployment fails                  | Each failed production build                         | Inspect the build log; verify the prior deployment still serves   |
+| Game boot / save / quiz failure              | Configure after these browser events are collected   | Determine scope; protect unsaved work and inspect game/API errors |
 
 Give every alert a named responder and backup in [handoff.md](handoff.md). Send a test alert and
 record delivery; an intended threshold is not evidence that monitoring exists.
@@ -74,7 +75,8 @@ record delivery; an intended threshold is not evidence that monitoring exists.
 ## Roll back
 
 1. Open Vercel's production deployment history and select a known working deployment. Use
-   **Instant Rollback** where available; confirm the target commit before proceeding.
+   **Instant Rollback** where available; confirm the target commit **and environment/database target**
+   before proceeding. Older deployments may embed the former MongoDB or Clerk settings.
 2. Verify the production URL, actual game loading, and a synthetic learner's quiz/save flow.
 3. Create a revert PR against `develop` so the bad change does not return with the next release.
    Revert a normal/squash commit with `git revert <sha>`; use `git revert -m 1 <sha>` only for a merge
@@ -82,15 +84,25 @@ record delivery; an intended threshold is not evidence that monitoring exists.
 4. After the corrected deployment passes verification, restore normal production promotion.
    If `main` has become production, the revert on `develop` must also be promoted.
 
-A rollback changes deployed code, not MongoDB data or configuration. Vercel may disable automatic
-production assignment after a rollback; check before assuming a subsequent merge goes live.
+A rollback does not undo MongoDB writes or update current project settings. The selected deployment
+can still carry its original environment values, even when its code SHA matches another deployment.
+The verified post-cutover baseline is `dpl_FmL4zJMMezjYxYgbK66gbtJGk7cn` (`da49c4e`);
+`dpl_BByZthVvv41AemkXF1KT3WM3eLBv` used the old Mongo configuration and must not be used as a
+client-production rollback target. Recheck that a target still exists and is eligible before a release.
+
+Vercel may disable automatic production assignment after a rollback; check before assuming a
+subsequent merge goes live.
 See [Vercel's rollback procedure](https://vercel.com/docs/instant-rollback) and the
 [release guide](releases.md).
 
 ## Backup and recovery
 
-The repository is not a backup of learner records. An Atlas owner must verify the production
-cluster's backup features and fill in this record:
+**Not required for this handoff work, per the project lead's 17 September 2026 decision.** Backup
+configuration and restoration remain unverified. This optional procedure is retained for a future
+database owner; no backup service or restore drill was performed as part of the readiness patch.
+
+The repository is not a backup of learner records. If recovery work is commissioned, verify the
+production cluster's backup features and fill in this record:
 
 | Recovery setting                       | Confirmed value                |
 | -------------------------------------- | ------------------------------ |
@@ -112,6 +124,24 @@ For a restore drill:
 
 A real production restore requires coordination with the partner: stop conflicting writes and
 identify which records would be lost since the restore point before replacing production data.
+
+## Deployment storage
+
+Vercel's Deployment Storage holds retained build output; Functions Storage holds server bundles.
+Neither is the MongoDB learner database. [Vercel's storage guide](https://vercel.com/docs/deployment-storage)
+explains both metrics and the dashboard view.
+
+The 17 September read-only check found a Hobby team, 99 READY deployments, and a project retention
+policy of 30 days with 10 deployments kept. `vercel usage` returned `Costs not found`, so the actual
+usage/limit and the warning remain unconfirmed. Local build tracing also included about 81 MB of
+game files in the health function; investigate that duplication if Functions Storage is high.
+
+1. Open **Team → Usage → Deployment Storage** and compare both storage metrics by project.
+2. Inventory old previews and production releases. Preserve the current production deployment,
+   a verified post-cutover rollback target, and any previews still needed for review.
+3. Agree on specific deletions or a shorter retention policy with the hosting owner before changing
+   anything. Do not treat all old deployments as disposable; deletion removes those rollback URLs.
+4. Recheck usage after cleanup. No deletion, retention change, or plan upgrade was made in this review.
 
 ## Routine ownership
 

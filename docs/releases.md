@@ -4,18 +4,24 @@ For the person deploying the website or a game. See [operations.md](operations.m
 
 ## Current production path
 
-Checked 5 September 2026: `develop` is the repository default branch, `main` does not exist remotely,
-and the latest GitHub production deployment is website commit `3258a3f`. The existing handoff
-records Vercel production as following `develop`; the hosting owner must confirm that dashboard setting.
-Treat a merge to `develop` as a production release until the branch switch is verified.
+Checked 17 September 2026: `develop` is the default and Vercel production branch; `main` does not
+exist remotely. Production deployment `dpl_FmL4zJMMezjYxYgbK66gbtJGk7cn` is READY at website commit
+`da49c4e` (new Unity build account). Treat a merge to `develop` as a production release. The
+controlled `main` path below is an optional future change, not an activated release mechanism.
 
 1. Open a PR against `develop`; include behavior changed and verification evidence.
 2. Require passing checks and review. Coordinate changes affecting lessons with the partner.
 3. Merge, then verify Vercel deployed the expected commit and both game/quiz loops still work.
-   Public `/api/health` currently returns `401`; use deployment details and the
-   [runbook](operations.md) until that is resolved.
+   After the health readiness patch is deployed, anonymous `/api/health` should return `200` when
+   healthy; a `503` signals failed/degraded checks. The baseline above still returns `401`.
+   Verify deployment details and follow the [runbook](operations.md).
 
 ## Activate Clerk production on Vercel
+
+**Completed for this project during September 2026 handoff preparation.** The steps below are a
+reconfiguration reference, not an outstanding task. Production uses live keys; Development and
+Preview retain test keys. The production admin was provisioned and functional testing was reported
+successful by the project lead. Incoming-owner access to both instances still needs confirmation.
 
 The website uses Clerk's built-in Frontend API proxy at `/__clerk`, including its JavaScript
 assets. It activates with a `pk_live_` publishable key; `pk_test_` keys keep local development and
@@ -88,13 +94,19 @@ the intended account before using it. A Google-linked account can set a Unity pa
 **Account → Security → Password → Reset password**. Keep recovery details in the client's password
 manager and re-check Hub sign-in after a password reset.
 
+The working Personal license is already stored in `UNITY_CLIENT_LICENSE`. On the handoff machine,
+a later Hub activation produced `UnityEntitlementLicense.xml` instead of the legacy `.ulf` file;
+that XML is not a drop-in replacement for this GameCI v4 workflow. When changing only the password,
+update only `UNITY_CLIENT_PASSWORD` and preserve the working license secret.
+
 When changing accounts, keep the working credentials intact and test replacements on a branch.
 Run **both games**, using recorded source SHAs and **`promote=false`**, then record successful run
 links before merging the credential change. This builds artifacts without opening game-update PRs
-or changing the live games. For the serial-to-Personal migration, the old `UNITY_EMAIL`,
-`UNITY_PASSWORD`, and `UNITY_SERIAL` secrets are rollback-only; remove them after the replacement
-builds pass and the new workflow is merged. Historical workflow reruns may still require them.
-Deleting GitHub secrets does not revoke the old Unity account or license.
+or changing the live games. This migration passed for both games and merged in PR #85; links are in
+the [handoff record](handoff.md). The old `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_SERIAL` secrets
+remain rollback-only and are not read by the current workflow. Retire them after the owner confirms
+historical reruns/rollback no longer need them. Deleted secrets cannot be read back from GitHub;
+deletion does not revoke the old Unity account or license.
 
 ## Proposed controlled release path
 

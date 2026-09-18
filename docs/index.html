@@ -174,7 +174,7 @@
           organization and incoming developers find what they need to run, maintain, and take ownership of the platform.
         </p>
         <p><a href="https://kids-first-initiative-site.vercel.app">Open the website</a></p>
-        <p class="meta">Reviewed 5 September 2026 · Website baseline <code>3258a3f</code></p>
+        <p class="meta">Updated 17 September 2026 · Verified production baseline <code>da49c4e</code></p>
       </header>
 
       <nav class="cards" aria-label="Choose your guide">
@@ -197,13 +197,14 @@
 
       <aside class="notice" aria-label="Readiness">
         <p>
-          <strong>Handoff readiness still needs sign-off.</strong> The website's <code>develop</code> branch currently
-          feeds production. Real-device testing, backup recovery, support ownership, and the controlled release path
-          need verification.
+          <strong>Core setup is complete; ownership and acceptance remain.</strong> Production authentication,
+          organization-owned data, isolated previews, CI cleanup, and the new Unity build account are configured. The
+          website's <code>develop</code> branch feeds production; switching branches is optional future work.
         </p>
         <p>
-          The live health endpoint returned <code>401 Unauthorized</code> during this review. Public monitoring must be
-          fixed and tested before anyone relies on it.
+          Functional testing was reported successful by the project lead. Deploy and verify the health/contrast
+          readiness patch, confirm the Vercel storage warning, and record service owners and accepted device coverage.
+          Backup verification is excluded from this handoff work; it remains unverified.
         </p>
       </aside>
 
@@ -255,8 +256,8 @@
             failed-save retry, guest rejoining, and a second learner using a shared device.
           </li>
           <li>
-            <strong>Prove recovery:</strong> build and release a game, rehearse rollback, verify an isolated database
-            restore, and deliver an alert to the named responder.
+            <strong>Demonstrate operations:</strong> identify the live game versions, review the successful new-account
+            builds, rehearse a safe post-cutover rollback, and deliver an alert to the named responder.
           </li>
         </ul>
         <p>

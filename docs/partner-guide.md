@@ -5,7 +5,8 @@ and quiz results. This guide covers everyday use. The [handoff checklist](handof
 what your organization needs to own; the [developer handbook](handbook.md) covers maintenance.
 
 **Website:** [kids-first-initiative-site.vercel.app](https://kids-first-initiative-site.vercel.app)
-• Reviewed 5 September 2026. Device suitability and operational readiness still need sign-off.
+• Updated 17 September 2026. Setup and project-lead functional testing are complete; incoming-owner
+contacts, actual device coverage, and client acceptance still need recording in the [handoff](handoff.md).
 
 ## What learners do
 
