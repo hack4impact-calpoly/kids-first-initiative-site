@@ -15,12 +15,17 @@ It covers:
 - No horizontal overflow at each viewport in the matrix below
 - No long animations under `prefers-reduced-motion: reduce`
 
-It does not fail the build. Known violations still need triage. Inspect the Playwright report
-uploaded by CI and record findings alongside the manual pass.
+The full audit does not fail the build. The repaired player/educator sign-in contrast also has a
+focused regression test in the required browser suite (`e2e/login-contrast.spec.ts`). Inspect the
+Playwright report uploaded by CI and record findings alongside the manual pass.
 
 Keyboard focus visibility is checked manually; the previous automated check was unreliable.
 
 Automated checks do not establish full accessibility. Complete the manual checks below.
+
+17 September readiness patch: the player and educator sign-in contrast failures were reproduced
+and fixed (small blue text on gray cards). All **26** local accessibility checks and **20** required
+browser tests passed. This is automated evidence, not a completed device matrix or new gameplay sign-off.
 
 ## Target device and browser matrix
 
@@ -39,7 +44,8 @@ devices/browsers and record accepted coverage after testing. Record exact OS/bro
 ## Before each pass
 
 - [ ] Record the website release from Vercel and source SHAs from `/game/<Game>/_source_sha.txt`.
-      Anonymous `/api/health` currently returns `401`; use it only after the [monitoring gap](operations.md) is fixed.
+      After the readiness patch is deployed, public `/api/health` also reports these identifiers.
+      See [health verification](operations.md#services-and-health); the older baseline still returns `401`.
 - [ ] Validate both game artifacts and open both real games; file markers alone do not prove gameplay works.
 - [ ] Have a working classroom access code, or create one
 

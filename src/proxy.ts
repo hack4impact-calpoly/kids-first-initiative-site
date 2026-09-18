@@ -47,6 +47,12 @@ const authenticatedProxy = clerkMiddleware(
 );
 
 const proxy: NextMiddleware = (request, event) => {
+  // Uptime checks must not depend on a Clerk session or its availability. Match only this
+  // read-only endpoint; account APIs and similarly named paths remain authenticated.
+  if (request.nextUrl.pathname === "/api/health" && ["GET", "HEAD"].includes(request.method)) {
+    return NextResponse.next();
+  }
+
   if (process.env.NODE_ENV !== "production" && process.env.KFI_E2E_BYPASS_CLERK === "1") {
     return NextResponse.next();
   }

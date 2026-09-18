@@ -90,6 +90,6 @@ export async function GET() {
       checks: { database, games },
     },
     // Non-2xx on failure so an uptime monitor alerts without needing to parse the body.
-    { status: status === "ok" ? 200 : 503 },
+    { status: status === "ok" ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }

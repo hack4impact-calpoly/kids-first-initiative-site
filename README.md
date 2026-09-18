@@ -15,9 +15,10 @@ The website embeds the separately maintained States of Matter and Penguin Run Un
 | Outgoing and incoming owners       | [Access transfer, open gaps, and acceptance checklist](docs/handoff.md)        |
 | Release or support owner           | [Release process](docs/releases.md) · [Operations runbook](docs/operations.md) |
 
-Review date: 5 September 2026. `develop` currently feeds production. Device QA, recovery, and
-ownership still need sign-off; the health endpoint currently rejects anonymous monitoring requests.
-See the [handoff checklist](docs/handoff.md) for evidence and next actions.
+Review date: 17 September 2026. `develop` feeds production. Production Clerk, organization-owned
+MongoDB, isolated Preview data, CI cleanup, and the new Unity build account are set up. See the
+[handoff checklist](docs/handoff.md) for the verified deployment, readiness-patch release checks,
+remaining owner/contact details, and client acceptance. Backup work is excluded from this handoff.
 
 Technical references: [API authorization](docs/api-authorization.md),
 [Unity progress contract](docs/game-progress-bridge.md), and [device/accessibility QA](docs/accessibility-qa.md).
