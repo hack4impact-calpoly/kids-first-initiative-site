@@ -289,6 +289,10 @@ export default function AdminDashboardPage() {
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>Statistics</h1>
           <p className={styles.subtitle}>Usage across all classrooms and families.</p>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Standalone HTML route handler, not an RSC page; navigate without prefetching. */}
+          <a className={styles.documentationLink} href="/adminDashboard/docs">
+            Documentation &amp; handoff
+          </a>
         </div>
 
         {loading ? (

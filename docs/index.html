@@ -174,7 +174,7 @@
           organization and incoming developers find what they need to run, maintain, and take ownership of the platform.
         </p>
         <p><a href="https://kids-first-initiative-site.vercel.app">Open the website</a></p>
-        <p class="meta">Updated 17 September 2026 · Verified production baseline <code>da49c4e</code></p>
+        <p class="meta">Updated 17 September 2026 · Verified production baseline <code>9dc8d04</code></p>
       </header>
 
       <nav class="cards" aria-label="Choose your guide">
@@ -202,9 +202,13 @@
           website's <code>develop</code> branch feeds production; switching branches is optional future work.
         </p>
         <p>
-          Functional testing was reported successful by the project lead. Deploy and verify the health/contrast
-          readiness patch, confirm the Vercel storage warning, and record service owners and accepted device coverage.
-          Backup verification is excluded from this handoff work; it remains unverified.
+          Health and sign-in contrast fixes are live. Storage cleanup removed 32 unused previews; Preview retention is
+          now 7 days, with Production kept at 30 days. Refreshed storage usage still needs checking.
+        </p>
+        <p>
+          Functional testing was reported successful by the project lead. Confirm incoming-owner access, test outage
+          alert delivery, and record accepted device coverage and client sign-off. Backup verification remains excluded
+          and unverified.
         </p>
       </aside>
 

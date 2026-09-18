@@ -40,6 +40,28 @@
   color: #525252;
 }
 
+.documentationLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #315f9c;
+  border-radius: 8px;
+  color: #315f9c;
+  background: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.documentationLink:hover {
+  background: #eef4fc;
+}
+
+.documentationLink:focus-visible {
+  outline: 3px solid #315f9c;
+  outline-offset: 3px;
+}
+
 .statusCard {
   width: 100%;
   padding: 24px;

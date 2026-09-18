@@ -8,7 +8,7 @@ For the support owner and incoming developer. Contacts and account ownership bel
 1. Record the time, page/game, device/browser, affected group, and visible error. Keep learner names,
    answers, and credentials out of tickets and shared screenshots.
 2. Check the current production deployment in Vercel, then database connectivity in Atlas. If
-   sign-in fails, check the Clerk application. Use the health probe below once the readiness patch is deployed.
+   sign-in fails, check the Clerk application. Use the public health probe below to narrow the problem.
 3. If a recent release broke the lesson, have the hosting owner roll back to a known working
    deployment. Tell the educator whether to retry or pause, through the agreed support channel.
 4. After recovery, verify a real learner can save progress and complete a quiz. Record the cause,
@@ -23,10 +23,15 @@ For the support owner and incoming developer. Contacts and account ownership bel
 | Clerk                  | Registered-user identity and role claims                                  |
 | GitHub Actions / Unity | Build games from their source repositories and open website promotion PRs |
 
-The readiness patch makes exact `GET`/`HEAD` requests to `/api/health` public, without contacting
-Clerk. Other account/admin APIs remain protected. Responses are not cached and contain no learner
-records or credentials. The deployed baseline `da49c4e` still has the old `401` restriction;
-confirm the fix is deployed before configuring a public monitor.
+Exact `GET`/`HEAD` requests to `/api/health` are public, without contacting Clerk. Other account/admin
+APIs remain protected. Responses use `Cache-Control: no-store` and contain no learner records or
+credentials. Verified live at `9dc8d04` on 17 September: health `200` with database and both game
+checks healthy; anonymous `/api/users/me` and `/api/auth/admin-access` return `401`.
+
+Later spot-check on 17 September at **19:53 PDT**: one `503` with database `degraded`, `readyState: 0`;
+both game checks remained healthy. Three follow-up requests at **19:54 PDT** returned `200` with
+database `readyState: 1`. Cause is unverified; review recurrence/logs with the monitoring owner
+before sign-off. No application or database changes were made during these checks.
 
 ```sh
 curl -i --max-time 20 https://kids-first-initiative-site.vercel.app/api/health
@@ -62,15 +67,16 @@ tracker, not every browser error. Confirm coverage and data capture before selec
 
 Suggested initial alerts, to tune after observing traffic:
 
-| Signal                                       | Starting threshold                                   | First action                                                      |
-| -------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
-| Public health, after deployment verification | Two consecutive failures, checked every five minutes | Inspect Vercel and Atlas                                          |
-| Database errors                              | Any in five minutes                                  | Check database access, availability, and connection limits        |
-| Production deployment fails                  | Each failed production build                         | Inspect the build log; verify the prior deployment still serves   |
-| Game boot / save / quiz failure              | Configure after these browser events are collected   | Determine scope; protect unsaved work and inspect game/API errors |
+| Signal                          | Starting threshold                                   | First action                                                      |
+| ------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| Public health                   | Two consecutive failures, checked every five minutes | Inspect Vercel and Atlas                                          |
+| Database errors                 | Any in five minutes                                  | Check database access, availability, and connection limits        |
+| Production deployment fails     | Each failed production build                         | Inspect the build log; verify the prior deployment still serves   |
+| Game boot / save / quiz failure | Configure after these browser events are collected   | Determine scope; protect unsaved work and inspect game/API errors |
 
 Give every alert a named responder and backup in [handoff.md](handoff.md). Send a test alert and
-record delivery; an intended threshold is not evidence that monitoring exists.
+record delivery. **Monitoring configuration and alert delivery remain unverified**; the working
+health endpoint and these suggested thresholds do not prove that anyone receives outage alerts.
 
 ## Roll back
 
@@ -86,7 +92,9 @@ record delivery; an intended threshold is not evidence that monitoring exists.
 
 A rollback does not undo MongoDB writes or update current project settings. The selected deployment
 can still carry its original environment values, even when its code SHA matches another deployment.
-The verified post-cutover baseline is `dpl_FmL4zJMMezjYxYgbK66gbtJGk7cn` (`da49c4e`);
+The current verified release is `dpl_6bjc7PXTKYJ6zn6xPgaxf5WJoJQB` (`9dc8d04`). The earlier
+post-cutover deployment `dpl_FmL4zJMMezjYxYgbK66gbtJGk7cn` (`da49c4e`) was preserved during cleanup,
+but predates the health/contrast fixes; rolling back there makes anonymous health return `401` again.
 `dpl_BByZthVvv41AemkXF1KT3WM3eLBv` used the old Mongo configuration and must not be used as a
 client-production rollback target. Recheck that a target still exists and is eligible before a release.
 
@@ -131,17 +139,35 @@ Vercel's Deployment Storage holds retained build output; Functions Storage holds
 Neither is the MongoDB learner database. [Vercel's storage guide](https://vercel.com/docs/deployment-storage)
 explains both metrics and the dashboard view.
 
-The 17 September read-only check found a Hobby team, 99 READY deployments, and a project retention
-policy of 30 days with 10 deployments kept. `vercel usage` returned `Costs not found`, so the actual
-usage/limit and the warning remain unconfirmed. Local build tracing also included about 81 MB of
-game files in the health function; investigate that duplication if Functions Storage is high.
+**Completed 17 September 2026:** removed 32 unused previews from closed/merged PRs after checking
+they had no assigned aliases. The inventory fell from 101 to 69 deployments: all 38 production
+deployments and 31 previews were preserved, including 25 older previews with aliases. Production
+remained healthy at `9dc8d04`; no learner records, published game revisions, or alias assignments changed.
+
+Project retention was then changed and read back: **Preview 7 days; Production, canceled, and
+errored deployments 30 days**. No team defaults or billing plan were changed. The API's existing
+`deploymentsToKeep: 10` value was left untouched; do not interpret it as the current platform-wide
+minimum. Vercel's [Hobby policy](https://vercel.com/changelog/hobby-projects-now-retain-fewer-deployments-to-free-up-storage)
+documents a 10 GB Deployment Storage cap and exceptions for recent deployments.
+
+Auto-deletion is not immediate, and protected aliases/active branches can keep deployments longer.
+Vercel normally marks expired deployments within 48 hours; re-evaluation after an exception ends
+can take up to 30 days. Successfully built deleted deployments can be restored for 30 days under
+**Project → Settings → Security → Recently Deleted**. See the
+[retention and recovery rules](https://vercel.com/docs/deployment-retention).
+
+**Still unverified:** post-cleanup GB totals and savings. The supplied dashboard showed roughly
+8–9 GB before cleanup; `vercel usage` returned `Costs not found`. Local tracing also included about
+81 MB of game files in the health function; investigate that duplication only if Functions Storage
+remains high. It is not a confirmed explanation for the dashboard total.
 
 1. Open **Team → Usage → Deployment Storage** and compare both storage metrics by project.
 2. Inventory old previews and production releases. Preserve the current production deployment,
    a verified post-cutover rollback target, and any previews still needed for review.
-3. Agree on specific deletions or a shorter retention policy with the hosting owner before changing
-   anything. Do not treat all old deployments as disposable; deletion removes those rollback URLs.
-4. Recheck usage after cleanup. No deletion, retention change, or plan upgrade was made in this review.
+3. Agree on any further deletions or retention changes with the hosting owner. Check current alias
+   assignments and open PRs before deleting; old deployments are not automatically disposable.
+4. Record refreshed usage and headroom after processing. Do not claim a storage saving from the
+   deployment count alone; verify rollback targets still exist before relying on them.
 
 ## Routine ownership
 

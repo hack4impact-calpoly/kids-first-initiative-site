@@ -41,6 +41,11 @@ describe("Clerk proxy configuration", () => {
       "/__clerk/npm/@clerk/clerk-js@6/dist/clerk.browser.js",
       "/api/users/me",
       "/adminDashboard",
+      "/adminDashboard/docs",
+      "/adminDashboard/docs/index.html",
+      "/adminDashboard/docs/handoff.md",
+      "/adminDashboard/docs/styles.css",
+      "/adminDashboard/docs/bundle.js",
     ]) {
       expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url: path }), path).toBe(true);
     }
@@ -174,6 +179,17 @@ describe.each([
     expect(response?.headers.get("location")).toBe(`${appOrigin}/playerDashboard`);
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  it.each(["/adminDashboard/docs", "/adminDashboard/docs/index.html", "/adminDashboard/docs/handoff.md"])(
+    "rejects anonymous documentation requests at %s",
+    async (path) => {
+      const { default: proxy } = await import("./proxy");
+      const response = await proxy(new NextRequest(`${appOrigin}${path}`), event);
+      expect(response?.status).toBe(401);
+      expect(response?.headers.get("Cache-Control")).toContain("no-store");
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["/login/facilitator", "/sign-up/facilitator", "/api/classroom-sessions/join"])(
     "still allows public or guest-capable route %s to reach its handler",

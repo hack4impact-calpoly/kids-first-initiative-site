@@ -5,16 +5,24 @@ For the person deploying the website or a game. See [operations.md](operations.m
 ## Current production path
 
 Checked 17 September 2026: `develop` is the default and Vercel production branch; `main` does not
-exist remotely. Production deployment `dpl_FmL4zJMMezjYxYgbK66gbtJGk7cn` is READY at website commit
-`da49c4e` (new Unity build account). Treat a merge to `develop` as a production release. The
+exist remotely. Production deployment `dpl_6bjc7PXTKYJ6zn6xPgaxf5WJoJQB` is READY at website commit
+`9dc8d04` (health/contrast fixes); [post-merge CI passed](https://github.com/hack4impact-calpoly/kids-first-initiative-site/actions/runs/35299122564).
+Treat a merge to `develop` as a production release. The
 controlled `main` path below is an optional future change, not an activated release mechanism.
 
 1. Open a PR against `develop`; include behavior changed and verification evidence.
 2. Require passing checks and review. Coordinate changes affecting lessons with the partner.
 3. Merge, then verify Vercel deployed the expected commit and both game/quiz loops still work.
-   After the health readiness patch is deployed, anonymous `/api/health` should return `200` when
-   healthy; a `503` signals failed/degraded checks. The baseline above still returns `401`.
-   Verify deployment details and follow the [runbook](operations.md).
+   Anonymous `/api/health` returns `200` when healthy and `503` for failed/degraded checks; match its
+   `release` to the intended commit. Account/admin APIs must still reject anonymous callers.
+   These checks passed on the current release. Follow the [runbook](operations.md) for each deployment.
+
+For the upcoming documentation viewer release, verify **Admin dashboard → Documentation & handoff**
+with an admin account. Signed-out users and non-admin accounts must not receive guides, including
+direct `/adminDashboard/docs/index.html` and `/adminDashboard/docs/handoff.md` requests.
+
+Preview retention is 7 days; Production is 30 days. Confirm a suitable rollback target still exists
+and uses the organization-owned services before releasing. See [storage and retention](operations.md#deployment-storage).
 
 ## Activate Clerk production on Vercel
 

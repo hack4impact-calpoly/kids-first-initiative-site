@@ -8,6 +8,10 @@ what your organization needs to own; the [developer handbook](handbook.md) cover
 • Updated 17 September 2026. Setup and project-lead functional testing are complete; incoming-owner
 contacts, actual device coverage, and client acceptance still need recording in the [handoff](handoff.md).
 
+Once the documentation viewer is released, administrators can open these guides through
+**Admin dashboard → Documentation & handoff**. Other roles cannot use that website view;
+an admin can share the relevant guide separately. Copies in the public GitHub repository remain public.
+
 ## What learners do
 
 Join a class → answer a short pre-quiz → play → answer the post-quiz → review results.

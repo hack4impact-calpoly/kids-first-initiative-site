@@ -23,9 +23,10 @@ Keyboard focus visibility is checked manually; the previous automated check was 
 
 Automated checks do not establish full accessibility. Complete the manual checks below.
 
-17 September readiness patch: the player and educator sign-in contrast failures were reproduced
-and fixed (small blue text on gray cards). All **26** local accessibility checks and **20** required
-browser tests passed. This is automated evidence, not a completed device matrix or new gameplay sign-off.
+17 September: the sign-in contrast fixes shipped in `9dc8d04`. All **26** local accessibility checks
+and **20** required browser tests passed; axe color-contrast checks also found no violations on either
+live sign-in page. [Production evidence](https://github.com/hack4impact-calpoly/kids-first-initiative-site/pull/86#issuecomment-5724206865).
+This is automated evidence, not a completed device matrix or new gameplay sign-off.
 
 ## Target device and browser matrix
 
@@ -44,8 +45,7 @@ devices/browsers and record accepted coverage after testing. Record exact OS/bro
 ## Before each pass
 
 - [ ] Record the website release from Vercel and source SHAs from `/game/<Game>/_source_sha.txt`.
-      After the readiness patch is deployed, public `/api/health` also reports these identifiers.
-      See [health verification](operations.md#services-and-health); the older baseline still returns `401`.
+      Public `/api/health` also reports these identifiers; see [health verification](operations.md#services-and-health).
 - [ ] Validate both game artifacts and open both real games; file markers alone do not prove gameplay works.
 - [ ] Have a working classroom access code, or create one
 
